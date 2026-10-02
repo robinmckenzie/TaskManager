@@ -1,0 +1,244 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  background: #f4f5f7;
+  color: #202124;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.app-header p {
+  margin: 4px 0 0;
+  color: #666;
+}
+
+.add-button {
+  border: 0;
+  border-radius: 6px;
+  padding: 10px 18px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.add-button:hover {
+  background: #1d4ed8;
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.task {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+  transition:
+    opacity 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+
+.task:hover {
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.task-drag-handle {
+  color: #888;
+  cursor: grab;
+  font-size: 20px;
+  user-select: none;
+}
+
+.task-drag-handle:active {
+  cursor: grabbing;
+}
+
+.user-photo {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.task-main {
+  flex: 1;
+  min-width: 200px;
+}
+
+.task-title {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-size: 18px;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.task-title:focus {
+  outline: none;
+  border-bottom: 2px solid #2563eb;
+}
+
+.task-details {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 6px;
+  color: #666;
+  font-size: 13px;
+}
+
+.task-details label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.task-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.task-controls select,
+.task-details input[type="date"] {
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 5px 7px;
+  background: white;
+}
+
+.priority-control {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 130px;
+  font-size: 12px;
+}
+
+.priority-control input {
+  width: 130px;
+}
+
+.completed-control {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.delete-button {
+  border: 0;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+}
+
+.delete-button:hover {
+  text-decoration: underline;
+}
+
+/*
+ * Due-date colours.
+ */
+
+.task-normal {
+  background: #ffffff;
+}
+
+.task-due-this-week {
+  background: #fffde7;
+}
+
+.task-due-soon {
+  background: #fff3cd;
+}
+
+.task-completed {
+  background: #dcfce7;
+  opacity: 0.75;
+}
+
+/*
+ * Overdue tasks pulse red.
+ *
+ * The animationDuration is supplied inline by React,
+ * based on how far overdue the task is.
+ */
+
+.task-overdue {
+  background: #fecaca;
+  animation-name: overdue-pulse;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes overdue-pulse {
+  0%,
+  100% {
+    background-color: #fecaca;
+  }
+
+  50% {
+    background-color: #ef4444;
+  }
+}
+
+@media (max-width: 850px) {
+  .task {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .task-main {
+    min-width: calc(100% - 120px);
+  }
+
+  .task-controls {
+    width: 100%;
+    flex-wrap: wrap;
+    padding-left: 58px;
+  }
+}
