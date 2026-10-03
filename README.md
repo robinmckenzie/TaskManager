@@ -40,4 +40,6 @@ Open the local URL printed in the terminal.
 | `npm run dev` | Start the Vite development server. |
 | `npm run build` | Check TypeScript and create a production build in `dist/`. |
 | `npm run lint` | Check the code with ESLint. |
+| `npm test` | Run the persistence unit tests once. |
+| `npm run test:watch` | Rerun the persistence unit tests as files change. |
 | `npm run preview` | Serve the production build locally; run `npm run build` first. |
