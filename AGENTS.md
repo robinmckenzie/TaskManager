@@ -4,11 +4,20 @@
 
 - Work against a local ticket with a stable ID such as `TM-1`.
 - Store local tickets in the repository as `tickets/<ticket-id>.md`.
+- Once a ticket has been agreed and reviewed, commit it before beginning investigation or planning.
 - If investigation or planning leads to an agreed change in requirements, update the relevant ticket to reflect that decision before implementing it.
 - Scope changes to the ticket. Avoid unrelated refactors, formatting changes, cleanup, or dependency upgrades.
 - Reference the relevant ticket ID in commits.
 - Summarize the resulting behavior, validation performed, and any remaining limitations when handing off changes.
 - Update README when setup, commands, or documented user behavior change.
+
+## Ticket writing
+
+- Use these sections in order:
+    1. User problem — why are we doing this?
+    2. Requirements — what behaviour do we want?
+    3. Acceptance criteria — how will we know we've achieved it?
+- Describe the problem and required behaviour without unnecessarily prescribing implementation details.
 
 ## Development commands
 
@@ -46,7 +55,7 @@ See README for supported Node.js versions.
 
 ## Future considerations
 
-- Review `FUTURE_CONSIDERATIONS.md` when planning work that may relate to an existing consideration.
+- Review `FUTURE_CONSIDERATIONS.md` (aka FUTCONS) when planning work that may relate to an existing consideration.
 - Add observations there when they may be relevant to future work but do not yet justify a ticket.
 - Do not treat future considerations as requirements or planned work; revisit them when relevant and decide whether they should become part of a ticket.
 - Remove or update considerations when they are resolved, superseded, or incorporated into a ticket.
