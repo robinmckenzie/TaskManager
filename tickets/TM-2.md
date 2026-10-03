@@ -12,6 +12,8 @@ broader permissions.
 - Maintain sandbox protection for normal operations.
 - Continue requiring approval for commands that need execution outside the sandbox and are not explicitly trusted validation operations.
 - Scope validation permissions to TaskManager without granting equivalent permissions to unrelated projects.
+- Validation permissions apply to the TaskManager project session; they do not impose a strict working-directory constraint on every matching command.
+- Trusted validation commands use prefix matching, including trailing arguments.
 - Document the trusted validation operations and intended permission boundary so another developer or agent can understand them.
 
 ## Acceptance criteria
