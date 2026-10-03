@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import type { FC } from "react"
 
 import { DndProvider, useDrag, useDrop } from "react-dnd"
@@ -12,6 +12,7 @@ import { differenceInDays, format, parseISO } from "date-fns"
 import "./index.css"
 
 const ITEM_TYPE = "TASK"
+const TASKS_STORAGE_KEY = "taskmanager.tasks"
 
 interface User {
     id: string
@@ -95,6 +96,45 @@ const initialTasks: TaskType[] = [
         completed: false,
     },
 ]
+
+const isTask = (value: unknown): value is TaskType => {
+    if (typeof value !== "object" || value === null) {
+        return false
+    }
+
+    const task = value as Record<string, unknown>
+
+    return (
+        typeof task.id === "string" &&
+        typeof task.text === "string" &&
+        typeof task.userId === "string" &&
+        typeof task.priority === "number" &&
+        typeof task.dueDate === "string" &&
+        typeof task.completed === "boolean"
+    )
+}
+
+const loadTasks = (): TaskType[] => {
+    try {
+        const savedTasks = localStorage.getItem(TASKS_STORAGE_KEY)
+
+        if (savedTasks === null) {
+            return initialTasks
+        }
+
+        const parsedTasks: unknown = JSON.parse(savedTasks)
+
+        if (Array.isArray(parsedTasks) && parsedTasks.every(isTask)) {
+            return parsedTasks
+        }
+
+        console.warn("Saved tasks have an incompatible format. Using sample tasks.")
+    } catch (error) {
+        console.warn("Unable to load saved tasks. Using sample tasks.", error)
+    }
+
+    return initialTasks
+}
 
 /**
  * Returns the number of days until the task is due.
@@ -387,9 +427,20 @@ const Task: FC<TaskProps> = ({
 }
 
 const App: FC = () => {
-    const [tasks, setTasks] = useState<TaskType[]>(initialTasks)
+    const [tasks, setTasks] = useState<TaskType[]>(loadTasks)
 
     const [users] = useState<User[]>(initialUsers)
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks))
+        } catch (error) {
+            console.warn(
+                "Unable to save tasks. Changes will only be kept in memory.",
+                error,
+            )
+        }
+    }, [tasks])
 
     const addTask = (): void => {
         const newTask: TaskType = {

@@ -5,7 +5,9 @@ setting priorities and due dates, marking tasks complete, and deleting tasks.
 Drag and drop tasks to reorder them. Due-date colors and pulsing overdue tasks
 highlight upcoming and missed deadlines.
 
-Tasks are stored in memory. Refreshing the page restores the sample tasks.
+Tasks are saved in this browser using localStorage and restored on refresh.
+The sample tasks appear on your first visit. If browser storage is unavailable,
+tasks remain usable in memory, but changes will not persist.
 
 ## Technologies
 
