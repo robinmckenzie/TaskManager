@@ -53,3 +53,17 @@ Open the local URL printed in the terminal.
 | `npm test` | Run the unit tests once. |
 | `npm run test:watch` | Rerun the unit tests as files change. |
 | `npm run preview` | Serve the production build locally; run `npm run build` first. |
+
+## Codex validation permissions
+
+`.codex/rules/validation.rules` allows `npm test`, `npm run lint`, and
+`npm run build` to run outside the sandbox without repeated approval prompts.
+Keep workspace-write sandbox protection and on-request approvals enabled; other
+commands needing execution outside the sandbox still require approval.
+Trust this project in Codex and restart Codex after adding or changing the rules.
+
+The allowances apply to TaskManager project sessions, not unrelated project
+sessions. They match command prefixes, including trailing arguments, and do not
+restrict the working directory of each matching command. They trust the project
+scripts and their subprocesses. Remove the rules and restart Codex to revoke
+these allowances; avoid saving them as user-global permissions.
