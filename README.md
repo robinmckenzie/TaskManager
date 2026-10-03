@@ -9,6 +9,16 @@ Tasks are saved in this browser using localStorage and restored on refresh.
 The sample tasks appear on your first visit. If browser storage is unavailable,
 tasks remain usable in memory, but changes will not persist.
 
+Use the Assignee dropdown above the task list to show one user's tasks or
+"All assignees". Both completed and incomplete matching tasks remain visible.
+"All assignees" appears first, followed by users alphabetically by name.
+Each task's assignee dropdown uses the same alphabetical user order.
+Your selection is restored on refresh; a missing or unavailable assignee defaults
+to "All assignees". If storage is unavailable, the selection remains usable in memory.
+New tasks are assigned to the selected assignee. Under "All assignees", they
+default to the first available user. Dragging filtered tasks changes their order
+in the complete task list.
+
 ## Technologies
 
 - React and TypeScript for the interface and application logic.
@@ -40,6 +50,6 @@ Open the local URL printed in the terminal.
 | `npm run dev` | Start the Vite development server. |
 | `npm run build` | Check TypeScript and create a production build in `dist/`. |
 | `npm run lint` | Check the code with ESLint. |
-| `npm test` | Run the persistence unit tests once. |
-| `npm run test:watch` | Rerun the persistence unit tests as files change. |
+| `npm test` | Run the unit tests once. |
+| `npm run test:watch` | Rerun the unit tests as files change. |
 | `npm run preview` | Serve the production build locally; run `npm run build` first. |

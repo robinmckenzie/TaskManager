@@ -4,6 +4,7 @@
 
 - Work against a local ticket with a stable ID such as `TM-1`.
 - Store local tickets in the repository as `tickets/<ticket-id>.md`.
+- If investigation or planning leads to an agreed change in requirements, update the relevant ticket to reflect that decision before implementing it.
 - Scope changes to the ticket. Avoid unrelated refactors, formatting changes, cleanup, or dependency upgrades.
 - Reference the relevant ticket ID in commits.
 - Summarize the resulting behavior, validation performed, and any remaining limitations when handing off changes.
@@ -42,3 +43,10 @@ See README for supported Node.js versions.
 - For code changes, run `npm run build`, `npm run lint`, and `npm test`. Report failures or checks that could not run.
 - Add or update regression tests for changed logic where useful.
 - For UI changes, verify affected behavior in a browser. Check drag-and-drop and refresh persistence when those features are affected.
+
+## Future considerations
+
+- Review `FUTURE_CONSIDERATIONS.md` when planning work that may relate to an existing consideration.
+- Add observations there when they may be relevant to future work but do not yet justify a ticket.
+- Do not treat future considerations as requirements or planned work; revisit them when relevant and decide whether they should become part of a ticket.
+- Remove or update considerations when they are resolved, superseded, or incorporated into a ticket.

@@ -9,8 +9,14 @@ import { HTML5Backend } from "react-dnd-html5-backend"
 
 import { differenceInDays, format, parseISO } from "date-fns"
 
-import { loadTasks, TASKS_STORAGE_KEY } from "./tasks"
+import { loadTasks, reorderTasks, TASKS_STORAGE_KEY } from "./tasks"
 import type { TaskType } from "./tasks"
+import {
+    getVisibleTasks,
+    loadAssigneeFilter,
+    saveAssigneeFilter,
+} from "./assigneeFilter"
+import { getNewTaskAssignee, sortAssigneesByName } from "./users"
 
 import "./index.css"
 
@@ -53,6 +59,7 @@ const initialUsers: User[] = [
         name: "Charlie",
         photo: "https://i.pravatar.cc/100?img=3",
     },
+    { id: "4", name: "Aaron", photo: "https://i.pravatar.cc/100?img=4" },
 ]
 
 /**
@@ -350,6 +357,17 @@ const App: FC = () => {
 
     const [users] = useState<User[]>(initialUsers)
 
+    const [assigneeFilter, setAssigneeFilter] = useState<string>(() =>
+        loadAssigneeFilter(users),
+    )
+
+    useEffect(() => {
+        saveAssigneeFilter(assigneeFilter)
+    }, [assigneeFilter])
+
+    const visibleTasks = getVisibleTasks(tasks, assigneeFilter)
+    const alphabeticalUsers = sortAssigneesByName(users)
+
     useEffect(() => {
         try {
             localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks))
@@ -365,7 +383,7 @@ const App: FC = () => {
         const newTask: TaskType = {
             id: `task-${Date.now()}`,
             text: "New task",
-            userId: users[0]?.id ?? "",
+            userId: getNewTaskAssignee(assigneeFilter, users),
             priority: 3,
             dueDate: format(new Date(), "yyyy-MM-dd"),
             completed: false,
@@ -398,22 +416,9 @@ const App: FC = () => {
     }
 
     const moveTask = (fromIndex: number, toIndex: number): void => {
-        setTasks((currentTasks: TaskType[]): TaskType[] => {
-            const updatedTasks: TaskType[] = [...currentTasks]
-
-            const movedTask: TaskType | undefined = updatedTasks.splice(
-                fromIndex,
-                1,
-            )[0]
-
-            if (!movedTask) {
-                return currentTasks
-            }
-
-            updatedTasks.splice(toIndex, 0, movedTask)
-
-            return updatedTasks
-        })
+        setTasks((currentTasks: TaskType[]): TaskType[] =>
+            reorderTasks(currentTasks, fromIndex, toIndex),
+        )
     }
 
     return (
@@ -438,12 +443,28 @@ const App: FC = () => {
                 </header>
 
                 <section className="task-list">
-                    {tasks.map((task: TaskType, index: number) => (
+                    <label className="assignee-filter">
+                        Assignee
+                        <select
+                            value={assigneeFilter}
+                            onChange={(
+                                event: React.ChangeEvent<HTMLSelectElement>,
+                            ): void => setAssigneeFilter(event.target.value)}
+                        >
+                            <option value="">All assignees</option>
+                            {alphabeticalUsers.map((user: User) => (
+                                <option key={user.id} value={user.id}>
+                                    {user.name}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    {visibleTasks.map(({ task, index }) => (
                         <Task
                             key={task.id}
                             task={task}
                             index={index}
-                            users={users}
+                            users={alphabeticalUsers}
                             moveTask={moveTask}
                             updateTask={updateTask}
                             deleteTask={deleteTask}

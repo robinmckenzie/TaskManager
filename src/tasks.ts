@@ -9,6 +9,22 @@ export interface TaskType {
 
 export const TASKS_STORAGE_KEY = "taskmanager.tasks"
 
+export const reorderTasks = (
+    tasks: TaskType[],
+    fromIndex: number,
+    toIndex: number,
+): TaskType[] => {
+    const updatedTasks = [...tasks]
+    const movedTask = updatedTasks.splice(fromIndex, 1)[0]
+
+    if (!movedTask) {
+        return tasks
+    }
+
+    updatedTasks.splice(toIndex, 0, movedTask)
+    return updatedTasks
+}
+
 export const initialTasks: TaskType[] = [
     {
         id: "task-1",
