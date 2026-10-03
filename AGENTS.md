@@ -1,0 +1,43 @@
+# Project instructions
+
+## Workflow and scope
+
+- Work against a local ticket with a stable ID such as `TM-1`.
+- Scope changes to the ticket. Avoid unrelated refactors, formatting changes, cleanup, or dependency upgrades.
+- Reference the relevant ticket ID in commits.
+- Summarize the resulting behavior, validation performed, and any remaining limitations when handing off changes.
+- Update README when setup, commands, or documented user behavior change.
+
+## Development commands
+
+Use npm. Keep `package-lock.json` in sync with `package.json` when dependencies change.
+
+- `npm install` — install dependencies.
+- `npm run dev` — start the development server.
+- `npm run build` — check TypeScript and create the production build.
+- `npm run lint` — run ESLint.
+- `npm test` — run unit tests once.
+- `npm run test:watch` — run tests in watch mode.
+- `npm run preview` — serve the production build after building.
+
+See README for supported Node.js versions.
+
+## Code conventions
+
+- Use the existing React, TypeScript, and Vite stack.
+- Follow nearby formatting and the existing TypeScript and ESLint configurations.
+- Keep React state updates immutable.
+- Keep non-UI logic separately testable where useful. Colocate unit tests as `*.test.ts`.
+- Application styling is in `src/index.css`.
+- Respect LF line endings configured by `.gitattributes`. Do not commit generated build output or local artifacts.
+
+## Persistence
+
+- Preserve compatibility with existing data stored under `taskmanager.tasks`. Changes to the storage key or schema must account for saved data.
+- Preserve task order, saved empty lists, and usable in-memory behavior when browser storage is unavailable unless the ticket explicitly changes these behaviors.
+
+## Validation
+
+- For code changes, run `npm run build`, `npm run lint`, and `npm test`. Report failures or checks that could not run.
+- Add or update regression tests for changed logic where useful.
+- For UI changes, verify affected behavior in a browser. Check drag-and-drop and refresh persistence when those features are affected.
