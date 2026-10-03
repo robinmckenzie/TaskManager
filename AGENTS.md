@@ -3,6 +3,7 @@
 ## Workflow and scope
 
 - Work against a local ticket with a stable ID such as `TM-1`.
+- Store local tickets in the repository as `tickets/<ticket-id>.md`.
 - Scope changes to the ticket. Avoid unrelated refactors, formatting changes, cleanup, or dependency upgrades.
 - Reference the relevant ticket ID in commits.
 - Summarize the resulting behavior, validation performed, and any remaining limitations when handing off changes.
