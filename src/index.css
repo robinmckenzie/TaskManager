@@ -108,6 +108,26 @@ select {
   cursor: grabbing;
 }
 
+.task-drag-surface {
+  cursor: grab;
+  user-select: none;
+}
+
+.task-drag-surface:active {
+  cursor: grabbing;
+}
+
+.task-left-drag-surface {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  flex-shrink: 0;
+  gap: 14px;
+  margin: -16px -14px -16px -16px;
+  padding: 16px 14px 16px 16px;
+  border-radius: 8px 0 0 8px;
+}
+
 .user-photo {
   width: 44px;
   height: 44px;
@@ -135,12 +155,26 @@ select {
 }
 
 .task-details {
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   gap: 16px;
   margin-top: 6px;
   color: #666;
   font-size: 13px;
+}
+
+.task-details-drag-surface {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.task-details > label,
+.task-details > span {
+  position: relative;
+  z-index: 1;
 }
 
 .task-details label {
@@ -241,6 +275,10 @@ select {
 }
 
 @media (max-width: 850px) {
+  .task-left-drag-surface {
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
   .task {
     align-items: flex-start;
     flex-wrap: wrap;

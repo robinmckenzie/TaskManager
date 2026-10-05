@@ -20,7 +20,7 @@ import { getNewTaskAssignee, sortAssigneesByName } from "./users"
 
 import "./index.css"
 
-const ITEM_TYPE = "TASK"
+const TASK_DRAG_TYPE = "TASK"
 
 interface User {
     id: string
@@ -84,6 +84,15 @@ const getPulseDuration = (daysOverdue: number): string => {
     return `${duration}s`
 }
 
+const useTaskDrag = (id: string, index: number) =>
+    useDrag<DragItem, void, { isDragging: boolean }>({
+        type: TASK_DRAG_TYPE,
+        item: (): DragItem => ({ type: TASK_DRAG_TYPE, id, index }),
+        collect: (monitor): { isDragging: boolean } => ({
+            isDragging: monitor.isDragging(),
+        }),
+    })
+
 const Task: FC<TaskProps> = ({
     task,
     index,
@@ -112,7 +121,7 @@ const Task: FC<TaskProps> = ({
      * than waiting until the user releases the mouse.
      */
     const [, drop] = useDrop<DragItem, void, Record<string, never>>({
-        accept: ITEM_TYPE,
+        accept: TASK_DRAG_TYPE,
 
         hover(
             item: DragItem,
@@ -170,23 +179,17 @@ const Task: FC<TaskProps> = ({
     /*
      * react-dnd drag source.
      */
-    const [{ isDragging }, drag] = useDrag<
-        DragItem,
-        void,
-        { isDragging: boolean }
-    >({
-        type: ITEM_TYPE,
-
-        item: (): DragItem => ({
-            type: ITEM_TYPE,
-            id: task.id,
-            index,
-        }),
-
-        collect: (monitor): { isDragging: boolean } => ({
-            isDragging: monitor.isDragging(),
-        }),
-    })
+    const [
+        { isDragging: isLeftDragging },
+        connectSourceElementForLeftDrag,
+        connectPreviewElementForLeftDrag,
+    ] = useTaskDrag(task.id, index)
+    const [
+        { isDragging: isDetailsDragging },
+        connectSourceElementForDetailsDrag,
+        connectPreviewElementForDetailsDrag,
+    ] = useTaskDrag(task.id, index)
+    const isDragging = isLeftDragging || isDetailsDragging
 
     const handleTextChange = (
         event: React.ChangeEvent<HTMLInputElement>,
@@ -256,12 +259,12 @@ const Task: FC<TaskProps> = ({
 
     return (
         <div
-            ref={(node: HTMLDivElement | null): void => {
-                ref.current = node
+            ref={(element: HTMLDivElement | null): void => {
+                ref.current = element
 
-                if (node) {
-                    drag(drop(node))
-                }
+                drop(element)
+                connectPreviewElementForLeftDrag(element)
+                connectPreviewElementForDetailsDrag(element)
             }}
             className={`task ${getBackgroundClass()}`}
             style={{
@@ -269,13 +272,20 @@ const Task: FC<TaskProps> = ({
                 animationDuration: pulseDuration,
             }}
         >
-            <div className="task-drag-handle">⋮⋮</div>
-
-            <img
-                src={user?.photo}
-                alt={user?.name ?? "Unassigned"}
-                className="user-photo"
-            />
+            <div
+                className="task-left-drag-surface task-drag-surface"
+                ref={(element): void => {
+                    connectSourceElementForLeftDrag(element)
+                }}
+            >
+                <div className="task-drag-handle">⋮⋮</div>
+                <img
+                    src={user?.photo}
+                    alt={user?.name ?? "Unassigned"}
+                    className="user-photo"
+                    draggable={false}
+                />
+            </div>
 
             <div className="task-main">
                 <input
@@ -286,6 +296,13 @@ const Task: FC<TaskProps> = ({
                 />
 
                 <div className="task-details">
+                    <div
+                        className="task-details-drag-surface task-drag-surface"
+                        ref={(element): void => {
+                            connectSourceElementForDetailsDrag(element)
+                        }}
+                        aria-hidden="true"
+                    />
                     <label>
                         Due:
                         <input

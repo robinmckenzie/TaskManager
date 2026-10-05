@@ -1,4 +1,4 @@
-# TM-3 — Reorder tasks from two explicit drag surfaces
+# TM-3 - Reorder tasks from two explicit drag surfaces
 
 ## User problem
 
