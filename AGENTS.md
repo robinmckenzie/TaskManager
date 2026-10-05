@@ -37,10 +37,19 @@ See README for supported Node.js versions.
 
 - Use the existing React, TypeScript, and Vite stack.
 - Follow nearby formatting and the existing TypeScript and ESLint configurations.
+- Prefer function names that are verbs or start with verbs and describe what the
+  function does rather than how it does it. Make intent clear at the call site
+  so readers usually do not need to inspect the implementation. Follow established
+  conventions where clearer, such as React hooks starting with `use` and predicates
+  starting with `is`, `has`, or `can`.
 - Keep React state updates immutable.
 - Keep non-UI logic separately testable where useful. Colocate unit tests as `*.test.ts`.
 - Application styling is in `src/index.css`.
 - Respect LF line endings configured by `.gitattributes`. Do not commit generated build output or local artifacts.
+
+## Writing conventions
+
+- Use hyphens (`-`) instead of em dashes in prose, documentation, and comments.
 
 ## Persistence
 
