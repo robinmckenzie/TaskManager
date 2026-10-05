@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Local environment and npm credentials
+.env
+.env.*
+!.env.example
+.npmrc
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
