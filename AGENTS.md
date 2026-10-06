@@ -3,6 +3,7 @@
 ## Workflow and scope
 
 - Work against a local ticket with a stable ID such as `TM-1`.
+- Changes limited to project process or housekeeping files (such as `AGENTS.md`, `FUTURE_CONSIDERATIONS.md`, or `.gitignore`) do not need a ticket when explicitly requested, provided they do not change application behaviour, setup, dependencies, or tool permissions. Explain the reason in the commit or PR.
 - Store local tickets in the repository as `tickets/<ticket-id>.md`.
 - Once a ticket has been agreed and reviewed, commit it before beginning investigation or planning.
 - If investigation or planning leads to an agreed change in requirements, update the relevant ticket to reflect that decision before implementing it.
