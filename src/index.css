@@ -294,3 +294,63 @@ select {
     padding-left: 58px;
   }
 }
+
+.task-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-title-row .task-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.dictation-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  background: white;
+  color: #555;
+  cursor: pointer;
+}
+
+.dictation-button:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.dictation-button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.dictation-button[aria-pressed="true"] {
+  border-color: #dc2626;
+  background: #dc2626;
+  color: white;
+}
+
+.dictation-button-starting {
+  opacity: 0.7;
+}
+
+.dictation-button[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Sits inside the header's bottom margin so messages do not move the list. */
+.dictation-status {
+  min-height: 18px;
+  margin: -20px 0 2px;
+  color: #444;
+  font-size: 13px;
+  line-height: 18px;
+}

@@ -17,6 +17,9 @@ import {
     saveAssigneeFilter,
 } from "./assigneeFilter"
 import { getNewTaskAssignee, sortAssigneesByName } from "./users"
+import { DictationButton } from "./dictation/DictationButton"
+import { useDictation } from "./dictation/useDictation"
+import type { Dictation } from "./dictation/useDictation"
 
 import "./index.css"
 
@@ -41,6 +44,7 @@ interface TaskProps {
     moveTask: (fromIndex: number, toIndex: number) => void
     updateTask: (id: string, changes: Partial<TaskType>) => void
     deleteTask: (id: string) => void
+    dictation: Dictation
 }
 
 const initialUsers: User[] = [
@@ -100,6 +104,7 @@ const Task: FC<TaskProps> = ({
     moveTask,
     updateTask,
     deleteTask,
+    dictation,
 }) => {
     const ref = useRef<HTMLDivElement>(null)
 
@@ -194,6 +199,7 @@ const Task: FC<TaskProps> = ({
     const handleTextChange = (
         event: React.ChangeEvent<HTMLInputElement>,
     ): void => {
+        dictation.recordEdit(task.id, task.text, event.target.value)
         updateTask(task.id, {
             text: event.target.value,
         })
@@ -288,12 +294,16 @@ const Task: FC<TaskProps> = ({
             </div>
 
             <div className="task-main">
-                <input
-                    type="text"
-                    value={task.text}
-                    onChange={handleTextChange}
-                    className="task-title"
-                />
+                <div className="task-title-row">
+                    <input
+                        type="text"
+                        ref={(input): void => dictation.registerInput(task.id, input)}
+                        value={task.text}
+                        onChange={handleTextChange}
+                        className="task-title"
+                    />
+                    <DictationButton targetId={task.id} dictation={dictation} />
+                </div>
 
                 <div className="task-details">
                     <div
@@ -426,7 +436,13 @@ const App: FC = () => {
         )
     }
 
+    const dictation = useDictation({
+        vocabulary: users.map((user: User): string => user.name),
+        setText: (id: string, text: string): void => updateTask(id, { text }),
+    })
+
     const deleteTask = (id: string): void => {
+        dictation.removeTarget(id)
         setTasks((currentTasks: TaskType[]): TaskType[] =>
             currentTasks.filter((task: TaskType): boolean => task.id !== id),
         )
@@ -459,6 +475,10 @@ const App: FC = () => {
                     </button>
                 </header>
 
+                <p className="dictation-status" role="status">
+                    {dictation.message}
+                </p>
+
                 <section className="task-list">
                     <label className="assignee-filter">
                         Assignee
@@ -485,6 +505,7 @@ const App: FC = () => {
                             moveTask={moveTask}
                             updateTask={updateTask}
                             deleteTask={deleteTask}
+                            dictation={dictation}
                         />
                     ))}
                 </section>
