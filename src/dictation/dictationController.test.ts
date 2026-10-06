@@ -46,6 +46,7 @@ const setUp = (targets: Record<string, FakeTarget>) => {
             const session = {
                 listener,
                 audioTime: 0,
+                timings: { inactivityTimeoutSeconds: 10, maxSessionSeconds: 20 },
                 start: async () => undefined,
                 stop: vi.fn((reason) => listener.onStopped(reason)),
             }
@@ -233,5 +234,17 @@ describe("DictationController", () => {
         latest().listener.onStopped("error", "microphone_denied")
 
         expect(states.at(-1)?.message).toMatch(/microphone access/)
+    })
+})
+
+describe("stop messages", () => {
+    it("describe configured timings, or fall back when they are unknown", async () => {
+        const { describeDictationStop } = await import("./dictationMessages")
+
+        expect(describeDictationStop("max_duration", { inactivityTimeoutSeconds: 10, maxSessionSeconds: 45 }))
+            .toBe("Dictation stopped after reaching its 45-second limit.")
+        expect(describeDictationStop("inactivity", { inactivityTimeoutSeconds: 1, maxSessionSeconds: 20 }))
+            .toBe("Dictation stopped after 1 second without recognised speech.")
+        expect(describeDictationStop("inactivity")).toBe("Dictation stopped because no speech was recognised.")
     })
 })

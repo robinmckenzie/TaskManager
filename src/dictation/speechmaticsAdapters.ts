@@ -52,14 +52,21 @@ const getTokenErrorKind = (error: unknown): DictationErrorKind => {
     }
 }
 
+const isPositiveNumber = (value: unknown): boolean =>
+    typeof value === "number" && Number.isFinite(value) && value > 0
+
 const isDictationToken = (value: unknown): value is DictationToken => {
     const token = value as Partial<DictationToken> | null
+    const timings = token?.timings
 
     return (
         typeof token?.jwt === "string" &&
         typeof token.url === "string" &&
         typeof token.model === "string" &&
-        typeof token.language === "string"
+        typeof token.language === "string" &&
+        isPositiveNumber(timings?.inactivityTimeoutSeconds) &&
+        isPositiveNumber(timings?.maxSessionSeconds) &&
+        isPositiveNumber(timings?.settleTimeoutSeconds)
     )
 }
 

@@ -1,5 +1,3 @@
-import { INACTIVITY_TIMEOUT_MS, MAX_SESSION_MS } from "./dictationTimings"
-
 export type DictationErrorKind =
     | "not_configured"
     | "not_authorised"
@@ -28,7 +26,13 @@ export class DictationError extends Error {
     }
 }
 
-const formatSeconds = (milliseconds: number): string => `${milliseconds / 1000} seconds`
+const formatSeconds = (seconds: number): string => `${seconds} second${seconds === 1 ? "" : "s"}`
+
+/** Configured timings mentioned in stop messages, in seconds. */
+export interface StopMessageTimings {
+    inactivityTimeoutSeconds: number
+    maxSessionSeconds: number
+}
 
 export const describeDictationError = (kind: DictationErrorKind): string => {
     switch (kind) {
@@ -53,14 +57,21 @@ export const describeDictationError = (kind: DictationErrorKind): string => {
     }
 }
 
-export const describeDictationStop = (reason: Exclude<DictationStopReason, "error">): string => {
+export const describeDictationStop = (
+    reason: Exclude<DictationStopReason, "error">,
+    timings?: StopMessageTimings,
+): string => {
     switch (reason) {
         case "user":
             return "Dictation stopped."
         case "inactivity":
-            return `Dictation stopped after ${formatSeconds(INACTIVITY_TIMEOUT_MS)} without recognised speech.`
+            return timings
+                ? `Dictation stopped after ${formatSeconds(timings.inactivityTimeoutSeconds)} without recognised speech.`
+                : "Dictation stopped because no speech was recognised."
         case "max_duration":
-            return `Dictation stopped after reaching its ${formatSeconds(MAX_SESSION_MS)} limit.`
+            return timings
+                ? `Dictation stopped after reaching its ${timings.maxSessionSeconds}-second limit.`
+                : "Dictation stopped after reaching its time limit."
         case "focus":
             return "Dictation stopped because focus left the task title."
         case "task_deleted":

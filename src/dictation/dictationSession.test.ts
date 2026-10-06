@@ -11,9 +11,11 @@ import type {
     RealtimeConnection,
     RealtimeMessage,
 } from "./dictationSession"
-import { INACTIVITY_TIMEOUT_MS, MAX_SESSION_MS, SETTLE_TIMEOUT_MS } from "./dictationTimings"
-
-const token = { jwt: "jwt", url: "wss://example.test/v2", model: "enhanced", language: "en" }
+const timings = { inactivityTimeoutSeconds: 10, maxSessionSeconds: 20, settleTimeoutSeconds: 4 }
+const token = { jwt: "jwt", url: "wss://example.test/v2", model: "enhanced", language: "en", timings }
+const INACTIVITY_TIMEOUT_MS = timings.inactivityTimeoutSeconds * 1000
+const MAX_SESSION_MS = timings.maxSessionSeconds * 1000
+const SETTLE_TIMEOUT_MS = timings.settleTimeoutSeconds * 1000
 
 const createFakeConnection = () => {
     let messageListener: (message: RealtimeMessage) => void = () => undefined
@@ -146,6 +148,27 @@ describe("DictationSession", () => {
         }
 
         expect(listener.onStopped).toHaveBeenCalledWith("inactivity", undefined)
+    })
+
+    it("uses the timings supplied with the token", async () => {
+        const fake = createFakeConnection()
+        const listener = createListener()
+        const session = new DictationSession({
+            fetchToken: async () => ({ ...token, timings: { ...timings, maxSessionSeconds: 3 } }),
+            createConnection: async () => fake.connection,
+            createAudioSource: () => createFakeAudioSource().source,
+            vocabulary: [],
+            listener,
+        })
+
+        await session.start()
+        expect(session.timings?.maxSessionSeconds).toBe(3)
+        fake.receive({ message: "AddPartialTranscript", results: words("Fix") })
+        vi.advanceTimersByTime(2_999)
+        expect(listener.onStopped).not.toHaveBeenCalled()
+
+        vi.advanceTimersByTime(1)
+        expect(listener.onStopped).toHaveBeenCalledWith("max_duration", undefined)
     })
 
     it("stops at the maximum duration even while speech is recognised", async () => {

@@ -1,7 +1,11 @@
+import { readFileSync } from "node:fs"
 import type { IncomingMessage, ServerResponse } from "node:http"
+import { join } from "node:path"
 import { createSpeechmaticsJWT, SpeechmaticsJWTError } from "@speechmatics/auth"
 import { loadEnv } from "vite"
 import type { Connect, Plugin } from "vite"
+import { DICTATION_CONFIG_FILE, parseDictationSettings } from "./dictationConfig.ts"
+import type { DictationSettings, DictationTimings } from "./dictationConfig.ts"
 
 export const DICTATION_CONFIG_PATH = "/api/dictation/config"
 export const DICTATION_TOKEN_PATH = "/api/dictation/token"
@@ -14,6 +18,7 @@ export interface DictationServerConfig {
     model: string
     language: string
     url: string
+    timings: DictationTimings
 }
 
 export interface DictationResponse {
@@ -27,16 +32,19 @@ const readSetting = (value: string | undefined): string | undefined =>
     value?.trim() || undefined
 
 /**
- * Reads dictation settings from SPEECHMATICS_* environment variables.
+ * Combines the committed settings file with SPEECHMATICS_* environment
+ * variables, which hold the API key and optional per-machine overrides.
  * The API key stays on the server and is never returned to the browser.
  */
 export const readDictationConfig = (
+    settings: DictationSettings,
     env: Record<string, string | undefined>,
 ): DictationServerConfig => ({
     apiKey: readSetting(env.SPEECHMATICS_API_KEY),
-    model: readSetting(env.SPEECHMATICS_MODEL) ?? "enhanced",
-    language: readSetting(env.SPEECHMATICS_LANGUAGE) ?? "en",
-    url: readSetting(env.SPEECHMATICS_RT_URL) ?? "wss://eu.rt.speechmatics.com/v2",
+    model: readSetting(env.SPEECHMATICS_MODEL) ?? settings.model,
+    language: readSetting(env.SPEECHMATICS_LANGUAGE) ?? settings.language,
+    url: readSetting(env.SPEECHMATICS_RT_URL) ?? settings.realtimeUrl,
+    timings: settings.timings,
 })
 
 export const createRealtimeToken: CreateDictationToken = (apiKey) =>
@@ -82,6 +90,7 @@ export const handleDictationRequest = async (
                     url: config.url,
                     model: config.model,
                     language: config.language,
+                    timings: config.timings,
                 },
             }
         } catch (error) {
@@ -131,13 +140,24 @@ const createDictationMiddleware = (
  * Production hosting of these endpoints is outside TM-4.
  */
 export const dictationEndpoints = (): Plugin => {
-    let config = readDictationConfig({})
-    const middleware = createDictationMiddleware(() => config)
+    let config: DictationServerConfig | undefined
+    const middleware = createDictationMiddleware(() => {
+        if (!config) {
+            throw new Error("Dictation settings have not been loaded.")
+        }
+
+        return config
+    })
 
     return {
         name: "taskmanager-dictation-endpoints",
         configResolved(resolvedConfig) {
+            const settings = parseDictationSettings(
+                readFileSync(join(resolvedConfig.root, DICTATION_CONFIG_FILE), "utf8"),
+            )
+
             config = readDictationConfig(
+                settings,
                 loadEnv(resolvedConfig.mode, resolvedConfig.envDir, "SPEECHMATICS_"),
             )
         },

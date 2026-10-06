@@ -1,5 +1,9 @@
 import { describeDictationError, describeDictationStop } from "./dictationMessages"
-import type { DictationErrorKind, DictationStopReason } from "./dictationMessages"
+import type {
+    DictationErrorKind,
+    DictationStopReason,
+    StopMessageTimings,
+} from "./dictationMessages"
 import type { DictationSessionListener } from "./dictationSession"
 import {
     applyEdit,
@@ -23,6 +27,7 @@ export interface DictationTextTarget {
 
 export interface DictationSessionHandle {
     readonly audioTime: number
+    readonly timings?: StopMessageTimings
     start(): Promise<void>
     stop(reason: DictationStopReason, errorKind?: DictationErrorKind): void
 }
@@ -196,7 +201,7 @@ export class DictationController {
                     null,
                     reason === "error"
                         ? describeDictationError(errorKind ?? "service_unavailable")
-                        : describeDictationStop(reason),
+                        : describeDictationStop(reason, getRun().session.timings),
                 )
             },
             onSettled: () => {

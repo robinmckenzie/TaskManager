@@ -6,22 +6,30 @@ import {
     handleDictationRequest,
     readDictationConfig,
 } from "./dictationEndpoints.ts"
+import type { DictationSettings } from "./dictationConfig.ts"
 
-const configured = readDictationConfig({ SPEECHMATICS_API_KEY: "secret-key" })
-const unconfigured = readDictationConfig({})
+const settings: DictationSettings = {
+    model: "enhanced",
+    language: "en",
+    realtimeUrl: "wss://eu.rt.speechmatics.com/v2",
+    timings: { inactivityTimeoutSeconds: 10, maxSessionSeconds: 20, settleTimeoutSeconds: 4 },
+}
+const configured = readDictationConfig(settings, { SPEECHMATICS_API_KEY: "secret-key" })
+const unconfigured = readDictationConfig(settings, {})
 
 describe("readDictationConfig", () => {
-    it("uses production defaults when only the API key is set", () => {
+    it("uses the settings file when only the API key is set", () => {
         expect(configured).toEqual({
             apiKey: "secret-key",
             model: "enhanced",
             language: "en",
             url: "wss://eu.rt.speechmatics.com/v2",
+            timings: settings.timings,
         })
     })
 
-    it("reads model, language and URL overrides", () => {
-        expect(readDictationConfig({
+    it("lets environment variables override model, language and URL", () => {
+        expect(readDictationConfig(settings, {
             SPEECHMATICS_API_KEY: "key",
             SPEECHMATICS_MODEL: "melia-1",
             SPEECHMATICS_LANGUAGE: "multi",
@@ -31,11 +39,12 @@ describe("readDictationConfig", () => {
             model: "melia-1",
             language: "multi",
             url: "wss://preview.rt.speechmatics.com/v2",
+            timings: settings.timings,
         })
     })
 
     it("treats a blank API key as not configured", () => {
-        expect(readDictationConfig({ SPEECHMATICS_API_KEY: "  " }).apiKey).toBeUndefined()
+        expect(readDictationConfig(settings, { SPEECHMATICS_API_KEY: "  " }).apiKey).toBeUndefined()
     })
 })
 
@@ -51,7 +60,7 @@ describe("handleDictationRequest", () => {
             .toEqual({ status: 200, body: { configured: false } })
     })
 
-    it("returns a temporary key and session settings but never the API key", async () => {
+    it("returns a temporary key, session settings and timings but never the API key", async () => {
         const result = await handleDictationRequest("POST", DICTATION_TOKEN_PATH, configured, createToken)
 
         expect(createToken).toHaveBeenCalledWith("secret-key")
@@ -62,6 +71,7 @@ describe("handleDictationRequest", () => {
                 url: "wss://eu.rt.speechmatics.com/v2",
                 model: "enhanced",
                 language: "en",
+                timings: { inactivityTimeoutSeconds: 10, maxSessionSeconds: 20, settleTimeoutSeconds: 4 },
             },
         })
         expect(JSON.stringify(result)).not.toContain("secret-key")

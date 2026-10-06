@@ -4,18 +4,21 @@ import {
     getRealtimeErrorKind,
 } from "./dictationMessages"
 import type { DictationErrorKind, DictationStopReason } from "./dictationMessages"
-import {
-    INACTIVITY_TIMEOUT_MS,
-    MAX_SESSION_MS,
-    SETTLE_TIMEOUT_MS,
-} from "./dictationTimings"
 import type { TranscriptToken } from "./insertionText"
+
+/** Timings from dictation.config.toml, in seconds. */
+export interface DictationTimings {
+    inactivityTimeoutSeconds: number
+    maxSessionSeconds: number
+    settleTimeoutSeconds: number
+}
 
 export interface DictationToken {
     jwt: string
     url: string
     model: string
     language: string
+    timings: DictationTimings
 }
 
 export interface RealtimeResult {
@@ -100,6 +103,8 @@ export const toTranscriptTokens = (results: readonly RealtimeResult[] = []): Tra
             : []
     })
 
+const toMilliseconds = (seconds: number): number => seconds * 1000
+
 const getErrorKind = (error: unknown, fallback: DictationErrorKind): DictationErrorKind =>
     error instanceof DictationError ? error.kind : fallback
 
@@ -118,9 +123,15 @@ export class DictationSession {
     private inactivityTimer?: ReturnType<typeof setTimeout>
     private maxDurationTimer?: ReturnType<typeof setTimeout>
     private settleTimer?: ReturnType<typeof setTimeout>
+    private sessionTimings?: DictationTimings
 
     constructor(dependencies: DictationSessionDependencies) {
         this.dependencies = dependencies
+    }
+
+    /** The configured timings, known once the session has its token. */
+    get timings(): DictationTimings | undefined {
+        return this.sessionTimings
     }
 
     get isStopped(): boolean {
@@ -154,6 +165,7 @@ export class DictationSession {
             }
 
             const token = await fetchToken()
+            this.sessionTimings = token.timings
             const connection = await createConnection(token.url)
             this.connection = connection
             connection.onMessage((message) => this.receiveMessage(message))
@@ -173,7 +185,10 @@ export class DictationSession {
             this.phase = "listening"
             this.flushPendingAudio()
             this.restartInactivityTimer()
-            this.maxDurationTimer = setTimeout(() => this.stop("max_duration"), MAX_SESSION_MS)
+            this.maxDurationTimer = setTimeout(
+                () => this.stop("max_duration"),
+                toMilliseconds(token.timings.maxSessionSeconds),
+            )
             this.dependencies.listener.onListening()
         } catch (error) {
             this.stop("error", getErrorKind(error, "service_unavailable"))
@@ -193,7 +208,10 @@ export class DictationSession {
         this.dependencies.listener.onStopped(reason, errorKind)
 
         if (wasListening && this.connection && reason !== "error") {
-            this.settleTimer = setTimeout(() => this.finishSettling(), SETTLE_TIMEOUT_MS)
+            this.settleTimer = setTimeout(
+                () => this.finishSettling(),
+                toMilliseconds(this.sessionTimings?.settleTimeoutSeconds ?? 0),
+            )
             this.connection.stopRecognition().catch(() => undefined).finally(() => this.finishSettling())
         } else {
             this.finishSettling()
@@ -257,7 +275,10 @@ export class DictationSession {
 
     private restartInactivityTimer(): void {
         clearTimeout(this.inactivityTimer)
-        this.inactivityTimer = setTimeout(() => this.stop("inactivity"), INACTIVITY_TIMEOUT_MS)
+        this.inactivityTimer = setTimeout(
+            () => this.stop("inactivity"),
+            toMilliseconds(this.sessionTimings?.inactivityTimeoutSeconds ?? 0),
+        )
     }
 
     private clearTimers(): void {

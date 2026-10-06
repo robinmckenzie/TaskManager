@@ -25,9 +25,9 @@ stop. Recognised speech is inserted at the cursor, replacing any selected text,
 with a space added where it meets existing words. Words appear as you speak and
 may be corrected for a few seconds, including just after you stop. Moving the
 cursor, or moving to another task title, sends further speech there. Dictation
-stops automatically after 10 seconds without recognised speech, after 20 seconds
-in total, when focus leaves the task titles, or when the task being dictated is
-deleted. A status line above the task list reports these changes and any
+stops automatically after a period without recognised speech (10 seconds by
+default), after a maximum time (20 seconds by default), when focus leaves the
+task titles, or when the task being dictated is deleted. A status line above the task list reports these changes and any
 problems, such as a blocked microphone. Dictation needs setting up first; see
 [Set up voice dictation](#set-up-voice-dictation).
 
@@ -79,17 +79,30 @@ that expire after 60 seconds, from `/api/dictation/token`. These endpoints exist
 only under `npm run dev` and `npm run preview`; hosting them for a production
 deployment is not set up.
 
-Optional settings in `.env.local`:
+Other dictation settings live in `dictation.config.toml` in the project
+directory. It is committed, so it must never contain the API key, and each
+setting is explained by a comment in the file:
 
-| Variable | Default | Purpose |
+| Setting | Default | Purpose |
 | --- | --- | --- |
-| `SPEECHMATICS_MODEL` | `enhanced` | Speechmatics model, such as `enhanced` or `standard`. |
-| `SPEECHMATICS_LANGUAGE` | `en` | Language code, such as `de`, or a bilingual pack such as `cmn_en`. |
-| `SPEECHMATICS_RT_URL` | `wss://eu.rt.speechmatics.com/v2` | Realtime endpoint, for example the `us` or `au` region. |
+| `[speechmatics] model` | `"enhanced"` | Speechmatics model, such as `"enhanced"` or `"standard"`. |
+| `[speechmatics] language` | `"en"` | Language code, such as `"de"`, or a bilingual pack such as `"cmn_en"`. |
+| `[speechmatics] realtime_url` | `"wss://eu.rt.speechmatics.com/v2"` | Realtime endpoint, for example the `us` or `au` region. |
+| `[timings] inactivity_timeout_seconds` | `10` | Stop after this many seconds without recognised speech. |
+| `[timings] max_session_seconds` | `20` | Maximum length of one dictation session. |
+| `[timings] settle_timeout_seconds` | `4` | How long recognised text may keep settling after dictation stops. |
 
-To try multilingual dictation with the Melia 1 realtime preview, set
-`SPEECHMATICS_MODEL=melia-1`, `SPEECHMATICS_LANGUAGE=multi` and
-`SPEECHMATICS_RT_URL=wss://preview.rt.speechmatics.com/v2`. Speechmatics provides
+Restart `npm run dev` or `npm run preview` after changing it. The server checks
+the file when it starts and stops with a message naming the problem, such as a
+misspelt setting or a timing that is not a positive number.
+
+To change the model, language or endpoint on your machine only, set
+`SPEECHMATICS_MODEL`, `SPEECHMATICS_LANGUAGE` or `SPEECHMATICS_RT_URL` in
+`.env.local`; these override the file.
+
+To try multilingual dictation with the Melia 1 realtime preview, set the model
+to `melia-1`, the language to `multi` and the realtime URL to
+`wss://preview.rt.speechmatics.com/v2`. Speechmatics provides
 the preview for evaluation only, not production use, and it does not yet support
 the custom dictionary that helps recognise the app's user names.
 
