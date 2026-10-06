@@ -33,16 +33,18 @@ they go.
 - Inactivity timeout: dictation stops automatically after 10 seconds in which no speech is being successfully recognised. Investigation determines how Speechmatics provisional and final results behave and which events implement this. If investigation reveals a meaningful product choice rather than an implementation detail, bring it back for a decision.
 - Maximum session duration: a dictation session stops automatically after a maximum of 20 seconds, however much speech is being recognised. Recognised speech and moving focus between supported text inputs do not reset or extend this maximum, and starting dictation again starts a fresh session. The 20 seconds is an initial value, defined in a single, easily changed place, because it is expected to be tuned after the feature has been used.
 - Deleting the task containing the active dictation input stops dictation. Deleting another task does not by itself stop dictation, although moving focus to do so may stop it under the focus rule.
-- Names of the app's users, such as "Aaron", are favoured during recognition and spelled as they appear in the app.
-- TaskManager does not restrict recognition to a particular language beyond what the configured Speechmatics model supports.
+- When the configured model supports a custom vocabulary, names of the app's users, such as "Aaron", are favoured during recognition and spelled as they appear in the app.
+- The Speechmatics model and language are set by configuration, without code changes. The default is a production model with a single configured language, English unless configured otherwise. A multilingual model, such as the Melia 1 realtime preview, can be configured for experimentation. TaskManager does not restrict recognition beyond what the configured model and language support.
+- Constraint (Speechmatics preview terms): Speechmatics states that preview models are for evaluation only and not for production use, so a preview model is never the default.
 - It is always clear whether dictation is active. The control has an accessible name, can be operated with the keyboard, and state changes, including automatic stops, are announced to assistive technology.
 - Audio is captured and sent only while dictation is active, and dictation ends when the page is closed or reloaded.
+- When dictation stops for any reason, audio capture and sending stop immediately and the control shows dictation as stopped. Text already being recognised is then allowed to settle for a short, bounded period: final results that arrive replace the corresponding provisional text in its original area. Provisional text that has not been finalised when the period ends is kept as displayed.
 - A dictated title behaves like a typed title: it can be edited afterwards and is saved and restored on refresh. Saved task data does not change format, and no audio or transcript is stored.
 - Failures are reported in plain language without losing text already in the input, and the rest of the app keeps working. This covers microphone permission being denied, no microphone being available, the speech service being unavailable or the connection dropping, and dictation not being configured.
 - When dictation is not configured or not supported, the app behaves as it does today apart from indicating that dictation is unavailable.
 - Constraint (Speechmatics authentication and security): the long-lived Speechmatics API key must never reach the browser. It must not appear in client code, the production build, or responses to the browser, and must not be committed. The browser may use only short-lived credentials issued by a server-side component that holds the key.
 - Constraint (browser security): microphone access requires a secure context, so dictation is only required to work over HTTPS or on localhost.
-- Document in README how to configure and run dictation locally, including where the API key is kept, and how to use dictation, including the Ctrl + Alt shortcut and when dictation stops automatically: after a period in which no speech is recognised, after a maximum session duration, when focus leaves a supported text input, and when the task being dictated is deleted.
+- Document in README how to configure and run dictation locally, including where the API key is kept and how to configure the model and language, and how to use dictation, including the Ctrl + Alt shortcut and when dictation stops automatically: after a period in which no speech is recognised, after a maximum session duration, when focus leaves a supported text input, and when the task being dictated is deleted.
 - Keep the following outside this ticket: adding text areas or other new kinds of editable text control, voice input for non-text task fields such as assignee, due date and priority, spoken commands that perform actions or create or edit task data, voice notes, production hosting of the server-side component, per-user usage limits, and cross-browser testing.
 
 ## Acceptance criteria
@@ -79,7 +81,9 @@ they go.
 - The maximum session duration is defined in one place and can be changed without changing other behaviour.
 - Automatic stops are visible and announced to screen readers.
 - Deleting the task containing the active dictation input stops dictation. Deleting another task does not by itself stop dictation, although moving focus to do so may stop it under the focus rule.
-- Each dictation session supplies the app's user names, spelled as they appear in the app, to Speechmatics through its vocabulary or context-biasing mechanism.
+- When the configured model supports a custom vocabulary, each dictation session supplies the app's user names, spelled as they appear in the app, to Speechmatics through that mechanism. When it does not, dictation works without them.
+- By default, dictation uses a production model with a single configured language, and the model and language can be changed through configuration without code changes, including to a multilingual preview model.
+- After any stop, no further audio is sent and the control shows dictation as stopped immediately. Final results arriving within the settling period replace provisional text in its original area, and provisional text not finalised by the end of the period is kept as displayed.
 - The control is reachable and operable by keyboard, its active state is visible, and state changes are announced to screen readers.
 - No audio is sent when dictation is not active, including after any automatic stop.
 - A dictated title survives refresh, and previously saved tasks load unchanged.
@@ -87,5 +91,5 @@ they go.
 - Without dictation configured, the app runs and behaves as before apart from showing dictation as unavailable.
 - The long-lived API key does not appear in the client code, the production build, browser network traffic, or the repository.
 - Dictation controls do not start task drags, and existing drag-and-drop reordering, filtering and refresh persistence continue to work.
-- README explains how to configure and run dictation locally, and how to use it, including the Ctrl + Alt shortcut and each automatic stop.
+- README explains how to configure and run dictation locally, including the model and language, and how to use it, including the Ctrl + Alt shortcut and each automatic stop.
 - Build, lint and unit tests pass without calling the real Speechmatics service. Dictation is verified in the normal development browser with a real microphone, including a check that user names are recognised sensibly, which is not a pass/fail requirement for any particular spoken name.
