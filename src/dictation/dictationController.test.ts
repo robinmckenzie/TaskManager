@@ -125,6 +125,44 @@ describe("DictationController", () => {
         expect(showCursor(title)).toBe("Fix that bug today|")
     })
 
+    it("replaces a selection that a late revision of earlier speech overlaps", () => {
+        const title = createTarget("Fix ")
+        const { controller, latest, partial, final } = setUp({ a: title })
+
+        controller.start("a", title.selection)
+        partial(0, "the", "bug")
+        expect(title.value).toBe("Fix the bug")
+
+        latest().audioTime = 2
+        title.selection = { start: 0, end: title.value.length }
+        controller.moveInsertionPoint("a", title.selection)
+
+        final(0, "the", "Bug")
+        expect(title.value).toBe("Fix the Bug")
+        expect(title.selection).toEqual({ start: 0, end: 11 })
+
+        partial(3, "issue", "today")
+        expect(showCursor(title)).toBe("issue today|")
+    })
+
+    it("inserts after selected provisional text that a late revision replaces", () => {
+        const title = createTarget("Say ")
+        const { controller, latest, partial, final } = setUp({ a: title })
+
+        controller.start("a", title.selection)
+        partial(0, "press", "to")
+
+        latest().audioTime = 2
+        title.selection = { start: 4, end: title.value.length }
+        controller.moveInsertionPoint("a", title.selection)
+
+        final(0, "prestidigitation")
+        expect(showCursor(title)).toBe("Say prestidigitation|")
+
+        partial(3, "slowly")
+        expect(showCursor(title)).toBe("Say prestidigitation slowly|")
+    })
+
     it("follows focus to another title within the same session", () => {
         const first = createTarget("First")
         const second = createTarget("Second")

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { flushSync } from "react-dom"
+import { scrollCaretIntoView } from "./caretScroll"
 import {
     initialCtrlAltShortcutState,
     trackShortcutKeyDown,
@@ -87,6 +88,7 @@ export const useDictation = ({ vocabulary, setText }: UseDictationOptions): Dict
 
             if (selection) {
                 input.setSelectionRange(selection.start, selection.end)
+                scrollCaretIntoView(input)
             }
         },
     }), [])

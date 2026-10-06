@@ -150,13 +150,7 @@ export class DictationController {
         const edit = findEdit(before, after)
 
         for (const area of this.getTargetAreas(targetId)) {
-            const moved = moveAreaForEdit(area.range, edit)
-
-            if (moved) {
-                area.range = moved
-            } else {
-                area.isDetached = true
-            }
+            this.moveAreaForEdit(area, edit)
         }
     }
 
@@ -275,17 +269,27 @@ export class DictationController {
 
     private moveOtherAreas(changedArea: InsertionArea, edit: TextEdit): void {
         for (const area of this.getTargetAreas(changedArea.targetId)) {
-            if (area === changedArea) {
-                continue
+            if (area !== changedArea) {
+                this.moveAreaForEdit(area, edit)
             }
+        }
+    }
 
-            const moved = moveAreaForEdit(area.range, edit)
+    /**
+     * Keeps an area aligned with an edit elsewhere in its text. An edit that
+     * overlaps dictated text detaches its area. An area still waiting for its
+     * first speech has no text to protect, so it follows the edit as the
+     * cursor or selection it came from does.
+     */
+    private moveAreaForEdit(area: InsertionArea, edit: TextEdit): void {
+        const moved = moveAreaForEdit(area.range, edit)
 
-            if (moved) {
-                area.range = moved
-            } else {
-                area.isDetached = true
-            }
+        if (moved) {
+            area.range = moved
+        } else if (area.isPrepared) {
+            area.isDetached = true
+        } else {
+            area.range = shiftRange(area.range, edit)
         }
     }
 
