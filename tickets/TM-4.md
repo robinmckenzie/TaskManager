@@ -12,7 +12,10 @@ they go.
 ## Requirements
 
 - Each task's title can be dictated by voice from a control associated with that title, including a task just created with "+ Add Task".
-- Dictation starts and stops only when the user activates the dictation control, by pointer or keyboard. Pauses in speech do not stop it.
+- Dictation starts and stops only through explicit user action: activating the dictation control, or pressing the Ctrl + Alt keyboard shortcut. Pauses in speech do not stop it.
+- While the user is editing a task title, pressing Ctrl and Alt together, with no third key required, toggles dictation: it starts dictation for that title if dictation is stopped, and stops dictation if it is active.
+- Using the shortcut does not move or otherwise disturb the title's cursor position or selection.
+- The dictation control remains available for pointer use and is keyboard-accessible in the normal way.
 - Only one task's title can be dictated at a time.
 - Dictation behaves like typing into the title from the microphone: recognised speech is inserted at the title's current cursor position, and replaces any selected text.
 - If the user moves the cursor or changes the selection while dictating, subsequent speech is inserted at the new position.
@@ -29,13 +32,16 @@ they go.
 - When dictation is not configured or not supported, the app behaves as it does today apart from indicating that dictation is unavailable.
 - Constraint (Speechmatics authentication and security): the long-lived Speechmatics API key must never reach the browser. It must not appear in client code, the production build, or responses to the browser, and must not be committed. The browser may use only short-lived credentials issued by a server-side component that holds the key.
 - Constraint (browser security): microphone access requires a secure context, so dictation is only required to work over HTTPS or on localhost.
-- Document in README how to configure and run dictation locally, including where the API key is kept.
+- Document in README how to configure and run dictation locally, including where the API key is kept, and how to use dictation, including the Ctrl + Alt shortcut.
 - Keep dictation into text inputs other than task titles, voice input for other task fields, creating or editing tasks from spoken commands, voice notes, languages other than English, production hosting of the server-side component, per-user usage limits, and cross-browser testing outside this ticket.
 
 ## Acceptance criteria
 
 - Each task, including a newly added one, offers a dictation control for its title, and no other text input offers dictation.
-- Dictation starts and stops only when the user activates the control, by pointer or by keyboard.
+- Dictation starts and stops only when the user activates the control, by pointer or by keyboard in the normal way, or presses Ctrl + Alt.
+- While editing a task title, pressing Ctrl and Alt together, with no other key, starts dictation if it is stopped and stops it if it is active.
+- Using the shortcut leaves the title's cursor position and selection unchanged.
+- In text inputs other than task titles, the shortcut does not start dictation.
 - Dictation remains active through pauses in speech until the user stops it.
 - Starting dictation on one task while another is being dictated leaves only one active dictation.
 - With the cursor in the middle of a title, dictated speech is inserted at the cursor and the surrounding text is kept.
@@ -53,5 +59,5 @@ they go.
 - Without dictation configured, the app runs and behaves as before apart from showing dictation as unavailable.
 - The long-lived API key does not appear in the client code, the production build, browser network traffic, or the repository.
 - Dictation controls do not start task drags, and existing drag-and-drop reordering, filtering and refresh persistence continue to work.
-- README explains how to configure and run dictation locally.
+- README explains how to configure and run dictation locally, and how to use it, including the Ctrl + Alt shortcut.
 - Build, lint and unit tests pass without calling the real Speechmatics service, and dictation is verified in the normal development browser with a real microphone.
