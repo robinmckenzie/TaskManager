@@ -1,6 +1,6 @@
 # TM-4 - Dictate a task title by voice
 
-Status: Draft
+Status: Agreed
 
 ## User problem
 
