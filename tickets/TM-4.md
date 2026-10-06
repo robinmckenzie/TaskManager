@@ -28,6 +28,7 @@ they go.
 - Dictated text is then inserted and updated within that prepared area as recognition results arrive, and the cursor ends immediately after the dictated text, before any trailing separating space. The separating spaces belong to the surrounding text, not to the dictated text. No other punctuation or capitalisation rules are applied, and capitalisation at the insertion point is unspecified.
 - Recognised speech appears in the input while the user is speaking, not only when dictation stops.
 - Provisional text that is already displayed belongs to the insertion area where that speech began. If the user moves the cursor, changes the selection or moves focus while that text is still being revised, revisions continue to update it in its original area, and subsequent new speech goes to the new insertion point.
+- If the user deliberately edits text that is still provisional, their edit wins and that area stops receiving further revisions.
 - Keyboard editing while dictating does not stop dictation, and both typed and dictated text are kept.
 - If no speech is recognised, the input is unchanged, including no separating spaces being added.
 - Inactivity timeout: dictation stops automatically after 10 seconds in which no speech is being successfully recognised. Investigation determines how Speechmatics provisional and final results behave and which events implement this. If investigation reveals a meaningful product choice rather than an implementation detail, bring it back for a decision.
@@ -72,6 +73,7 @@ they go.
 - Separating spaces are added once when the first recognised text arrives for an insertion point, not separately for each recognition result.
 - Recognised speech appears in the input while the user is speaking.
 - Provisional text that is revised after the user moves the cursor, selection or focus is updated in its original area, and subsequent speech goes to the new insertion point.
+- Editing text that is still provisional keeps the user's edit, and later revisions do not overwrite it.
 - Typing, deleting and moving the cursor with the keyboard during dictation do not stop dictation, and typed and dictated text are both kept.
 - Starting and stopping dictation without recognised speech leaves the input unchanged, with no separating spaces added.
 - Pauses shorter than 10 seconds between recognised speech do not stop dictation.
