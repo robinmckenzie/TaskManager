@@ -22,6 +22,7 @@
 - Describe the problem and required behaviour without unnecessarily prescribing implementation details.
 - Distinguish genuine constraints from implementation choices. Include a constraint, such as one imposed by an external API, security, or saved-data compatibility, in Requirements only when it is genuinely required, and leave other implementation choices to investigation and planning.
 - When asked to draft a ticket, write only `tickets/<ticket-id>.md`, marked `Status: Draft`. During ticket drafting, do not modify other files or begin investigation, planning, or implementation until the ticket has been agreed.
+- A draft ticket needs to be coherent enough to investigate, not to settle every implementation detail. Distinguish product decisions needed before investigation, provisional or tunable defaults, questions for investigation, and product questions that investigation exposes, which are brought back for a decision.
 - When handing over a drafted or revised ticket for review, separately summarise:
     - what it leaves out of scope, whether stated explicitly or left out by omission;
     - any assumptions made while drafting;
