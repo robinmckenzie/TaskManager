@@ -32,7 +32,7 @@ they go.
 - If no speech is recognised, the input is unchanged, including no separating spaces being added.
 - Inactivity timeout: dictation stops automatically after 10 seconds in which no speech is being successfully recognised. Investigation determines how Speechmatics provisional and final results behave and which events implement this. If investigation reveals a meaningful product choice rather than an implementation detail, bring it back for a decision.
 - Maximum session duration: a dictation session stops automatically after a maximum of 20 seconds, however much speech is being recognised. Recognised speech and moving focus between supported text inputs do not reset or extend this maximum, and starting dictation again starts a fresh session. The 20 seconds is an initial value, defined in a single, easily changed place, because it is expected to be tuned after the feature has been used.
-- Deleting the task containing the active dictation input stops dictation. Deleting any other task does not.
+- Deleting the task containing the active dictation input stops dictation. Deleting another task does not by itself stop dictation, although moving focus to do so may stop it under the focus rule.
 - Names of the app's users, such as "Aaron", are favoured during recognition and spelled as they appear in the app.
 - TaskManager does not restrict recognition to a particular language beyond what the configured Speechmatics model supports.
 - It is always clear whether dictation is active. The control has an accessible name, can be operated with the keyboard, and state changes, including automatic stops, are announced to assistive technology.
@@ -78,7 +78,7 @@ they go.
 - Starting dictation again after any stop begins a fresh 20-second session.
 - The maximum session duration is defined in one place and can be changed without changing other behaviour.
 - Automatic stops are visible and announced to screen readers.
-- Deleting the task containing the active dictation input stops dictation, and deleting any other task leaves dictation running.
+- Deleting the task containing the active dictation input stops dictation. Deleting another task does not by itself stop dictation, although moving focus to do so may stop it under the focus rule.
 - Each dictation session supplies the app's user names, spelled as they appear in the app, to Speechmatics through its vocabulary or context-biasing mechanism.
 - The control is reachable and operable by keyboard, its active state is visible, and state changes are announced to screen readers.
 - No audio is sent when dictation is not active, including after any automatic stop.
