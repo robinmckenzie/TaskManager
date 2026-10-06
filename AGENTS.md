@@ -3,6 +3,7 @@
 ## Workflow and scope
 
 - Work against a local ticket with a stable ID such as `TM-1`.
+- Changes limited to project process or housekeeping files (such as `AGENTS.md`, `FUTURE_CONSIDERATIONS.md`, or `.gitignore`) do not need a ticket when explicitly requested, provided they do not change application behaviour, setup, dependencies, or tool permissions. Explain the reason in the commit or PR.
 - Store local tickets in the repository as `tickets/<ticket-id>.md`.
 - Once a ticket has been agreed and reviewed, commit it before beginning investigation or planning.
 - If investigation or planning leads to an agreed change in requirements, update the relevant ticket to reflect that decision before implementing it.
@@ -18,6 +19,12 @@
     2. Requirements — what behaviour do we want?
     3. Acceptance criteria — how will we know we've achieved it?
 - Describe the problem and required behaviour without unnecessarily prescribing implementation details.
+- Distinguish genuine constraints from implementation choices. Include a constraint, such as one imposed by an external API, security, or saved-data compatibility, in Requirements only when it is genuinely required, and leave other implementation choices to investigation and planning.
+- When asked to draft a ticket, write only `tickets/<ticket-id>.md`. Do not modify other files or begin implementation until the ticket has been agreed.
+- When handing over a drafted or revised ticket for review, separately summarise:
+    - what it leaves out of scope, whether stated explicitly or left out by omission;
+    - any assumptions made while drafting;
+    - any conflicts or tensions with AGENTS.md, existing behaviour, or previous tickets.
 
 ## Development commands
 
