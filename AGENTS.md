@@ -4,7 +4,12 @@
 
 - Work against a local ticket with a stable ID such as `TM-1`.
 - Changes limited to project process or housekeeping files (such as `AGENTS.md`, `FUTURE_CONSIDERATIONS.md`, or `.gitignore`) do not need a ticket when explicitly requested, provided they do not change application behaviour, setup, dependencies, or tool permissions. Explain the reason in the commit or PR.
-- Store local tickets in the repository as `tickets/<ticket-id>.md`.
+- Store local tickets in the repository under `tickets/`.
+- Tickets progress through STUB -> DRAFT -> Agreed:
+    - STUB captures an idea without developing it yet. A stub may contain as little as a title.
+    - DRAFT has started to be fleshed out but is not yet agreed.
+    - Agreed has been agreed and reviewed.
+- Name ticket files `<ticket-id>-<STATUS>-<Title>.md` while STUB or DRAFT, and `<ticket-id>-<Title>.md` once Agreed, with spaces in the title replaced by hyphens (for example `TM-5-STUB-Improve-dictation-testing.md`, `TM-5-DRAFT-Improve-dictation-testing.md`, `TM-5-Improve-dictation-testing.md`). Rename the file when its status changes; the ticket ID stays the same. Earlier tickets named `<ticket-id>.md` keep their names.
 - Once a ticket has been agreed and reviewed, commit it before beginning investigation or planning.
 - If investigation or planning leads to an agreed change in requirements, update the relevant ticket to reflect that decision before implementing it.
 - Scope changes to the ticket. Avoid unrelated refactors, formatting changes, cleanup, or dependency upgrades.
@@ -14,13 +19,13 @@
 
 ## Ticket writing
 
-- Use these sections in order:
+- From DRAFT onwards, use these sections in order:
     1. User problem — why are we doing this?
     2. Requirements — what behaviour do we want?
     3. Acceptance criteria — how will we know we've achieved it?
 - Describe the problem and required behaviour without unnecessarily prescribing implementation details.
 - Distinguish genuine constraints from implementation choices. Include a constraint, such as one imposed by an external API, security, or saved-data compatibility, in Requirements only when it is genuinely required, and leave other implementation choices to investigation and planning.
-- When asked to draft a ticket, write only `tickets/<ticket-id>.md`. Do not modify other files or begin implementation until the ticket has been agreed.
+- When asked to stub or draft a ticket, write only the ticket file. Do not modify other files or begin implementation until the ticket has been agreed.
 - When handing over a drafted or revised ticket for review, separately summarise:
     - what it leaves out of scope, whether stated explicitly or left out by omission;
     - any assumptions made while drafting;
