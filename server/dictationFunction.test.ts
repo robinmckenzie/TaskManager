@@ -15,7 +15,7 @@ const committedSettings = {
     model: "enhanced",
     language: "en",
     url: "wss://eu.rt.speechmatics.com/v2",
-    timings: { inactivityTimeoutSeconds: 10, maxSessionSeconds: 20, settleTimeoutSeconds: 4 },
+    timings: { inactivityTimeoutSeconds: 15, maxSessionSeconds: 60, settleTimeoutSeconds: 4 },
 }
 
 const createHandler = (

@@ -28,8 +28,8 @@ stop. Recognised speech is inserted at the cursor, replacing any selected text,
 with a space added where it meets existing words. Words appear as you speak and
 may be corrected for a few seconds, including just after you stop. Moving the
 cursor, or moving to another task title, sends further speech there. Dictation
-stops automatically after a period without recognised speech (10 seconds by
-default), after a maximum time (20 seconds by default), when focus leaves the
+stops automatically after a period without recognised speech (15 seconds by
+default), after a maximum time (60 seconds by default), when focus leaves the
 task titles, or when the task being dictated is deleted. A status line above the task list reports these changes and any
 problems, such as a blocked microphone. Dictation needs setting up first; see
 [Set up voice dictation](#set-up-voice-dictation).
@@ -92,8 +92,8 @@ setting is explained by a comment in the file:
 | `[speechmatics] model` | `"enhanced"` | Speechmatics model, such as `"enhanced"` or `"standard"`. |
 | `[speechmatics] language` | `"en"` | Language code, such as `"de"`, or a bilingual pack such as `"cmn_en"`. |
 | `[speechmatics] realtime_url` | `"wss://eu.rt.speechmatics.com/v2"` | Realtime endpoint, for example the `us` or `au` region. |
-| `[timings] inactivity_timeout_seconds` | `10` | Stop after this many seconds without recognised speech. |
-| `[timings] max_session_seconds` | `20` | Maximum length of one dictation session. |
+| `[timings] inactivity_timeout_seconds` | `15` | Stop after this many seconds without recognised speech. Sound that produces no recognised words does not count. |
+| `[timings] max_session_seconds` | `60` | Maximum length of one dictation session, from when the microphone starts recording. |
 | `[timings] settle_timeout_seconds` | `4` | How long recognised text may keep settling after dictation stops. |
 
 Restart `npm run dev` or `npm run preview` after changing it. The server checks
