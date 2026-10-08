@@ -1,7 +1,7 @@
 import { SpeechmaticsJWTError } from "@speechmatics/auth"
 import { describe, expect, it, vi } from "vitest"
 import { DICTATION_STATUS_PATH, DICTATION_TOKEN_PATH } from "../shared/dictationApi.ts"
-import { handleDictationRequest, readDictationConfig } from "./dictationEndpoints.ts"
+import { handleDictationRequest, readDictationConfig } from "./dictationHandler.ts"
 import type { DictationSettings } from "./dictationConfig.ts"
 
 const settings: DictationSettings = {
