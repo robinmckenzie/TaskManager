@@ -7,6 +7,7 @@ import {
     trackShortcutKeyUp,
 } from "./ctrlAltShortcut"
 import type { ShortcutKeyEvent } from "./ctrlAltShortcut"
+import { reportSessionActivity } from "./dictationActivity"
 import { DictationController } from "./dictationController"
 import type { DictationPhase, DictationState, DictationTextTarget } from "./dictationController"
 import { describeDictationError } from "./dictationMessages"
@@ -108,7 +109,7 @@ export const useDictation = ({ vocabulary, setText }: UseDictationOptions): Dict
                 createConnection: createRealtimeConnection,
                 createAudioSource: createBrowserAudioSource,
                 vocabulary: vocabularyRef.current,
-                listener,
+                listener: reportSessionActivity(listener),
             }),
             getTarget: (targetId) => {
                 const input = inputs.current.get(targetId)

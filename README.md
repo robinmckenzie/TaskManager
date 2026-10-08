@@ -124,7 +124,8 @@ host only issues temporary keys.
 
 - Public address: not yet recorded. It is added here after the final
   verification of the deployment.
-- The functions are `api/dictation/status.ts` and `api/dictation/token.ts`.
+- The functions are `api/dictation/status.ts`, `api/dictation/token.ts` and
+  `api/dictation/activity.ts`.
   Both run the handler that local development uses, in
   `server/dictationHandler.ts`.
 - Vercel reads the Speechmatics API key from the `SPEECHMATICS_API_KEY`
@@ -147,6 +148,48 @@ To update the deployed app, push to the branch that Vercel deploys as
 production. Vercel builds and deploys it automatically. After changing an
 environment variable in Vercel, redeploy for it to take effect. Running the app
 locally needs no Vercel account or tools.
+
+### Dictation activity log
+
+The app reports when dictation is used, so that activity on the deployed app
+can be seen in Vercel. The browser sends an event name and a mode to
+`/api/dictation/activity`, and the server writes one line of JSON to its log:
+
+```json
+{"type":"dictation_activity","event":"dictation_started","mode":"PUBLIC","timestamp":"2026-10-08T15:30:00.000Z"}
+```
+
+| Event | What it shows |
+| --- | --- |
+| `dictation_started` | The microphone was allowed and Speechmatics accepted the session. |
+| `dictation_transcript_received` | Speechmatics recognised at least one word. Logged once per session. |
+| `dictation_completed` | A started session ended normally: stopped by the user or by an automatic stop. |
+| `dictation_failed` | A session ended with an error, before or after it started. |
+
+Transcript text, audio, keys, tokens, error messages and anything identifying
+the visitor are never logged. The server accepts only the four event names and
+two modes above and ignores everything else in a request. Reporting is
+best-effort: if it fails, dictation carries on and nothing is retried.
+
+To see the log, open the project in Vercel, choose Logs, and search for
+`dictation_activity`. The Hobby plan keeps runtime logs for one hour, so they
+show recent activity only and are not a history.
+
+#### DEV mode
+
+DEV mode marks your own browser so that your testing can be told apart from
+other visits. It is stored in that browser only, and has no control in the app.
+
+- Turn it on: open the app with `?devmode=on` added to the address, for
+  example `https://your-address/?devmode=on`. It stays on for later visits.
+- Turn it off: open the app with `?devmode=off`.
+- Check it: in the browser console, `localStorage.getItem("taskmanager.devMode")`
+  is `"on"` when DEV mode is on.
+
+Events from a browser in DEV mode are logged with `"mode":"DEV"`. All others
+are logged with `"mode":"PUBLIC"`, which means only that the browser was not
+marked DEV. It does not confirm an outside visitor: your own phone, a private
+window, or a browser where you have not turned DEV mode on all count as PUBLIC.
 
 ### Before a demonstration
 

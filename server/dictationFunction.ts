@@ -1,3 +1,5 @@
+import { handleDictationActivityRequest } from "./dictationActivity.ts"
+import type { WriteActivityRecord } from "./dictationActivity.ts"
 import {
     createRealtimeToken,
     DICTATION_RESPONSE_HEADERS,
@@ -20,13 +22,16 @@ import type { CreateDictationToken, DictationServerConfig } from "./dictationHan
 export const createDictationFetchHandler = (
     getConfig: () => DictationServerConfig,
     createToken: CreateDictationToken,
+    writeActivity?: WriteActivityRecord,
 ) => async (request: Request): Promise<Response> => {
-    const result = await handleDictationRequest(
-        request.method,
-        new URL(request.url).pathname,
-        getConfig(),
-        createToken,
-    )
+    const url = new URL(request.url)
+    const activityStatus = handleDictationActivityRequest(request.method, url, writeActivity)
+
+    if (activityStatus !== undefined) {
+        return new Response(null, { status: activityStatus, headers: { "Cache-Control": "no-store" } })
+    }
+
+    const result = await handleDictationRequest(request.method, url.pathname, getConfig(), createToken)
 
     return result
         ? new Response(JSON.stringify(result.body), {

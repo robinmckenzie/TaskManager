@@ -5,6 +5,20 @@
 
 export const DICTATION_STATUS_PATH = "/api/dictation/status"
 export const DICTATION_TOKEN_PATH = "/api/dictation/token"
+export const DICTATION_ACTIVITY_PATH = "/api/dictation/activity"
+
+/** What the browser may report about a dictation session. Never its content. */
+export const DICTATION_ACTIVITY_EVENTS = [
+    "dictation_started",
+    "dictation_transcript_received",
+    "dictation_completed",
+    "dictation_failed",
+] as const
+export type DictationActivityEvent = (typeof DICTATION_ACTIVITY_EVENTS)[number]
+
+/** DEV is a browser its owner has marked as their own. PUBLIC is any other. */
+export const DICTATION_ACTIVITY_MODES = ["DEV", "PUBLIC"] as const
+export type DictationActivityMode = (typeof DICTATION_ACTIVITY_MODES)[number]
 
 /** Timings from dictation.config.toml, in seconds. */
 export interface DictationTimings {

@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http"
 import { loadEnv } from "vite"
 import type { Connect, Plugin } from "vite"
+import { handleDictationActivityRequest } from "./dictationActivity.ts"
 import {
     createRealtimeToken,
     DICTATION_RESPONSE_HEADERS,
@@ -27,9 +28,17 @@ const createDictationMiddleware = (
     response: ServerResponse,
     next: Connect.NextFunction,
 ): void => {
-    const path = new URL(request.url ?? "/", "http://localhost").pathname
+    const url = new URL(request.url ?? "/", "http://localhost")
+    const activityStatus = handleDictationActivityRequest(request.method, url)
 
-    handleDictationRequest(request.method, path, getConfig(), createRealtimeToken)
+    if (activityStatus !== undefined) {
+        response.statusCode = activityStatus
+        response.setHeader("Cache-Control", "no-store")
+        response.end()
+        return
+    }
+
+    handleDictationRequest(request.method, url.pathname, getConfig(), createRealtimeToken)
         .then((result) => {
             if (result) {
                 sendJson(response, result)
