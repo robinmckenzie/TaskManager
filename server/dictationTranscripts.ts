@@ -51,6 +51,48 @@ const writeEntryToServerLog: WriteTranscriptLogEntry = (entry) => {
     console.log(JSON.stringify(entry))
 }
 
+/**
+ * Reads a request body as text, stopping as soon as it exceeds the byte limit.
+ * Returns undefined for a body that is too large, however it was sent: the
+ * limit does not depend on the request declaring its length.
+ */
+const readBodyWithinLimit = async (request: Request, maxBytes: number): Promise<string | undefined> => {
+    if (!request.body) {
+        return ""
+    }
+
+    const reader = request.body.getReader()
+    const chunks: Uint8Array[] = []
+    let byteCount = 0
+
+    for (;;) {
+        const { done, value } = await reader.read()
+
+        if (done) {
+            break
+        }
+
+        byteCount += value.byteLength
+
+        if (byteCount > maxBytes) {
+            await reader.cancel().catch(() => undefined)
+            return undefined
+        }
+
+        chunks.push(value)
+    }
+
+    const bytes = new Uint8Array(byteCount)
+    let offset = 0
+
+    for (const chunk of chunks) {
+        bytes.set(chunk, offset)
+        offset += chunk.byteLength
+    }
+
+    return new TextDecoder().decode(bytes)
+}
+
 const readSequence = (value: string | null): number | undefined => {
     const sequence = value !== null && /^[0-9]{1,5}$/.test(value) ? Number(value) : undefined
 
@@ -126,7 +168,15 @@ export const handleDictationTranscriptRequest = async (
         return 413
     }
 
-    const text = (await request.text()).trim()
+    // The size is checked on the bytes as they arrive, before any decoding or
+    // trimming, so that padding cannot be used to send an oversized body.
+    const body = await readBodyWithinLimit(request, MAX_BODY_BYTES)
+
+    if (body === undefined) {
+        return 413
+    }
+
+    const text = body.trim()
 
     if (!text) {
         return 400

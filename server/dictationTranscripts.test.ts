@@ -97,6 +97,58 @@ describe("handleDictationTranscriptRequest", () => {
         expect(await send(request)).toEqual({ status: expectedStatus, saved: [], logged: [] })
     })
 
+    it("rejects an oversized body sent without a declared length, however much of it is padding", async () => {
+        const padding = new TextEncoder().encode(" ".repeat(64 * 1024))
+        let chunksRead = 0
+        const body = new ReadableStream<Uint8Array>({
+            pull: (controller) => {
+                chunksRead += 1
+
+                if (chunksRead > 20) {
+                    controller.enqueue(new TextEncoder().encode("short text"))
+                    controller.close()
+                } else {
+                    controller.enqueue(padding)
+                }
+            },
+        })
+        const request = new Request(`https://taskmanager.example${DICTATION_TRANSCRIPT_PATH}${validQuery}`, {
+            method: "POST",
+            body,
+            duplex: "half",
+        } as RequestInit)
+
+        expect(request.headers.has("content-length")).toBe(false)
+        expect(await send(request)).toEqual({ status: 413, saved: [], logged: [] })
+        // Reading stopped at the limit instead of taking in the whole body.
+        expect(chunksRead).toBeLessThan(5)
+    })
+
+    it("accepts text padded with spaces when the whole body is within the limit", async () => {
+        const { status, saved } = await send(transcriptRequest(validQuery, `   ${spokenText}   `))
+
+        expect(status).toBe(204)
+        expect(saved[0].text).toBe(spokenText)
+    })
+
+    it("reads text split across several chunks, including a character split between two", async () => {
+        const bytes = new TextEncoder().encode("café ouvert")
+        const body = new ReadableStream<Uint8Array>({
+            start: (controller) => {
+                controller.enqueue(bytes.slice(0, 4))
+                controller.enqueue(bytes.slice(4))
+                controller.close()
+            },
+        })
+        const request = new Request(`https://taskmanager.example${DICTATION_TRANSCRIPT_PATH}${validQuery}`, {
+            method: "POST",
+            body,
+            duplex: "half",
+        } as RequestInit)
+
+        expect((await send(request)).saved[0].text).toBe("café ouvert")
+    })
+
     it("rejects other methods, saving and logging nothing", async () => {
         const request = new Request(`https://taskmanager.example${DICTATION_TRANSCRIPT_PATH}${validQuery}`)
 
