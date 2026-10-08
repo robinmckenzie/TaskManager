@@ -124,8 +124,8 @@ host only issues temporary keys.
 
 - Public address: not yet recorded. It is added here after the final
   verification of the deployment.
-- The functions are `api/dictation/status.ts`, `api/dictation/token.ts` and
-  `api/dictation/activity.ts`.
+- The functions are `api/dictation/status.ts`, `api/dictation/token.ts`,
+  `api/dictation/activity.ts` and `api/dictation/transcript.ts`.
   Both run the handler that local development uses, in
   `server/dictationHandler.ts`.
 - Vercel reads the Speechmatics API key from the `SPEECHMATICS_API_KEY`
@@ -170,9 +170,10 @@ when deployed, saves the same three values to a database:
 | `dictation_completed` | A started session ended normally: stopped by the user or by an automatic stop. |
 | `dictation_failed` | A session ended with an error, before or after it started. |
 
-Transcript text, audio, keys, tokens and error messages are never logged. The
-server accepts only the four event names above and a valid testing label, and
-ignores everything else in a request. Reporting is best-effort: if it fails,
+Transcript text, audio, keys, tokens and error messages are never written to
+the log. For activity events the server accepts only the four event names above
+and a valid testing label, and ignores everything else in a request. The final
+recognised text is kept separately; see [Stored transcripts](#stored-transcripts). Reporting is best-effort: if it fails,
 dictation carries on and nothing is retried.
 
 To see the log, open the project in Vercel, choose Logs, and search for
@@ -187,9 +188,9 @@ gives the functions its connection string as the `DATABASE_URL` environment
 variable. That string is a secret: it stays on the server, and must never be
 committed or used in browser code.
 
-Each row holds only the event name, the testing label and the time the server
-received it. No transcript, audio, key, token, IP address, user-agent or error
-message is stored.
+Each activity row holds only the event name, the testing label and the time
+the server received it. No audio, key, token, IP address, user-agent or error
+message is stored anywhere.
 
 One-time setup, after creating the database and connecting it to the project:
 
@@ -234,6 +235,69 @@ Things to know:
 - Without `DATABASE_URL`, as when running locally, events are only logged and
   no database connection is attempted. `npm run dev` and `npm run preview`
   never store events.
+
+#### Stored transcripts
+
+The deployed app also keeps the words that Speechmatics recognised, so that you
+can see what a demonstration session produced. The app tells its users so, with
+the line "This demo may retain dictated text for diagnostics." above the task
+list.
+
+- Only final results are kept. Interim results, which change as someone
+  speaks, and audio are never sent to the server.
+- Each final result is sent to `/api/dictation/transcript` with the text in the
+  request body, so that it does not appear in request logs, and saved as one
+  row in the `dictation_transcripts` table of the same Neon database.
+- A row holds the text, the testing label, the time the server received it, a
+  random identifier for the dictation session and the result's position in
+  that session. The identifier is made afresh for each session and is not
+  stored in the browser, so it does not identify a visitor.
+- The text is never written to the server log or the browser console. The
+  server logs one line per result with its label, session, position and
+  length.
+- A repeated request for the same session and position is ignored, so each
+  final result is stored once.
+- What is kept is what Speechmatics recognised, not the title as later edited.
+
+One-time setup: in Neon's SQL Editor, run the contents of
+`server/dictationTranscripts.sql`. It adds the `dictation_transcripts` table,
+leaves `dictation_activity` as it is, and is safe to run again. Until it has
+been run, transcripts are not stored, the log shows
+`dictation_activity_store_failed` with code `42P01`, and dictation is
+unaffected.
+
+To read stored transcripts:
+
+```sql
+-- What was said in each session, most recent first.
+select min(occurred_at) as started, user_label,
+       string_agg(transcript, ' ' order by sequence) as said
+from dictation_transcripts
+group by session_id, user_label
+order by started desc
+limit 50;
+
+-- Every final result, most recent first.
+select occurred_at, user_label, session_id, sequence, transcript
+from dictation_transcripts
+order by occurred_at desc
+limit 100;
+```
+
+Things to know:
+
+- This is other people's speech. It can contain names or anything else a
+  visitor chose to say, held in a third-party database until you delete it.
+  Keep it only as long as it is useful, for example
+  `delete from dictation_transcripts where occurred_at < now() - interval '30 days';`
+- A result longer than 1,000 characters is not stored, and at most 1,000 rows
+  are stored in any 24 hours.
+- The endpoint is public, so anyone can send text to it under any valid label.
+  Stored text is not proof that it was spoken into the app.
+- Saving is best-effort, as for activity: a failure is logged without the text
+  and never affects dictation.
+- Without `DATABASE_URL`, and under `npm run dev` and `npm run preview`,
+  transcripts are discarded unread.
 
 #### Testing labels
 

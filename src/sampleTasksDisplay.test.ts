@@ -32,6 +32,10 @@ it("shows the completed sample task first, styled as completed and not as overdu
     expect(second).toContain("1 day overdue")
 })
 
+it("tells visitors that dictated text may be retained", () => {
+    expect(markup).toContain('<p class="dictation-notice">This demo may retain dictated text for diagnostics.</p>')
+})
+
 it("offers resetting to the sample tasks as a button beside the assignee filter", () => {
     const controls = markup.match(/<div class="task-list-controls">[\s\S]*?<\/div>/)?.[0]
 

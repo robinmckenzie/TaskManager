@@ -373,6 +373,12 @@ select {
   cursor: not-allowed;
 }
 
+.dictation-notice {
+  margin: 0 0 10px;
+  color: #777;
+  font-size: 12px;
+}
+
 /* Sits inside the header's bottom margin so messages do not move the list. */
 .dictation-status {
   min-height: 18px;

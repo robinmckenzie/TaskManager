@@ -66,9 +66,9 @@ const reportStoreFailure = (code: string | undefined): void => {
  * code are reported, never the error's message, which could hold connection
  * details.
  */
-export const storeActivitySafely = async (
-    store: StoreActivityRecord,
-    record: DictationActivityRecord,
+export const storeActivitySafely = async <Record>(
+    store: (record: Record) => Promise<void>,
+    record: Record,
     reportFailure: (code: string | undefined) => void = reportStoreFailure,
 ): Promise<void> => {
     let timer: ReturnType<typeof setTimeout> | undefined

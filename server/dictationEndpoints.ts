@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http"
 import { loadEnv } from "vite"
 import type { Connect, Plugin } from "vite"
+import { DICTATION_TRANSCRIPT_PATH } from "../shared/dictationApi.ts"
 import { handleDictationActivityRequest } from "./dictationActivity.ts"
 import {
     createRealtimeToken,
@@ -29,6 +30,17 @@ const createDictationMiddleware = (
     next: Connect.NextFunction,
 ): void => {
     const url = new URL(request.url ?? "/", "http://localhost")
+
+    // Final transcripts are only kept by the deployed app. Locally they are
+    // accepted and discarded unread.
+    if (url.pathname === DICTATION_TRANSCRIPT_PATH) {
+        request.resume()
+        response.statusCode = 204
+        response.setHeader("Cache-Control", "no-store")
+        response.end()
+        return
+    }
+
     const activityStatus = handleDictationActivityRequest(request.method, url)
 
     if (activityStatus !== undefined) {

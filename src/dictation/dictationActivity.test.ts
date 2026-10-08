@@ -3,6 +3,7 @@ import {
     ACTIVITY_USER_STORAGE_KEY,
     createActivityReporter,
     createActivityUser,
+    createTranscriptReporter,
     reportSessionActivity,
 } from "./dictationActivity"
 import type { DictationSessionListener } from "./dictationSession"
@@ -239,10 +240,68 @@ describe("createActivityReporter", () => {
     })
 })
 
+describe("createTranscriptReporter", () => {
+    afterEach(() => {
+        vi.unstubAllGlobals()
+    })
+
+    const sessionId = "3f2b8c1e-5a47-4d2a-9b6e-0c1d2e3f4a5b"
+
+    it("sends the text in the request body, and only the label, session and sequence in the address", () => {
+        const sendBeacon = vi.fn<(url: string, body?: string) => boolean>(() => true)
+        vi.stubGlobal("navigator", { sendBeacon })
+        const user = createActivityUser(() => createStorage())
+        user.applyAddress("?user=Dad")
+
+        createTranscriptReporter(user)("Fix the confidential bug", sessionId, 3)
+
+        expect(sendBeacon).toHaveBeenCalledTimes(1)
+        expect(sendBeacon).toHaveBeenCalledWith(
+            `/api/dictation/transcript?user=Dad&session=${sessionId}&sequence=3`,
+            "Fix the confidential bug",
+        )
+        expect(sendBeacon.mock.calls[0][0]).not.toContain("confidential")
+    })
+
+    it("does not write the text to the browser console", () => {
+        const consoleCalls = ["log", "info", "warn", "error", "debug"].map((method) =>
+            vi.spyOn(console, method as "log").mockImplementation(() => undefined))
+        vi.stubGlobal("navigator", { sendBeacon: vi.fn(() => true) })
+
+        createTranscriptReporter(createActivityUser(() => createStorage()))("Fix the bug", sessionId, 1)
+
+        for (const call of consoleCalls) {
+            expect(call).not.toHaveBeenCalled()
+            call.mockRestore()
+        }
+    })
+
+    it("falls back to a request it does not wait for, and ignores its failure", async () => {
+        const fetchTranscript = vi.fn(async () => {
+            throw new Error("offline")
+        })
+        vi.stubGlobal("navigator", {})
+        vi.stubGlobal("fetch", fetchTranscript)
+        const report = createTranscriptReporter(createActivityUser(() => createStorage()))
+
+        expect(() => report("Fix the bug", sessionId, 1)).not.toThrow()
+        await Promise.resolve()
+
+        expect(fetchTranscript).toHaveBeenCalledWith(
+            `/api/dictation/transcript?user=PUBLIC&session=${sessionId}&sequence=1`,
+            { method: "POST", body: "Fix the bug", keepalive: true },
+        )
+    })
+})
+
 describe("reportSessionActivity", () => {
     const word: TranscriptToken[] = [{ content: "Fix", startTime: 0 }]
 
-    const setUp = (report = vi.fn()) => {
+    const setUp = (
+        report = vi.fn(),
+        reportTranscript = vi.fn(),
+        createId: () => string | undefined = () => "session-1",
+    ) => {
         const inner = {
             onListening: vi.fn(),
             onTranscript: vi.fn(),
@@ -250,8 +309,91 @@ describe("reportSessionActivity", () => {
             onSettled: vi.fn(),
         } satisfies DictationSessionListener
 
-        return { inner, report, listener: reportSessionActivity(inner, report) }
+        return {
+            inner,
+            report,
+            reportTranscript,
+            listener: reportSessionActivity(inner, report, reportTranscript, createId),
+        }
     }
+
+    const words = (...contents: string[]): TranscriptToken[] =>
+        contents.map((content, index) => ({ content, startTime: index }))
+
+    it("reports each final result as text, numbered within its session", () => {
+        const { listener, reportTranscript } = setUp()
+
+        listener.onListening()
+        listener.onTranscript(true, words("Fix", "the", "bug"))
+        listener.onTranscript(true, [...words("today"), { content: ".", startTime: 2, attachesTo: "previous" }])
+
+        expect(reportTranscript.mock.calls).toEqual([
+            ["Fix the bug", "session-1", 1],
+            ["today.", "session-1", 2],
+        ])
+    })
+
+    it("does not report interim results as text", () => {
+        const { listener, reportTranscript } = setUp()
+
+        listener.onListening()
+        listener.onTranscript(false, words("Fix"))
+        listener.onTranscript(false, words("Fix", "the"))
+
+        expect(reportTranscript).not.toHaveBeenCalled()
+    })
+
+    it("does not report or number an empty final result", () => {
+        const { listener, reportTranscript } = setUp()
+
+        listener.onListening()
+        listener.onTranscript(true, [])
+        listener.onTranscript(true, words("Fix"))
+
+        expect(reportTranscript.mock.calls).toEqual([["Fix", "session-1", 1]])
+    })
+
+    it("reports final results that arrive after dictation has stopped", () => {
+        const { listener, reportTranscript } = setUp()
+
+        listener.onListening()
+        listener.onStopped("user")
+        listener.onTranscript(true, words("late", "words"))
+
+        expect(reportTranscript).toHaveBeenCalledWith("late words", "session-1", 1)
+    })
+
+    it("gives each dictation session its own identifier", () => {
+        const reportTranscript = vi.fn()
+        const first = reportSessionActivity(setUp().inner, vi.fn(), reportTranscript)
+        const second = reportSessionActivity(setUp().inner, vi.fn(), reportTranscript)
+
+        first.onTranscript(true, words("one"))
+        second.onTranscript(true, words("two"))
+
+        const [[, firstSession], [, secondSession]] = reportTranscript.mock.calls
+        expect(firstSession).toMatch(/^[0-9a-f-]{36}$/)
+        expect(secondSession).toMatch(/^[0-9a-f-]{36}$/)
+        expect(firstSession).not.toBe(secondSession)
+    })
+
+    it("reports no text when a session identifier cannot be made", () => {
+        const { listener, reportTranscript, inner } = setUp(vi.fn(), vi.fn(), () => undefined)
+
+        listener.onTranscript(true, words("Fix"))
+
+        expect(reportTranscript).toHaveBeenCalledTimes(0)
+        expect(inner.onTranscript).toHaveBeenCalledTimes(1)
+    })
+
+    it("keeps dictation working when reporting text throws", () => {
+        const { listener, inner } = setUp(vi.fn(), vi.fn(() => {
+            throw new Error("reporting broke")
+        }))
+
+        expect(() => listener.onTranscript(true, words("Fix"))).not.toThrow()
+        expect(inner.onTranscript).toHaveBeenCalledTimes(1)
+    })
 
     it("reports a session that starts, hears speech and is stopped", () => {
         const { listener, report } = setUp()

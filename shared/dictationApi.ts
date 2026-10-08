@@ -6,6 +6,10 @@
 export const DICTATION_STATUS_PATH = "/api/dictation/status"
 export const DICTATION_TOKEN_PATH = "/api/dictation/token"
 export const DICTATION_ACTIVITY_PATH = "/api/dictation/activity"
+export const DICTATION_TRANSCRIPT_PATH = "/api/dictation/transcript"
+
+/** The longest final transcript, in characters, that is kept from one result. */
+export const DICTATION_TRANSCRIPT_MAX_LENGTH = 1000
 
 /** What the browser may report about a dictation session. Never its content. */
 export const DICTATION_ACTIVITY_EVENTS = [

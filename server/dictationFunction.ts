@@ -2,6 +2,8 @@ import { handleDictationActivityRequest, writeActivityToServerLog } from "./dict
 import type { DictationActivityRecord, WriteActivityRecord } from "./dictationActivity.ts"
 import { createActivityStoreFromEnvironment, storeActivitySafely } from "./dictationActivityStore.ts"
 import type { StoreActivityRecord } from "./dictationActivityStore.ts"
+import { createTranscriptStoreFromEnvironment, handleDictationTranscriptRequest } from "./dictationTranscripts.ts"
+import type { StoreTranscriptRecord, WriteTranscriptLogEntry } from "./dictationTranscripts.ts"
 import {
     createRealtimeToken,
     DICTATION_RESPONSE_HEADERS,
@@ -23,6 +25,10 @@ export interface DictationActivitySinks {
     write?: WriteActivityRecord
     /** Returns the persistent store, or undefined when none is configured. */
     getStore?: () => StoreActivityRecord | undefined
+    /** Returns the store for final transcripts, or undefined when none is configured. */
+    getTranscriptStore?: () => StoreTranscriptRecord | undefined
+    /** Writes a transcript's log line, which never includes its text. */
+    writeTranscript?: WriteTranscriptLogEntry
 }
 
 /**
@@ -32,9 +38,24 @@ export interface DictationActivitySinks {
 export const createDictationFetchHandler = (
     getConfig: () => DictationServerConfig,
     createToken: CreateDictationToken,
-    { write = writeActivityToServerLog, getStore = () => undefined }: DictationActivitySinks = {},
+    {
+        write = writeActivityToServerLog,
+        getStore = () => undefined,
+        getTranscriptStore = () => undefined,
+        writeTranscript,
+    }: DictationActivitySinks = {},
 ) => async (request: Request): Promise<Response> => {
     const url = new URL(request.url)
+    const transcriptStore = getTranscriptStore()
+    const transcriptStatus = await handleDictationTranscriptRequest(request, url, {
+        save: transcriptStore && ((record) => storeActivitySafely(transcriptStore, record)),
+        write: writeTranscript,
+    })
+
+    if (transcriptStatus !== undefined) {
+        return new Response(null, { status: transcriptStatus, headers: { "Cache-Control": "no-store" } })
+    }
+
     let activityRecord: DictationActivityRecord | undefined
     const activityStatus = handleDictationActivityRequest(request.method, url, (record) => {
         write(record)
@@ -75,6 +96,7 @@ export const readHostedDictationConfig = (
 
 let hostedConfig: DictationServerConfig | undefined
 let hostedActivityStore: { store: StoreActivityRecord | undefined } | undefined
+let hostedTranscriptStore: { store: StoreTranscriptRecord | undefined } | undefined
 
 /** Handles dictation API requests in the hosted deployment. */
 export const handleHostedDictationRequest = createDictationFetchHandler(
@@ -84,5 +106,7 @@ export const handleHostedDictationRequest = createDictationFetchHandler(
     {
         getStore: () =>
             (hostedActivityStore ??= { store: createActivityStoreFromEnvironment(process.env) }).store,
+        getTranscriptStore: () =>
+            (hostedTranscriptStore ??= { store: createTranscriptStoreFromEnvironment(process.env) }).store,
     },
 )

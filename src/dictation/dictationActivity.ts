@@ -1,16 +1,20 @@
 import {
     DICTATION_ACTIVITY_PATH,
     DICTATION_ACTIVITY_PUBLIC_USER,
+    DICTATION_TRANSCRIPT_MAX_LENGTH,
+    DICTATION_TRANSCRIPT_PATH,
     isDictationActivityUser,
 } from "../../shared/dictationApi"
 import type { DictationActivityEvent } from "../../shared/dictationApi"
 import type { DictationSessionListener } from "./dictationSession"
+import { composeTokens } from "./insertionText"
 
 /*
- * Reports that dictation was used, so its owner can see activity on the
- * deployed app. Only an event name and a testing label are sent: never
- * transcript text or audio. Reporting is best-effort and never holds
- * dictation up.
+ * Reports dictation use, so its owner can see activity on the deployed app.
+ * Activity events carry only an event name and a testing label. Final
+ * recognised text is reported separately, in a request body, to be kept for
+ * diagnostics, as the app tells its users. Interim text and audio are never
+ * sent. Reporting is best-effort and never holds dictation up.
  */
 
 export const ACTIVITY_USER_STORAGE_KEY = "taskmanager.activityUser"
@@ -111,20 +115,69 @@ export const createActivityReporter = (user: ActivityUser): ReportDictationActiv
 
 export const reportDictationActivity = createActivityReporter(activityUser)
 
+/** Reports one final result: its text, its session and its position in that session. */
+export type ReportFinalTranscript = (text: string, sessionId: string, sequence: number) => void
+
+/**
+ * Creates a function that sends a final transcript to the server without
+ * waiting for a reply. The text travels in the request body, not the address,
+ * so that it does not appear in request logs.
+ */
+export const createTranscriptReporter = (user: ActivityUser): ReportFinalTranscript =>
+    (text, sessionId, sequence) => {
+        const url = `${DICTATION_TRANSCRIPT_PATH}?user=${user.read()}&session=${sessionId}&sequence=${sequence}`
+        const body = text.slice(0, DICTATION_TRANSCRIPT_MAX_LENGTH)
+
+        if (!navigator.sendBeacon?.(url, body)) {
+            void fetch(url, { method: "POST", body, keepalive: true }).catch(() => undefined)
+        }
+    }
+
+export const reportFinalTranscript = createTranscriptReporter(activityUser)
+
+/** Makes a random identifier for one dictation session, where the browser can. */
+const createSessionId = (): string | undefined => {
+    try {
+        return crypto.randomUUID()
+    } catch {
+        return undefined
+    }
+}
+
 /**
  * Wraps a session listener so that the session's progress is reported: when it
  * starts listening, when its first recognised words arrive, and when it ends.
  * A session that never started listening reports nothing unless it failed.
+ *
+ * Each final result is also reported as text, numbered within its session.
+ * Interim results are not.
  */
 export const reportSessionActivity = (
     listener: DictationSessionListener,
     report: ReportDictationActivity = reportDictationActivity,
+    reportTranscript: ReportFinalTranscript = reportFinalTranscript,
+    createId: () => string | undefined = createSessionId,
 ): DictationSessionListener => {
+    const sessionId = createId()
     let hasStarted = false
     let hasReportedTranscript = false
+    let finalResultCount = 0
     const reportSafely: ReportDictationActivity = (event) => {
         try {
             report(event)
+        } catch {
+            // Reporting must never interrupt dictation.
+        }
+    }
+    const reportFinalSafely = (text: string): void => {
+        if (!text || sessionId === undefined) {
+            return
+        }
+
+        finalResultCount += 1
+
+        try {
+            reportTranscript(text, sessionId, finalResultCount)
         } catch {
             // Reporting must never interrupt dictation.
         }
@@ -140,6 +193,10 @@ export const reportSessionActivity = (
             if (!hasReportedTranscript && tokens.length > 0) {
                 hasReportedTranscript = true
                 reportSafely("dictation_transcript_received")
+            }
+
+            if (isFinal) {
+                reportFinalSafely(composeTokens(tokens))
             }
 
             listener.onTranscript(isFinal, tokens)

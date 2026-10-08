@@ -467,6 +467,10 @@ const App: FC = () => {
                     {dictation.message}
                 </p>
 
+                <p className="dictation-notice">
+                    This demo may retain dictated text for diagnostics.
+                </p>
+
                 <section className="task-list">
                     <div className="task-list-controls">
                         <label className="assignee-filter">
