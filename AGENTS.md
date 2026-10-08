@@ -84,6 +84,7 @@ Claude Code can drive a real browser through the Playwright MCP server registere
 - Use only the isolated browser that the MCP server opens. Never connect to the owner's own browser or browser profile.
 - Open only `http://127.0.0.1:5183`. The address allow-list in `.mcp.json` is a guardrail, not a security boundary, so do not rely on it to stop a visit elsewhere.
 - Begin each check from a known state by using "Reset to sample tasks".
+- Follow the practical notes under "Run a browser check" in README, including where to drop when checking drag-and-drop, which blocked requests are expected, and reloading before the browser is closed when checking persistence.
 - Screenshots and other files belong in `.playwright-mcp/`, which Git ignores. A file name given explicitly is resolved against the project root, so start it with `.playwright-mcp/`. Do not commit these files.
 - Do not use `browser_run_code_unsafe`, which runs arbitrary code outside the page. `.claude/settings.json` denies it; do not remove that rule or reach the same effect another way.
 - If any part of this isolation cannot be verified, stop and report instead of continuing.

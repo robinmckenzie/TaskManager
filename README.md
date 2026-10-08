@@ -447,13 +447,53 @@ elsewhere are blocked: the assignee photos and the Vercel Web Analytics debug
 script. Missing photos and console messages about those two requests are
 expected during a browser check.
 
+### Run a browser check
+
+1. Check that the shell has no Speechmatics, database or Vercel variable set,
+   by listing names only, and that nothing is listening on port 5183.
+2. Start `npm run dev:browser-check` as a process that can be stopped on its
+   own. Confirm that it listens on `127.0.0.1:5183` and that
+   `GET /api/dictation/status` returns `{"configured":false}`.
+3. Open `http://127.0.0.1:5183` in the browser that Playwright MCP provides,
+   and use "Reset to sample tasks" before the first check.
+4. When the checks are done, close the browser with the Playwright MCP close
+   tool, then stop only the browser-check server. Confirm that port 5183 is
+   free and that Git shows no changes.
+
+Things to know while checking:
+
+- **Persistence.** The browser profile is temporary and is discarded when the
+  browser closes. To check that a change is saved, reload the page in the same
+  browser session before closing it.
+- **Drag-and-drop.** Drop on the lower half of the target task when moving a
+  task down, and on the upper half when moving it up. A drop on the exact
+  centre of a task does not reorder, because the app moves a task only once the
+  pointer crosses the middle of the task it is over.
+- **Blocked requests.** `ERR_BLOCKED_BY_CLIENT` console errors for
+  `i.pravatar.cc` and `va.vercel-scripts.com` are expected, and their number
+  varies as tasks are added, reassigned and reloaded. Treat any other console
+  error or failed request as a finding.
+- **Assignee photos.** They are blocked, so their appearance cannot be checked
+  this way. Each shows as a broken image with the assignee's name.
+- **Dictation.** The server has no Speechmatics key, so the dictation buttons
+  are disabled. Checking that they are disabled is in scope. Live dictation
+  stays a manual check.
+- **Dates and sliders.** Enter a due date as `yyyy-mm-dd`, whatever format the
+  page displays. A priority slider can be set directly, or by clicking it and
+  pressing the arrow keys.
+- **Files.** Save screenshots and snapshots under `.playwright-mcp/`, with
+  names that say what they show. Playwright MCP also writes a page snapshot and
+  a console log there on its own. Git ignores the folder.
+
 ### Remove it
 
 1. Delete `.mcp.json`, `.claude/settings.json`, `vite.browser-check.config.ts`,
    `server/browserCheckEnvironment.ts` and its test, the `dev:browser-check`
    script in `package.json`, and the `vite.browser-check.config.ts` entry in
    `tsconfig.node.json`.
-2. Delete the `.playwright-mcp` folder if it exists.
+2. Delete the `.playwright-mcp` folder if it exists. Optionally delete
+   `node_modules/.vite-browser-check`, the browser-check server's dependency
+   cache, which is otherwise removed along with `node_modules`.
 3. To remove the downloaded package, delete its folder from the `npx` cache,
    which is under `%LOCALAPPDATA%\npm-cache\_npx` on Windows.
 

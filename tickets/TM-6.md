@@ -79,3 +79,105 @@ for what only a person can judge.
 - The project's instructions state when browser checks are expected and what a handover must say about them.
 - A first browser check of an existing feature is carried out end to end and its report is provided when handing over.
 - Whether Codex can use the same setup is recorded, without work being done solely to enable it.
+
+## Verification record
+
+Recorded on 2026-10-09, before TM-6 merges. This records what has been checked
+and does not change the requirements or acceptance criteria above.
+
+Every browser check ran against the isolated local server started with
+`npm run dev:browser-check`, at `http://127.0.0.1:5183`, in the browser that
+Playwright MCP 0.0.83 opens. Nothing was checked against the usual development
+server, the deployed site, or any production service.
+
+### How isolation was established
+
+- Before each start, the shell held no Speechmatics, database, Postgres, Neon
+  or Vercel variable, checked by name only. The server's own guard passed, and
+  it loads no `.env` files.
+- The server listened on `127.0.0.1:5183` only, and
+  `GET /api/dictation/status` returned `{"configured":false}` before the
+  browser was opened.
+- The Chrome process was started by the Playwright MCP server, with a
+  temporary profile folder under the user's `Temp` folder. That folder was gone
+  after the browser closed. The owner's own profile was not used.
+- The usual development server on port 5173 was never contacted, and the same
+  process held that port before and after.
+- Tasks saved in the owner's normal browser are unchanged by construction: the
+  checks used a different profile and a different address. This was not
+  confirmed by looking at the owner's browser.
+
+### UI checks
+
+Run at commit `0f04fd8`, starting from "Reset to sample tasks".
+
+| Check | Result | What was observed |
+|-------|--------|-------------------|
+| A. Initial state | Pass | Five sample tasks with the expected titles, assignees, priorities, due dates and completion states, and all main controls present. |
+| B. Create tasks | Pass | A new task appears last, titled "New task", assigned to Alice, priority 3/5, due today and not complete. A blank title is accepted. |
+| C. Edit tasks | Pass | Title, assignee, priority and due date each updated. The slider was set both directly and by a click followed by an arrow key. |
+| D. Completion and deletion | Pass | Completing showed "Completed", uncompleting restored the days remaining, and deleting reduced the count from 7 to 6. |
+| E. Filtering | Pass | Filtering by Bob showed only Bob's two tasks, filtering by Aaron, who had none, showed none, and a task added while filtered took that assignee. |
+| F. Persistence | Pass | After a reload, the tasks, their edited values and the selected filter were intact. |
+| G. Reset | Pass | "Reset to sample tasks" restored the five sample tasks in their original order and removed the test tasks. |
+| H. Drag-and-drop | Pass | Tasks reordered downward and upward, from the handle and from the wider drag surface, and the new order survived a reload. |
+| I. General behaviour | Pass | No broken controls, and a clean layout at the default width. See the caveats for the narrower width. |
+
+### Caveats and limitations
+
+- Drag-and-drop can be checked reliably, with one rule. A drop on the exact
+  centre of a card did not reorder, in two attempts out of two. Drops on the
+  lower half when moving down, or the upper half when moving up, reordered in
+  three attempts out of three. The app moves a task once the pointer crosses
+  the middle of the card it is over, and an automated drop lands on that line.
+  This is not treated as an application defect.
+- The address restriction blocks the assignee photos from `i.pravatar.cc` and
+  the Vercel Web Analytics debug script from `va.vercel-scripts.com`. The
+  console showed 20 errors and no warnings over the session, and every error
+  was `ERR_BLOCKED_BY_CLIENT` for one of those two hosts. The appearance of the
+  photos could not be verified.
+- Live dictation was left out on purpose, because the isolated server has no
+  Speechmatics key. All "Start dictation" buttons were disabled and none was
+  used.
+- The evidence that nothing reached Speechmatics or the database is: the
+  server reported `configured: false`; every request in the browser's list for
+  the final page load went to `127.0.0.1:5183` or was one of the blocked
+  requests above; and the server only connects to the database when
+  `DATABASE_URL` is set, which the guard refuses. The request list covers one
+  page load at a time and does not show WebSocket connections, and traffic was
+  not captured outside the browser.
+- At a width of 390 px in desktop Chrome the heading overlapped the "Add Task"
+  button, the due status text ran past the edge of the card, and longer titles
+  were cut off. On the owner's iPhone the deployed app shows only the cut-off
+  titles. This is recorded in `FUTURE_CONSIDERATIONS.md` as low priority and is
+  not a TM-6 failure.
+- Blank task titles are accepted, which matches the code. Whether to prevent
+  them is recorded in `FUTURE_CONSIDERATIONS.md`.
+
+### Evidence
+
+These files are in `.playwright-mcp/`, which Git ignores, so they exist only on
+the computer where the checks ran:
+
+- `stage5-A-initial-state.png` and `.yml`
+- `stage5-B-two-tasks-added.png` and `.yml`
+- `stage5-C-task-edited.png`
+- `stage5-D-task-completed.png`
+- `stage5-D-after-uncomplete-and-delete.yml`
+- `stage5-E-filter-bob.png`
+- `stage5-F-after-reload.png` and `.yml`
+- `stage5-G-after-reset.png`
+- `stage5-H-after-drag-reorder.png`
+- `stage5-I-narrow-390.png`
+- `stage5-I-console-all.log`
+- `stage5-I-network-last-load.txt`
+
+### Other checks
+
+- `npm run build`, `npm run lint` and `npm test` pass at `0f04fd8`, with 361
+  tests across 22 files.
+- The Playwright MCP package in the `npx` cache, and the running server
+  process, were both version 0.0.83, as `.mcp.json` names.
+- The browser-check server kept its Vite dependency cache in
+  `node_modules/.vite-browser-check` and did not change `node_modules/.vite`.
+- Codex has not been given the same setup. README records what it would need.
