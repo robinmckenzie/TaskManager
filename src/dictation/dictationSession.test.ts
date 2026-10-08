@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { DictationController } from "./dictationController"
 import { DictationError } from "./dictationMessages"
 import {
     createTranscriptionConfig,
@@ -113,7 +114,7 @@ describe("DictationSession", () => {
         expect(listener.onListening).toHaveBeenCalledTimes(1)
     })
 
-    it("forwards transcripts and tracks audio time from audio sent", async () => {
+    it("forwards transcripts and tracks audio time from audio captured", async () => {
         const { session, fake, audio, listener } = await startSession()
 
         audio.speak(8_000)
@@ -521,11 +522,61 @@ describe("DictationSession", () => {
         audio.speak(1_600)
         expect(fake.connection.sendAudio).not.toHaveBeenCalled()
 
+        // Audio queued while starting already counts towards the audio clock.
+        expect(session.audioTime).toBeCloseTo(0.1)
+
         finishStarting()
         await starting
 
         expect(fake.connection.sendAudio).toHaveBeenCalledTimes(1)
         expect(session.audioTime).toBeCloseTo(0.1)
+    })
+
+    it("keeps speech recorded while starting in the title where it was spoken", async () => {
+        const fake = createFakeConnection()
+        const audio = createFakeAudioSource()
+        let finishStarting: () => void = () => undefined
+        fake.connection.start.mockImplementation(() => new Promise<undefined>((resolve) => {
+            finishStarting = () => resolve(undefined)
+        }))
+        const titles: Record<string, string> = { a: "", b: "" }
+        const controller = new DictationController({
+            createSession: (listener) => new DictationSession({
+                fetchToken: async () => token,
+                createConnection: async () => fake.connection,
+                createAudioSource: () => audio.source,
+                vocabulary: [],
+                listener,
+            }),
+            getTarget: (id) => ({
+                getValue: () => titles[id],
+                getSelection: () => ({ start: titles[id].length, end: titles[id].length }),
+                isFocused: () => false,
+                writeValue: (value) => {
+                    titles[id] = value
+                },
+            }),
+            onStateChange: () => undefined,
+        })
+
+        controller.start("a", { start: 0, end: 0 })
+        await vi.waitFor(() => expect(fake.connection.start).toHaveBeenCalled())
+
+        // Two seconds are spoken into title A before focus moves to title B.
+        audio.speak(32_000)
+        controller.moveInsertionPoint("b", { start: 0, end: 0 })
+        finishStarting()
+        await vi.advanceTimersByTimeAsync(0)
+
+        fake.receive({
+            message: "AddTranscript",
+            results: [
+                { type: "word", start_time: 0.5, alternatives: [{ content: "first" }] },
+                { type: "word", start_time: 2.5, alternatives: [{ content: "second" }] },
+            ],
+        })
+
+        expect(titles).toEqual({ a: "first", b: "second" })
     })
 })
 

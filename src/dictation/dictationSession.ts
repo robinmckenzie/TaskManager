@@ -125,7 +125,7 @@ export class DictationSession {
     private connection?: RealtimeConnection
     private audioSource?: AudioSource
     private sampleRate = 0
-    private samplesSent = 0
+    private samplesCaptured = 0
     private pendingAudio: Float32Array[] = []
     private recordingStartedAt = 0
     private startupTimer?: ReturnType<typeof setTimeout>
@@ -147,9 +147,12 @@ export class DictationSession {
         return this.phase === "settling" || this.phase === "settled"
     }
 
-    /** Seconds of audio sent so far, on the same clock as result start times. */
+    /**
+     * Seconds of audio captured so far, on the same clock as result start
+     * times. Audio queued while starting counts, because it is sent first.
+     */
     get audioTime(): number {
-        return this.sampleRate ? this.samplesSent / this.sampleRate : 0
+        return this.sampleRate ? this.samplesCaptured / this.sampleRate : 0
     }
 
     async start(): Promise<void> {
@@ -248,20 +251,17 @@ export class DictationSession {
 
     private receiveAudio(data: Float32Array): void {
         if (this.phase === "listening") {
-            this.sendAudio(data)
+            this.samplesCaptured += data.length
+            this.connection?.sendAudio(data)
         } else if (this.phase === "starting") {
+            this.samplesCaptured += data.length
             this.pendingAudio.push(data)
         }
     }
 
-    private sendAudio(data: Float32Array): void {
-        this.connection?.sendAudio(data)
-        this.samplesSent += data.length
-    }
-
     private flushPendingAudio(): void {
         for (const data of this.pendingAudio) {
-            this.sendAudio(data)
+            this.connection?.sendAudio(data)
         }
 
         this.pendingAudio = []
