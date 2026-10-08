@@ -1,4 +1,17 @@
 {
+  /*
+   * Vercel compiles the functions in api/ with these options. It reads this
+   * file but not the referenced projects, which have their own options and are
+   * what `npm run build` type-checks.
+   */
+  "compilerOptions": {
+    "target": "es2023",
+    "module": "nodenext",
+    "types": ["node"],
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true
+  },
   "files": [],
   "references": [
     { "path": "./tsconfig.app.json" },
