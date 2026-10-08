@@ -247,17 +247,17 @@ describe("createTranscriptReporter", () => {
 
     const sessionId = "3f2b8c1e-5a47-4d2a-9b6e-0c1d2e3f4a5b"
 
-    it("sends the text in the request body, and only the label, session and sequence in the address", () => {
+    it("sends the text in the request body, and only the label and session in the address", () => {
         const sendBeacon = vi.fn<(url: string, body?: string) => boolean>(() => true)
         vi.stubGlobal("navigator", { sendBeacon })
         const user = createActivityUser(() => createStorage())
         user.applyAddress("?user=Dad")
 
-        createTranscriptReporter(user)("Fix the confidential bug", sessionId, 3)
+        createTranscriptReporter(user)("Fix the confidential bug", sessionId)
 
         expect(sendBeacon).toHaveBeenCalledTimes(1)
         expect(sendBeacon).toHaveBeenCalledWith(
-            `/api/dictation/transcript?user=Dad&session=${sessionId}&sequence=3`,
+            `/api/dictation/transcript?user=Dad&session=${sessionId}`,
             "Fix the confidential bug",
         )
         expect(sendBeacon.mock.calls[0][0]).not.toContain("confidential")
@@ -268,12 +268,21 @@ describe("createTranscriptReporter", () => {
             vi.spyOn(console, method as "log").mockImplementation(() => undefined))
         vi.stubGlobal("navigator", { sendBeacon: vi.fn(() => true) })
 
-        createTranscriptReporter(createActivityUser(() => createStorage()))("Fix the bug", sessionId, 1)
+        createTranscriptReporter(createActivityUser(() => createStorage()))("Fix the bug", sessionId)
 
         for (const call of consoleCalls) {
             expect(call).not.toHaveBeenCalled()
             call.mockRestore()
         }
+    })
+
+    it("sends no more than the greatest length that is kept", () => {
+        const sendBeacon = vi.fn<(url: string, body?: string) => boolean>(() => true)
+        vi.stubGlobal("navigator", { sendBeacon })
+
+        createTranscriptReporter(createActivityUser(() => createStorage()))("a".repeat(5000), sessionId)
+
+        expect(sendBeacon.mock.calls[0][1]).toHaveLength(4000)
     })
 
     it("falls back to a request it does not wait for, and ignores its failure", async () => {
@@ -284,11 +293,11 @@ describe("createTranscriptReporter", () => {
         vi.stubGlobal("fetch", fetchTranscript)
         const report = createTranscriptReporter(createActivityUser(() => createStorage()))
 
-        expect(() => report("Fix the bug", sessionId, 1)).not.toThrow()
+        expect(() => report("Fix the bug", sessionId)).not.toThrow()
         await Promise.resolve()
 
         expect(fetchTranscript).toHaveBeenCalledWith(
-            `/api/dictation/transcript?user=PUBLIC&session=${sessionId}&sequence=1`,
+            `/api/dictation/transcript?user=PUBLIC&session=${sessionId}`,
             { method: "POST", body: "Fix the bug", keepalive: true },
         )
     })
@@ -320,58 +329,128 @@ describe("reportSessionActivity", () => {
     const words = (...contents: string[]): TranscriptToken[] =>
         contents.map((content, index) => ({ content, startTime: index }))
 
-    it("reports each final result as text, numbered within its session", () => {
-        const { listener, reportTranscript } = setUp()
-
-        listener.onListening()
-        listener.onTranscript(true, words("Fix", "the", "bug"))
-        listener.onTranscript(true, [...words("today"), { content: ".", startTime: 2, attachesTo: "previous" }])
-
-        expect(reportTranscript.mock.calls).toEqual([
-            ["Fix the bug", "session-1", 1],
-            ["today.", "session-1", 2],
-        ])
-    })
-
-    it("does not report interim results as text", () => {
+    it("reports one transcript for the session, assembled from its final results, once it has settled", () => {
         const { listener, reportTranscript } = setUp()
 
         listener.onListening()
         listener.onTranscript(false, words("Fix"))
-        listener.onTranscript(false, words("Fix", "the"))
+        listener.onTranscript(true, words("Fix", "the", "bug"))
+        listener.onTranscript(false, words("today"))
+        listener.onTranscript(true, [...words("today"), { content: ".", startTime: 2, attachesTo: "previous" }])
+        listener.onStopped("user")
+        expect(reportTranscript).not.toHaveBeenCalled()
+
+        listener.onSettled()
+
+        expect(reportTranscript.mock.calls).toEqual([["Fix the bug today.", "session-1"]])
+    })
+
+    it("does not report the transcript before settling, while final results may still arrive", () => {
+        const { listener, reportTranscript } = setUp()
+
+        listener.onListening()
+        listener.onTranscript(true, words("Fix", "the"))
+        listener.onStopped("inactivity")
+        expect(reportTranscript).not.toHaveBeenCalled()
+
+        // A final result arriving in the settling period is part of the transcript.
+        listener.onTranscript(true, words("bug"))
+        expect(reportTranscript).not.toHaveBeenCalled()
+
+        listener.onSettled()
+        expect(reportTranscript.mock.calls).toEqual([["Fix the bug", "session-1"]])
+    })
+
+    it("uses the corrected final words, never the interim ones", () => {
+        const { listener, reportTranscript } = setUp()
+
+        listener.onListening()
+        listener.onTranscript(false, words("press", "to"))
+        listener.onTranscript(false, words("prestige"))
+        listener.onTranscript(true, words("Prestidigitation"))
+        listener.onStopped("user")
+        listener.onSettled()
+
+        expect(reportTranscript.mock.calls).toEqual([["Prestidigitation", "session-1"]])
+    })
+
+    it("reports nothing for a session with only interim results", () => {
+        const { listener, reportTranscript } = setUp()
+
+        listener.onListening()
+        listener.onTranscript(false, words("half", "a", "thought"))
+        listener.onTranscript(true, [])
+        listener.onStopped("user")
+        listener.onSettled()
 
         expect(reportTranscript).not.toHaveBeenCalled()
     })
 
-    it("does not report or number an empty final result", () => {
-        const { listener, reportTranscript } = setUp()
+    it("reports the final results received before a failure", () => {
+        const { listener, report, reportTranscript } = setUp()
 
         listener.onListening()
-        listener.onTranscript(true, [])
-        listener.onTranscript(true, words("Fix"))
+        listener.onTranscript(true, words("Fix", "the"))
+        listener.onTranscript(false, words("bug"))
+        listener.onStopped("error", "connection_lost")
+        listener.onSettled()
 
-        expect(reportTranscript.mock.calls).toEqual([["Fix", "session-1", 1]])
+        expect(report).toHaveBeenLastCalledWith("dictation_failed")
+        expect(reportTranscript.mock.calls).toEqual([["Fix the", "session-1"]])
     })
 
-    it("reports final results that arrive after dictation has stopped", () => {
+    it.each(["user", "inactivity", "max_duration", "focus", "task_deleted"] as const)(
+        "reports the transcript when the session is stopped for %s",
+        (reason) => {
+            const { listener, reportTranscript } = setUp()
+
+            listener.onListening()
+            listener.onTranscript(true, words("Fix", "the", "bug"))
+            listener.onStopped(reason)
+            listener.onSettled()
+
+            expect(reportTranscript.mock.calls).toEqual([["Fix the bug", "session-1"]])
+        },
+    )
+
+    it("reports nothing for a session cancelled before any final result", () => {
         const { listener, reportTranscript } = setUp()
 
-        listener.onListening()
         listener.onStopped("user")
-        listener.onTranscript(true, words("late", "words"))
+        listener.onSettled()
 
-        expect(reportTranscript).toHaveBeenCalledWith("late words", "session-1", 1)
+        expect(reportTranscript).not.toHaveBeenCalled()
     })
 
-    it("gives each dictation session its own identifier", () => {
+    it("reports the transcript once, however often the session settles or stops", () => {
+        const { listener, reportTranscript, inner } = setUp()
+
+        listener.onListening()
+        listener.onTranscript(true, words("Fix"))
+        listener.onStopped("user")
+        listener.onSettled()
+        listener.onStopped("user")
+        listener.onSettled()
+        listener.onTranscript(true, words("late"))
+        listener.onSettled()
+
+        expect(reportTranscript).toHaveBeenCalledTimes(1)
+        expect(reportTranscript).toHaveBeenCalledWith("Fix", "session-1")
+        expect(inner.onSettled).toHaveBeenCalledTimes(3)
+    })
+
+    it("gives each dictation session its own identifier and its own transcript", () => {
         const reportTranscript = vi.fn()
         const first = reportSessionActivity(setUp().inner, vi.fn(), reportTranscript)
         const second = reportSessionActivity(setUp().inner, vi.fn(), reportTranscript)
 
         first.onTranscript(true, words("one"))
         second.onTranscript(true, words("two"))
+        first.onSettled()
+        second.onSettled()
 
-        const [[, firstSession], [, secondSession]] = reportTranscript.mock.calls
+        const [[firstText, firstSession], [secondText, secondSession]] = reportTranscript.mock.calls
+        expect([firstText, secondText]).toEqual(["one", "two"])
         expect(firstSession).toMatch(/^[0-9a-f-]{36}$/)
         expect(secondSession).toMatch(/^[0-9a-f-]{36}$/)
         expect(firstSession).not.toBe(secondSession)
@@ -381,9 +460,11 @@ describe("reportSessionActivity", () => {
         const { listener, reportTranscript, inner } = setUp(vi.fn(), vi.fn(), () => undefined)
 
         listener.onTranscript(true, words("Fix"))
+        listener.onSettled()
 
         expect(reportTranscript).toHaveBeenCalledTimes(0)
         expect(inner.onTranscript).toHaveBeenCalledTimes(1)
+        expect(inner.onSettled).toHaveBeenCalledTimes(1)
     })
 
     it("keeps dictation working when reporting text throws", () => {
@@ -391,8 +472,10 @@ describe("reportSessionActivity", () => {
             throw new Error("reporting broke")
         }))
 
-        expect(() => listener.onTranscript(true, words("Fix"))).not.toThrow()
-        expect(inner.onTranscript).toHaveBeenCalledTimes(1)
+        listener.onTranscript(true, words("Fix"))
+
+        expect(() => listener.onSettled()).not.toThrow()
+        expect(inner.onSettled).toHaveBeenCalledTimes(1)
     })
 
     it("reports a session that starts, hears speech and is stopped", () => {

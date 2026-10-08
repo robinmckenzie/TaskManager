@@ -8,13 +8,15 @@ import {
 import type { DictationActivityEvent } from "../../shared/dictationApi"
 import type { DictationSessionListener } from "./dictationSession"
 import { composeTokens } from "./insertionText"
+import type { TranscriptToken } from "./insertionText"
 
 /*
  * Reports dictation use, so its owner can see activity on the deployed app.
- * Activity events carry only an event name and a testing label. Final
- * recognised text is reported separately, in a request body, to be kept for
- * diagnostics, as the app tells its users. Interim text and audio are never
- * sent. Reporting is best-effort and never holds dictation up.
+ * Activity events carry only an event name and a testing label. Each
+ * session's final recognised text is reported separately, once, in a request
+ * body, to be kept for diagnostics, as the app tells its users. Interim text
+ * and audio are never sent. Reporting is best-effort and never holds
+ * dictation up.
  */
 
 export const ACTIVITY_USER_STORAGE_KEY = "taskmanager.activityUser"
@@ -115,17 +117,17 @@ export const createActivityReporter = (user: ActivityUser): ReportDictationActiv
 
 export const reportDictationActivity = createActivityReporter(activityUser)
 
-/** Reports one final result: its text, its session and its position in that session. */
-export type ReportFinalTranscript = (text: string, sessionId: string, sequence: number) => void
+/** Reports the complete final transcript of one dictation session. */
+export type ReportSessionTranscript = (text: string, sessionId: string) => void
 
 /**
- * Creates a function that sends a final transcript to the server without
+ * Creates a function that sends a session's transcript to the server without
  * waiting for a reply. The text travels in the request body, not the address,
  * so that it does not appear in request logs.
  */
-export const createTranscriptReporter = (user: ActivityUser): ReportFinalTranscript =>
-    (text, sessionId, sequence) => {
-        const url = `${DICTATION_TRANSCRIPT_PATH}?user=${user.read()}&session=${sessionId}&sequence=${sequence}`
+export const createTranscriptReporter = (user: ActivityUser): ReportSessionTranscript =>
+    (text, sessionId) => {
+        const url = `${DICTATION_TRANSCRIPT_PATH}?user=${user.read()}&session=${sessionId}`
         const body = text.slice(0, DICTATION_TRANSCRIPT_MAX_LENGTH)
 
         if (!navigator.sendBeacon?.(url, body)) {
@@ -133,7 +135,7 @@ export const createTranscriptReporter = (user: ActivityUser): ReportFinalTranscr
         }
     }
 
-export const reportFinalTranscript = createTranscriptReporter(activityUser)
+export const reportSessionTranscript = createTranscriptReporter(activityUser)
 
 /** Makes a random identifier for one dictation session, where the browser can. */
 const createSessionId = (): string | undefined => {
@@ -149,19 +151,23 @@ const createSessionId = (): string | undefined => {
  * starts listening, when its first recognised words arrive, and when it ends.
  * A session that never started listening reports nothing unless it failed.
  *
- * Each final result is also reported as text, numbered within its session.
- * Interim results are not.
+ * The session's final results are also gathered, in the order they arrive,
+ * and reported together as one transcript once the session has settled, which
+ * is when no more recognised text can arrive. That holds however the session
+ * ended, so a session that failed or was stopped early still reports the final
+ * results it had. Interim results are never part of the transcript.
  */
 export const reportSessionActivity = (
     listener: DictationSessionListener,
     report: ReportDictationActivity = reportDictationActivity,
-    reportTranscript: ReportFinalTranscript = reportFinalTranscript,
+    reportTranscript: ReportSessionTranscript = reportSessionTranscript,
     createId: () => string | undefined = createSessionId,
 ): DictationSessionListener => {
     const sessionId = createId()
+    const finalTokens: TranscriptToken[] = []
     let hasStarted = false
+    let hasReportedFirstWords = false
     let hasReportedTranscript = false
-    let finalResultCount = 0
     const reportSafely: ReportDictationActivity = (event) => {
         try {
             report(event)
@@ -169,15 +175,17 @@ export const reportSessionActivity = (
             // Reporting must never interrupt dictation.
         }
     }
-    const reportFinalSafely = (text: string): void => {
-        if (!text || sessionId === undefined) {
+    const reportTranscriptOnce = (): void => {
+        const text = composeTokens(finalTokens)
+
+        if (hasReportedTranscript || !text || sessionId === undefined) {
             return
         }
 
-        finalResultCount += 1
+        hasReportedTranscript = true
 
         try {
-            reportTranscript(text, sessionId, finalResultCount)
+            reportTranscript(text, sessionId)
         } catch {
             // Reporting must never interrupt dictation.
         }
@@ -190,13 +198,13 @@ export const reportSessionActivity = (
             listener.onListening()
         },
         onTranscript: (isFinal, tokens) => {
-            if (!hasReportedTranscript && tokens.length > 0) {
-                hasReportedTranscript = true
+            if (!hasReportedFirstWords && tokens.length > 0) {
+                hasReportedFirstWords = true
                 reportSafely("dictation_transcript_received")
             }
 
             if (isFinal) {
-                reportFinalSafely(composeTokens(tokens))
+                finalTokens.push(...tokens)
             }
 
             listener.onTranscript(isFinal, tokens)
@@ -210,6 +218,9 @@ export const reportSessionActivity = (
 
             listener.onStopped(reason, errorKind)
         },
-        onSettled: () => listener.onSettled(),
+        onSettled: () => {
+            reportTranscriptOnce()
+            listener.onSettled()
+        },
     }
 }

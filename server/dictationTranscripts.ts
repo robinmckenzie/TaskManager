@@ -7,17 +7,15 @@ import { connectToNeon, lockRowLimit, sql } from "./dictationActivityStore.ts"
 import type { RunInTransaction } from "./dictationActivityStore.ts"
 
 /*
- * Keeps the final text that Speechmatics recognised during dictation on the
- * deployed app, so its owner can see what was recognised. The text is saved to
- * the database and nowhere else: it is never written to a log.
+ * Keeps the final text that Speechmatics recognised during each dictation
+ * session on the deployed app, so its owner can see what was recognised. The
+ * text is saved to the database and nowhere else: it is never written to a log.
  */
 
-/** One final transcript from a dictation session. */
+/** The complete final transcript of one dictation session. */
 export interface DictationTranscriptRecord {
     /** A random identifier the browser makes for each dictation session. */
     sessionId: string
-    /** The position of this final result within its session, from 1. */
-    sequence: number
     /** A testing label set in the browser, or PUBLIC when none was set. */
     user: string
     text: string
@@ -32,7 +30,6 @@ export interface DictationTranscriptLogEntry {
     type: "dictation_transcript"
     user: string
     session: string
-    sequence: number
     characters: number
     timestamp: string
 }
@@ -43,7 +40,6 @@ export type WriteTranscriptLogEntry = (entry: DictationTranscriptLogEntry) => vo
 export const TRANSCRIPT_DAILY_ROW_LIMIT = 1000
 
 const TRANSCRIPT_ROW_LIMIT_LOCK = 724_050_002
-const MAX_SEQUENCE = 10_000
 // A character can take up to four bytes.
 const MAX_BODY_BYTES = DICTATION_TRANSCRIPT_MAX_LENGTH * 4
 const SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -94,29 +90,23 @@ const readBodyWithinLimit = async (request: Request, maxBytes: number): Promise<
     return new TextDecoder().decode(bytes)
 }
 
-const readSequence = (value: string | null): number | undefined => {
-    const sequence = value !== null && /^[0-9]{1,5}$/.test(value) ? Number(value) : undefined
-
-    return sequence !== undefined && sequence >= 1 && sequence <= MAX_SEQUENCE ? sequence : undefined
-}
-
 /**
- * Creates a store that inserts transcripts with the given query function. A
- * record for a session and sequence that is already stored is ignored, so a
- * repeated or replayed request adds nothing.
+ * Creates a store that inserts session transcripts through the given
+ * database. A session that already has a transcript is left as it is, so a
+ * repeated or replayed request adds and changes nothing.
  */
 export const createTranscriptStore = (runInTransaction: RunInTransaction): StoreTranscriptRecord =>
-    async ({ sessionId, sequence, user, text, timestamp }) => {
+    async ({ sessionId, user, text, timestamp }) => {
         await runInTransaction([
             lockRowLimit(TRANSCRIPT_ROW_LIMIT_LOCK),
             sql`
-                insert into dictation_transcripts (session_id, sequence, user_label, transcript, occurred_at)
-                select ${sessionId}::uuid, ${sequence}::integer, ${user}, ${text}, ${timestamp}::timestamptz
+                insert into dictation_session_transcripts (session_id, user_label, transcript, occurred_at)
+                select ${sessionId}::uuid, ${user}, ${text}, ${timestamp}::timestamptz
                 where (
-                    select count(*) from dictation_transcripts
+                    select count(*) from dictation_session_transcripts
                     where occurred_at > now() - interval '1 day'
                 ) < ${TRANSCRIPT_DAILY_ROW_LIMIT}
-                on conflict (session_id, sequence) do nothing
+                on conflict (session_id) do nothing
             `,
         ])
     }
@@ -142,10 +132,14 @@ export interface TranscriptRequestOptions {
 }
 
 /**
- * Handles a request to keep one final transcript and returns the HTTP status
- * to answer with, or undefined for any other path. The text is the request
- * body. It is passed to `save` and never logged: the log line holds only the
- * label, session, sequence and length.
+ * Handles a request to keep a session's complete transcript and returns the
+ * HTTP status to answer with, or undefined for any other path. The text is the
+ * request body. It is passed to `save` and never logged: the log line holds
+ * only the label, session and length.
+ *
+ * A request that numbers its text with a `sequence` comes from an earlier
+ * version of the app, which sent each final result separately. It is refused,
+ * so that a fragment is never stored as if it were a whole session.
  */
 export const handleDictationTranscriptRequest = async (
     request: Request,
@@ -162,9 +156,9 @@ export const handleDictationTranscriptRequest = async (
 
     const user = url.searchParams.get("user")
     const sessionId = url.searchParams.get("session")
-    const sequence = readSequence(url.searchParams.get("sequence"))
+    const isFragment = url.searchParams.has("sequence")
 
-    if (!isDictationActivityUser(user) || sessionId === null || !SESSION_ID_PATTERN.test(sessionId) || !sequence) {
+    if (!isDictationActivityUser(user) || sessionId === null || !SESSION_ID_PATTERN.test(sessionId) || isFragment) {
         return 400
     }
 
@@ -192,8 +186,8 @@ export const handleDictationTranscriptRequest = async (
 
     const timestamp = getNow().toISOString()
 
-    write({ type: "dictation_transcript", user, session: sessionId, sequence, characters: text.length, timestamp })
-    await save?.({ sessionId, sequence, user, text, timestamp })
+    write({ type: "dictation_transcript", user, session: sessionId, characters: text.length, timestamp })
+    await save?.({ sessionId, user, text, timestamp })
 
     return 204
 }

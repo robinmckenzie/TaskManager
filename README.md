@@ -243,45 +243,56 @@ can see what a demonstration session produced. The app tells its users so, with
 the line "This demo may retain dictated text for diagnostics." above the task
 list.
 
-- Only final results are kept. Interim results, which change as someone
-  speaks, and audio are never sent to the server.
-- Each final result is sent to `/api/dictation/transcript` with the text in the
-  request body, so that it does not appear in request logs, and saved as one
-  row in the `dictation_transcripts` table of the same Neon database.
-- A row holds the text, the testing label, the time the server received it, a
-  random identifier for the dictation session and the result's position in
-  that session. The identifier is made afresh for each session and is not
-  stored in the browser, so it does not identify a visitor.
+- One transcript is kept for each dictation session. The browser gathers the
+  session's final results in the order they arrive and joins them as the app
+  does when it displays them.
+- Interim results, which change as someone speaks, are never part of it, and
+  audio is never sent to the server.
+- The transcript is sent once, when the session has settled: after dictation
+  has stopped and the settling period for late final results is over. A
+  session that failed or was stopped early still sends the final results it
+  had. A session with no final results sends nothing.
+- It is sent to `/api/dictation/transcript` with the text in the request body,
+  so that it does not appear in request logs, and saved as one row in the
+  `dictation_session_transcripts` table of the same Neon database.
+- A row holds the text, the testing label, the time the server received it,
+  and a random identifier for the dictation session. The identifier is made
+  afresh for each session and is not stored in the browser, so it does not
+  identify a visitor.
 - The text is never written to the server log or the browser console. The
-  server logs one line per result with its label, session, position and
-  length.
-- A repeated request for the same session and position is ignored, so each
-  final result is stored once.
+  server logs one line per transcript with its label, session and length.
+- A session is stored once: a repeated request for a session that already has
+  a transcript changes nothing.
 - What is kept is what Speechmatics recognised, not the title as later edited.
 
 One-time setup: in Neon's SQL Editor, run the contents of
-`server/dictationTranscripts.sql`. It adds the `dictation_transcripts` table,
-leaves `dictation_activity` as it is, and is safe to run again. Until it has
-been run, transcripts are not stored, the log shows
+`server/dictationTranscripts.sql`. It adds the `dictation_session_transcripts`
+table and is safe to run again. It changes nothing that exists, so the
+`dictation_activity` table and any rows in `dictation_transcripts` are left
+as they are. Until it has been run, transcripts are not stored, the log shows
 `dictation_activity_store_failed` with code `42P01`, and dictation is
 unaffected.
 
 To read stored transcripts:
 
 ```sql
--- What was said in each session, most recent first.
+-- Complete transcripts, most recent first.
+select occurred_at, user_label, transcript
+from dictation_session_transcripts
+order by occurred_at desc
+limit 50;
+```
+
+An earlier version of the app stored each final result as its own row in
+`dictation_transcripts`. Nothing writes to that table now. To read what it
+holds, joined up by session:
+
+```sql
 select min(occurred_at) as started, user_label,
        string_agg(transcript, ' ' order by sequence) as said
 from dictation_transcripts
 group by session_id, user_label
-order by started desc
-limit 50;
-
--- Every final result, most recent first.
-select occurred_at, user_label, session_id, sequence, transcript
-from dictation_transcripts
-order by occurred_at desc
-limit 100;
+order by started desc;
 ```
 
 Things to know:
@@ -289,9 +300,11 @@ Things to know:
 - This is other people's speech. It can contain names or anything else a
   visitor chose to say, held in a third-party database until you delete it.
   Keep it only as long as it is useful, for example
-  `delete from dictation_transcripts where occurred_at < now() - interval '30 days';`
-- A result longer than 1,000 characters is not stored, and at most 1,000 rows
-  are stored in any 24 hours.
+  `delete from dictation_session_transcripts where occurred_at < now() - interval '30 days';`
+- A transcript is cut to 4,000 characters, several times what a 60-second
+  session produces, and at most 1,000 are stored in any 24 hours.
+- If the page is closed before the session has settled, which takes up to four
+  seconds after dictation stops, that session's transcript is not sent.
 - The endpoint is public, so anyone can send text to it under any valid label.
   Stored text is not proof that it was spoken into the app.
 - Saving is best-effort, as for activity: a failure is logged without the text

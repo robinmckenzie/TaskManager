@@ -16,7 +16,7 @@ import type { DictationTranscriptLogEntry, DictationTranscriptRecord } from "./d
 const sessionId = "3f2b8c1e-5a47-4d2a-9b6e-0c1d2e3f4a5b"
 const spokenText = "Fix the confidential login bug."
 const now = new Date("2026-10-09T10:00:00.000Z")
-const validQuery = `?user=Dad&session=${sessionId}&sequence=2`
+const validQuery = `?user=Dad&session=${sessionId}`
 
 const transcriptRequest = (query: string, body: string | null = spokenText, init: RequestInit = {}): Request =>
     new Request(`https://taskmanager.example${DICTATION_TRANSCRIPT_PATH}${query}`, {
@@ -43,12 +43,11 @@ const getConfig = (): never => {
 }
 
 describe("handleDictationTranscriptRequest", () => {
-    it("saves the final text with its label, session, sequence and a server timestamp", async () => {
+    it("saves the session's text with its label, session and a server timestamp", async () => {
         expect(await send(transcriptRequest(validQuery))).toEqual({
             status: 204,
             saved: [{
                 sessionId,
-                sequence: 2,
                 user: "Dad",
                 text: spokenText,
                 timestamp: "2026-10-09T10:00:00.000Z",
@@ -57,7 +56,6 @@ describe("handleDictationTranscriptRequest", () => {
                 type: "dictation_transcript",
                 user: "Dad",
                 session: sessionId,
-                sequence: 2,
                 characters: spokenText.length,
                 timestamp: "2026-10-09T10:00:00.000Z",
             }],
@@ -68,7 +66,7 @@ describe("handleDictationTranscriptRequest", () => {
         const { logged } = await send(transcriptRequest(validQuery))
 
         expect(Object.keys(logged[0]).sort()).toEqual([
-            "characters", "sequence", "session", "timestamp", "type", "user",
+            "characters", "session", "timestamp", "type", "user",
         ])
         expect(JSON.stringify(logged)).not.toContain("confidential")
     })
@@ -86,14 +84,11 @@ describe("handleDictationTranscriptRequest", () => {
         ["a body declared as far too large", transcriptRequest(validQuery, "short", { headers: { "content-length": "999999" } }), 413],
         ["no text", transcriptRequest(validQuery, null), 400],
         ["only spaces", transcriptRequest(validQuery, "   "), 400],
-        ["an invalid label", transcriptRequest(`?user=two+words&session=${sessionId}&sequence=1`), 400],
-        ["a missing label", transcriptRequest(`?session=${sessionId}&sequence=1`), 400],
-        ["a session that is not an identifier", transcriptRequest("?user=Dad&session=my+session&sequence=1"), 400],
-        ["a missing session", transcriptRequest("?user=Dad&sequence=1"), 400],
-        ["a sequence of zero", transcriptRequest(`?user=Dad&session=${sessionId}&sequence=0`), 400],
-        ["a sequence that is not a number", transcriptRequest(`?user=Dad&session=${sessionId}&sequence=first`), 400],
-        ["a sequence that is too large", transcriptRequest(`?user=Dad&session=${sessionId}&sequence=10001`), 400],
-        ["a missing sequence", transcriptRequest(`?user=Dad&session=${sessionId}`), 400],
+        ["an invalid label", transcriptRequest(`?user=two+words&session=${sessionId}`), 400],
+        ["a missing label", transcriptRequest(`?session=${sessionId}`), 400],
+        ["a session that is not an identifier", transcriptRequest("?user=Dad&session=my+session"), 400],
+        ["a missing session", transcriptRequest("?user=Dad"), 400],
+        ["a numbered fragment from an earlier version of the app", transcriptRequest(`${validQuery}&sequence=1`), 400],
     ])("rejects %s, saving and logging nothing", async (_description, request, expectedStatus) => {
         expect(await send(request)).toEqual({ status: expectedStatus, saved: [], logged: [] })
     })
@@ -245,7 +240,6 @@ describe("transcripts and the server log", () => {
 describe("createTranscriptStore", () => {
     const record: DictationTranscriptRecord = {
         sessionId,
-        sequence: 2,
         user: "Dad",
         text: spokenText,
         timestamp: "2026-10-09T10:00:00.000Z",
@@ -264,18 +258,17 @@ describe("createTranscriptStore", () => {
         return { transactions, runInTransaction, queries: { get 0() { return transactions[0].at(-1)! }, get length() { return transactions.length } } }
     }
 
-    it("inserts the transcript with its session, sequence, label and time as parameters", async () => {
+    it("inserts the transcript with its session, label and time as parameters", async () => {
         const { queries, runInTransaction } = createFakeDatabase()
 
         await createTranscriptStore(runInTransaction)(record)
 
         expect(queries).toHaveLength(1)
         expect(queries[0].sql).toMatch(
-            /^insert into dictation_transcripts \(session_id, sequence, user_label, transcript, occurred_at\)/,
+            /^insert into dictation_session_transcripts \(session_id, user_label, transcript, occurred_at\)/,
         )
         expect(queries[0].values).toEqual([
             sessionId,
-            2,
             "Dad",
             spokenText,
             "2026-10-09T10:00:00.000Z",
@@ -284,12 +277,12 @@ describe("createTranscriptStore", () => {
         expect(queries[0].sql).not.toContain("confidential")
     })
 
-    it("ignores a repeat of a session and sequence that is already stored", async () => {
+    it("leaves a session's stored transcript alone when it is sent again", async () => {
         const { queries, runInTransaction } = createFakeDatabase()
 
         await createTranscriptStore(runInTransaction)(record)
 
-        expect(queries[0].sql).toContain("on conflict (session_id, sequence) do nothing")
+        expect(queries[0].sql).toContain("on conflict (session_id) do nothing")
     })
 
     it("skips the insert once the daily limit of stored rows is reached, and never creates the table", async () => {
@@ -297,7 +290,7 @@ describe("createTranscriptStore", () => {
 
         await createTranscriptStore(runInTransaction)(record)
 
-        expect(queries[0].sql).toContain("where ( select count(*) from dictation_transcripts")
+        expect(queries[0].sql).toContain("where ( select count(*) from dictation_session_transcripts")
         expect(queries[0].sql).not.toMatch(/create table/i)
     })
 
@@ -334,14 +327,26 @@ describe("createTranscriptStore", () => {
 describe("dictationTranscripts.sql", () => {
     const schema = readFileSync(new URL("./dictationTranscripts.sql", import.meta.url), "utf8")
 
-    it("creates only the transcripts table, and can be run again safely", () => {
-        expect(schema).toContain("create table if not exists dictation_transcripts (")
-        expect(schema).toContain("create index if not exists")
-        expect(schema).not.toMatch(/drop |alter table|dictation_activity \(/)
+    const statements = schema.replace(/^--.*$/gm, "")
+
+    it("only adds the session transcripts table, and can be run again safely", () => {
+        expect(statements).toContain("create table if not exists dictation_session_transcripts (")
+        expect(statements).toContain("create index if not exists")
+        expect(statements.match(/create table/g)).toHaveLength(1)
     })
 
-    it("limits a transcript to the same length as the app, and keeps one row per session and sequence", () => {
-        expect(schema).toContain(`char_length(transcript) between 1 and ${DICTATION_TRANSCRIPT_MAX_LENGTH}`)
-        expect(schema).toContain("unique (session_id, sequence)")
+    it("changes and removes nothing that already exists, including earlier fragment rows", () => {
+        expect(statements).not.toMatch(/\b(drop|alter|delete|truncate|update|insert)\b/i)
+        expect(statements).not.toMatch(/dictation_transcripts\b|dictation_activity\b/)
+    })
+
+    it("limits a transcript to the same length as the app, and keeps one row per session", () => {
+        expect(statements).toContain(`char_length(transcript) between 1 and ${DICTATION_TRANSCRIPT_MAX_LENGTH}`)
+        expect(statements).toContain("session_id uuid primary key")
+    })
+
+    it("allows for a full session of fast speech", () => {
+        // About 200 words a minute, at about six characters a word with its space.
+        expect(DICTATION_TRANSCRIPT_MAX_LENGTH).toBeGreaterThanOrEqual(200 * 6 * 2)
     })
 })
