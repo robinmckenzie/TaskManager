@@ -10,6 +10,7 @@ import type {
     DictationSessionListener,
     RealtimeConnection,
     RealtimeMessage,
+    RealtimeResult,
 } from "./dictationSession"
 const timings = { inactivityTimeoutSeconds: 10, maxSessionSeconds: 20, settleTimeoutSeconds: 4 }
 const token = { jwt: "jwt", url: "wss://example.test/v2", model: "enhanced", language: "en", timings }
@@ -64,7 +65,7 @@ const createListener = () => ({
     onSettled: vi.fn(),
 } satisfies DictationSessionListener)
 
-const words = (...contents: string[]): RealtimeMessage["results"] =>
+const words = (...contents: string[]): RealtimeResult[] =>
     contents.map((content, index) => ({
         type: "word",
         start_time: index,

@@ -8,11 +8,7 @@ import type {
 } from "../../shared/dictationApi"
 import { DictationError } from "./dictationMessages"
 import type { DictationErrorKind } from "./dictationMessages"
-import type {
-    AudioSource,
-    RealtimeConnection,
-    RealtimeMessage,
-} from "./dictationSession"
+import type { AudioSource, RealtimeConnection } from "./dictationSession"
 
 // Speechmatics recommends 16 kHz for realtime transcription. Firefox only
 // records at the device's default rate, so it uses that instead.
@@ -100,7 +96,7 @@ export const createRealtimeConnection = async (url: string): Promise<RealtimeCon
     return {
         onMessage: (listener) => {
             client.addEventListener("receiveMessage", ({ data }) => {
-                listener(data as RealtimeMessage)
+                listener(data)
             })
         },
         onClosed: (listener) => {

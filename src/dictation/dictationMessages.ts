@@ -1,3 +1,5 @@
+import type { ErrorTypeEnum } from "@speechmatics/real-time-client"
+
 export type DictationErrorKind =
     | "not_configured"
     | "not_authorised"
@@ -80,7 +82,7 @@ export const describeDictationStop = (
 }
 
 /** Maps a Speechmatics realtime error type to a dictation error kind. */
-export const getRealtimeErrorKind = (type: string | undefined): DictationErrorKind => {
+export const getRealtimeErrorKind = (type: ErrorTypeEnum | undefined): DictationErrorKind => {
     switch (type) {
         case "not_authorised":
         case "not_allowed":

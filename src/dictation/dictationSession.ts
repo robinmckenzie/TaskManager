@@ -3,9 +3,13 @@ import {
     getMicrophoneErrorKind,
     getRealtimeErrorKind,
 } from "./dictationMessages"
+import type { ErrorTypeEnum, RealtimeServerMessage } from "@speechmatics/real-time-client"
 import type { DictationErrorKind, DictationStopReason } from "./dictationMessages"
 import type { DictationTimings, DictationToken } from "../../shared/dictationApi"
 import type { TranscriptToken } from "./insertionText"
+
+type RealtimeMessageName = RealtimeServerMessage["message"]
+type TranscriptMessageName = Extract<RealtimeMessageName, "AddPartialTranscript" | "AddTranscript">
 
 export interface RealtimeResult {
     type: string
@@ -14,11 +18,15 @@ export interface RealtimeResult {
     alternatives?: { content: string }[]
 }
 
-export interface RealtimeMessage {
-    message: string
-    results?: RealtimeResult[]
-    type?: string
-}
+/**
+ * The parts of a Speechmatics realtime message that a session reads. Message
+ * names and error types come from the Speechmatics client's own types, so a
+ * misspelt name does not compile.
+ */
+export type RealtimeMessage =
+    | { message: TranscriptMessageName; results?: RealtimeResult[] }
+    | { message: Extract<RealtimeMessageName, "Error">; type?: ErrorTypeEnum }
+    | { message: Exclude<RealtimeMessageName, TranscriptMessageName | "Error"> }
 
 /** The parts of the Speechmatics realtime client that a session uses. */
 export interface RealtimeConnection {
@@ -198,7 +206,9 @@ export class DictationSession {
                 () => this.finishSettling(),
                 toMilliseconds(this.sessionTimings?.settleTimeoutSeconds ?? 0),
             )
-            this.connection.stopRecognition().catch(() => undefined).finally(() => this.finishSettling())
+            this.connection.stopRecognition()
+                .catch(() => undefined)
+                .finally(() => this.finishSettling())
         } else {
             this.finishSettling()
         }
