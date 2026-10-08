@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
     "@speechmatics/auth": "^0.1.0",
     "@speechmatics/browser-audio-input": "^2.0.4",
     "@speechmatics/real-time-client": "^8.5.1",

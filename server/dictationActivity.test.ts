@@ -98,7 +98,7 @@ describe("hosted activity endpoint", () => {
     it("logs through the hosted handler without reading configuration or creating a token", async () => {
         const written: DictationActivityRecord[] = []
         const createToken = vi.fn(async () => "temporary-jwt")
-        const handler = createDictationFetchHandler(getConfig, createToken, (entry) => written.push(entry))
+        const handler = createDictationFetchHandler(getConfig, createToken, { write: (entry) => written.push(entry) })
 
         const response = await handler(new Request(activityUrl("?event=dictation_started&user=PUBLIC"), { method: "POST" }))
 
@@ -110,7 +110,7 @@ describe("hosted activity endpoint", () => {
     })
 
     it("answers an invalid event with 400", async () => {
-        const handler = createDictationFetchHandler(getConfig, async () => "temporary-jwt", () => undefined)
+        const handler = createDictationFetchHandler(getConfig, async () => "temporary-jwt", { write: () => undefined })
         const response = await handler(new Request(activityUrl("?event=nonsense&user=PUBLIC"), { method: "POST" }))
 
         expect(response.status).toBe(400)

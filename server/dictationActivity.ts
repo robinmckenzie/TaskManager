@@ -16,7 +16,8 @@ export interface DictationActivityRecord {
 
 export type WriteActivityRecord = (record: DictationActivityRecord) => void
 
-const writeToServerLog: WriteActivityRecord = (record) => {
+/** Writes a record to the server log as one line of JSON. */
+export const writeActivityToServerLog: WriteActivityRecord = (record) => {
     console.log(JSON.stringify(record))
 }
 
@@ -33,7 +34,7 @@ const isActivityEvent = (value: string | null): value is DictationActivityEvent 
 export const handleDictationActivityRequest = (
     method: string | undefined,
     url: URL,
-    write: WriteActivityRecord = writeToServerLog,
+    write: WriteActivityRecord = writeActivityToServerLog,
     getNow: () => Date = () => new Date(),
 ): number | undefined => {
     if (url.pathname !== DICTATION_ACTIVITY_PATH) {

@@ -1,5 +1,7 @@
-import { handleDictationActivityRequest } from "./dictationActivity.ts"
-import type { WriteActivityRecord } from "./dictationActivity.ts"
+import { handleDictationActivityRequest, writeActivityToServerLog } from "./dictationActivity.ts"
+import type { DictationActivityRecord, WriteActivityRecord } from "./dictationActivity.ts"
+import { createActivityStoreFromEnvironment, storeActivitySafely } from "./dictationActivityStore.ts"
+import type { StoreActivityRecord } from "./dictationActivityStore.ts"
 import {
     createRealtimeToken,
     DICTATION_RESPONSE_HEADERS,
@@ -15,6 +17,14 @@ import type { CreateDictationToken, DictationServerConfig } from "./dictationHan
  * responses.
  */
 
+/** Where a hosted function sends activity records. */
+export interface DictationActivitySinks {
+    /** Writes the record to the server log. */
+    write?: WriteActivityRecord
+    /** Returns the persistent store, or undefined when none is configured. */
+    getStore?: () => StoreActivityRecord | undefined
+}
+
 /**
  * Creates a request handler for the dictation API. Requests for other paths
  * get a 404, because a hosted function has no other server to pass them to.
@@ -22,12 +32,24 @@ import type { CreateDictationToken, DictationServerConfig } from "./dictationHan
 export const createDictationFetchHandler = (
     getConfig: () => DictationServerConfig,
     createToken: CreateDictationToken,
-    writeActivity?: WriteActivityRecord,
+    { write = writeActivityToServerLog, getStore = () => undefined }: DictationActivitySinks = {},
 ) => async (request: Request): Promise<Response> => {
     const url = new URL(request.url)
-    const activityStatus = handleDictationActivityRequest(request.method, url, writeActivity)
+    let activityRecord: DictationActivityRecord | undefined
+    const activityStatus = handleDictationActivityRequest(request.method, url, (record) => {
+        write(record)
+        activityRecord = record
+    })
 
     if (activityStatus !== undefined) {
+        const store = getStore()
+
+        // Saved before answering, because a function may be suspended once it
+        // has responded. The browser does not wait for this reply.
+        if (activityRecord && store) {
+            await storeActivitySafely(store, activityRecord)
+        }
+
         return new Response(null, { status: activityStatus, headers: { "Cache-Control": "no-store" } })
     }
 
@@ -52,10 +74,15 @@ export const readHostedDictationConfig = (
 ): DictationServerConfig => readDictationConfig(readDictationSettingsFile(directory), env)
 
 let hostedConfig: DictationServerConfig | undefined
+let hostedActivityStore: { store: StoreActivityRecord | undefined } | undefined
 
 /** Handles dictation API requests in the hosted deployment. */
 export const handleHostedDictationRequest = createDictationFetchHandler(
     // Read once per function instance, on its first request.
     () => (hostedConfig ??= readHostedDictationConfig(process.cwd(), process.env)),
     createRealtimeToken,
+    {
+        getStore: () =>
+            (hostedActivityStore ??= { store: createActivityStoreFromEnvironment(process.env) }).store,
+    },
 )

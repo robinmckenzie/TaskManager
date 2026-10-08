@@ -141,6 +141,9 @@ host only issues temporary keys.
 - Visits and page views are reported to Vercel Web Analytics, which must be
   enabled for the project in Vercel. It uses no cookies. Under `npm run dev`
   it only logs to the browser console and records nothing.
+- Dictation activity is saved to a Neon Postgres database through the
+  `DATABASE_URL` environment variable, which Vercel sets when the database is
+  connected to the project. See [Stored activity](#stored-activity).
 - The endpoints are public and have no access control. Usage is limited by the
   Speechmatics account's credit.
 
@@ -152,8 +155,9 @@ locally needs no Vercel account or tools.
 ### Dictation activity log
 
 The app reports when dictation is used, so that activity on the deployed app
-can be seen in Vercel. The browser sends an event name and a testing label to
-`/api/dictation/activity`, and the server writes one line of JSON to its log:
+can be seen afterwards. The browser sends an event name and a testing label to
+`/api/dictation/activity`. The server writes one line of JSON to its log and,
+when deployed, saves the same three values to a database:
 
 ```json
 {"type":"dictation_activity","event":"dictation_transcript_received","user":"Dad","timestamp":"2026-10-08T15:30:00.000Z"}
@@ -172,8 +176,64 @@ ignores everything else in a request. Reporting is best-effort: if it fails,
 dictation carries on and nothing is retried.
 
 To see the log, open the project in Vercel, choose Logs, and search for
-`dictation_activity`. The Hobby plan keeps runtime logs for one hour, so they
-show recent activity only and are not a history.
+`dictation_activity`. The Hobby plan keeps runtime logs for one hour, so the
+log shows recent activity only. The database is the lasting record.
+
+#### Stored activity
+
+The deployed app saves each event to a [Neon](https://neon.com/) Postgres
+database, added to the Vercel project through Vercel's Storage tab. Vercel
+gives the functions its connection string as the `DATABASE_URL` environment
+variable. That string is a secret: it stays on the server, and must never be
+committed or used in browser code.
+
+Each row holds only the event name, the testing label and the time the server
+received it. No transcript, audio, key, token, IP address, user-agent or error
+message is stored.
+
+One-time setup, after creating the database and connecting it to the project:
+
+1. In Vercel, open the Storage tab, select the database, and open it in Neon.
+2. In Neon's SQL Editor, paste the contents of `server/dictationActivity.sql`
+   and run it. It creates the `dictation_activity` table, and is safe to run
+   again. The app never creates the table itself.
+3. Redeploy the project so that the functions pick up `DATABASE_URL`.
+
+To inspect stored activity, use Neon's Tables view, or run a query in its SQL
+Editor:
+
+```sql
+-- The most recent events.
+select occurred_at, user_label, event
+from dictation_activity
+order by occurred_at desc
+limit 100;
+
+-- Events per day, per label.
+select occurred_at::date as day, user_label, event, count(*)
+from dictation_activity
+group by 1, 2, 3
+order by 1 desc, 2, 3;
+```
+
+Things to know:
+
+- Saving is best-effort. If the database is unreachable, slow, or its table is
+  missing, the event is still written to the log, a line with the type
+  `dictation_activity_store_failed` and at most a database error code is
+  logged, and dictation is unaffected. `42P01` there means the table has not
+  been created.
+- At most 1,000 rows are stored in any 24 hours. Events beyond that are logged
+  but not stored. This limits what a flood of requests to the public endpoint
+  can add.
+- The endpoint is public, so anyone can send a valid event with any valid
+  label. Stored activity is an indication of use, not proof of it.
+- Testing labels are names you choose, kept with the times they were used
+  until you delete them. To remove old rows, run for example
+  `delete from dictation_activity where occurred_at < now() - interval '90 days';`
+- Without `DATABASE_URL`, as when running locally, events are only logged and
+  no database connection is attempted. `npm run dev` and `npm run preview`
+  never store events.
 
 #### Testing labels
 
