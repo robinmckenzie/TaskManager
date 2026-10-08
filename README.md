@@ -416,6 +416,9 @@ follows.
   - It fails if port 5183 is taken, instead of moving to another port.
   - It has its own address, so its saved tasks are separate from those of
     `npm run dev`, which can stay running.
+  - It keeps its Vite dependency cache in `node_modules/.vite-browser-check`,
+    separate from the `node_modules/.vite` cache that `npm run dev` uses, so
+    neither server rebuilds a cache the other is serving from.
   - Like `npm run dev`, it never connects to the database.
 
 The version was checked against the npm registry on 2026-10-08, when 0.0.83 was
