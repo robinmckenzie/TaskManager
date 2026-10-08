@@ -14,9 +14,9 @@ const countToggles = (steps: readonly KeyStep[]): number => {
 
     for (const [direction, key, isAltGraph = false] of steps) {
         if (direction === "down") {
-            state = trackShortcutKeyDown(state, { key, isAltGraph })
+            state = trackShortcutKeyDown(state, { key, code: key, isAltGraph })
         } else {
-            const result = trackShortcutKeyUp(state, { key, isAltGraph })
+            const result = trackShortcutKeyUp(state, { key, code: key, isAltGraph })
             state = result.state
             toggles += result.shouldToggle ? 1 : 0
         }
@@ -66,6 +66,35 @@ describe("Ctrl + Alt shortcut", () => {
         expect(countToggles([
             ["down", "Control"], ["down", "Alt"], ["up", "Alt"], ["down", "Alt"],
             ["up", "Alt"], ["up", "Control"],
+        ])).toBe(1)
+    })
+
+    it("does not fire when a third key is already held, such as Shift + Ctrl + Alt", () => {
+        expect(countToggles([
+            ["down", "Shift"], ["down", "Control"], ["down", "Alt"],
+            ["up", "Alt"], ["up", "Control"], ["up", "Shift"],
+        ])).toBe(0)
+    })
+
+    it("keeps not firing while the third key stays held", () => {
+        expect(countToggles([
+            ["down", "t"],
+            ["down", "Control"], ["down", "Alt"], ["up", "Alt"], ["up", "Control"],
+            ["down", "Control"], ["down", "Alt"], ["up", "Alt"], ["up", "Control"],
+        ])).toBe(0)
+    })
+
+    it("fires again once the third key has been released", () => {
+        expect(countToggles([
+            ["down", "Shift"], ["down", "Control"], ["up", "Control"], ["up", "Shift"],
+            ["down", "Control"], ["down", "Alt"], ["up", "Alt"], ["up", "Control"],
+        ])).toBe(1)
+    })
+
+    it("does not leave AltGr counted as held after it is released", () => {
+        expect(countToggles([
+            ["down", "Control", true], ["down", "AltGraph", true], ["up", "Control"], ["up", "AltGraph"],
+            ["down", "Control"], ["down", "Alt"], ["up", "Alt"], ["up", "Control"],
         ])).toBe(1)
     })
 })

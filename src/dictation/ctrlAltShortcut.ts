@@ -1,5 +1,7 @@
 export interface ShortcutKeyEvent {
     key: string
+    /** Identifies the physical key, so that a release matches its press. */
+    code: string
     isAltGraph: boolean
 }
 
@@ -8,6 +10,8 @@ export interface CtrlAltShortcutState {
     isAltDown: boolean
     isChordPressed: boolean
     isCancelled: boolean
+    /** Codes of keys other than Ctrl and Alt that are currently held. */
+    otherKeysDown: readonly string[]
 }
 
 export const initialCtrlAltShortcutState: CtrlAltShortcutState = {
@@ -15,13 +19,15 @@ export const initialCtrlAltShortcutState: CtrlAltShortcutState = {
     isAltDown: false,
     isChordPressed: false,
     isCancelled: false,
+    otherKeysDown: [],
 }
 
 const isModifierKey = (key: string): boolean => key === "Control" || key === "Alt"
 
 /**
- * Tracks a key press for the Ctrl + Alt shortcut. Any other key pressed while
- * either modifier is held, including AltGr, cancels the shortcut.
+ * Tracks a key press for the Ctrl + Alt shortcut. Any other key held together
+ * with either modifier, including AltGr, cancels the shortcut, whether it was
+ * pressed before or after the modifier.
  */
 export const trackShortcutKeyDown = (
     state: CtrlAltShortcutState,
@@ -30,13 +36,20 @@ export const trackShortcutKeyDown = (
     const isHoldingModifier = state.isControlDown || state.isAltDown
 
     if (event.isAltGraph || !isModifierKey(event.key)) {
-        return isHoldingModifier ? { ...state, isCancelled: true } : state
+        return {
+            ...state,
+            isCancelled: state.isCancelled || isHoldingModifier,
+            otherKeysDown: state.otherKeysDown.includes(event.code)
+                ? state.otherKeysDown
+                : [...state.otherKeysDown, event.code],
+        }
     }
 
     const next = {
         ...state,
         isControlDown: state.isControlDown || event.key === "Control",
         isAltDown: state.isAltDown || event.key === "Alt",
+        isCancelled: state.isCancelled || state.otherKeysDown.length > 0,
     }
 
     return {
@@ -53,8 +66,12 @@ export const trackShortcutKeyUp = (
     state: CtrlAltShortcutState,
     event: ShortcutKeyEvent,
 ): { state: CtrlAltShortcutState; shouldToggle: boolean } => {
+    // Released under either name: AltGr can arrive as a Ctrl press that is
+    // treated as another key, then leave as an ordinary Ctrl release.
+    const otherKeysDown = state.otherKeysDown.filter((code) => code !== event.code)
+
     if (!isModifierKey(event.key)) {
-        return { state, shouldToggle: false }
+        return { state: { ...state, otherKeysDown }, shouldToggle: false }
     }
 
     const shouldToggle = state.isChordPressed && !state.isCancelled
@@ -62,11 +79,17 @@ export const trackShortcutKeyUp = (
     const isAltDown = state.isAltDown && event.key !== "Alt"
 
     if (!isControlDown && !isAltDown) {
-        return { state: initialCtrlAltShortcutState, shouldToggle }
+        return { state: { ...initialCtrlAltShortcutState, otherKeysDown }, shouldToggle }
     }
 
     return {
-        state: { ...state, isControlDown, isAltDown, isCancelled: state.isCancelled || shouldToggle },
+        state: {
+            ...state,
+            otherKeysDown,
+            isControlDown,
+            isAltDown,
+            isCancelled: state.isCancelled || shouldToggle,
+        },
         shouldToggle,
     }
 }

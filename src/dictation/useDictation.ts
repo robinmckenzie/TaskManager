@@ -51,6 +51,7 @@ const findTargetId = <T extends Element>(
 
 const toShortcutKeyEvent = (event: KeyboardEvent): ShortcutKeyEvent => ({
     key: event.key,
+    code: event.code,
     isAltGraph: event.key === "AltGraph" || event.getModifierState("AltGraph"),
 })
 
