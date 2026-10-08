@@ -88,6 +88,16 @@ export const fetchDictationToken = async (): Promise<DictationToken> => {
     throw new DictationError(getTokenErrorKind((body as Partial<DictationErrorResponse> | undefined)?.error))
 }
 
+/**
+ * Closes a Speechmatics client's WebSocket. The client only closes it after a
+ * completed graceful stop and offers no public way to close it otherwise, so
+ * this reaches its private `socket` field. speechmaticsAdapters.node.test.ts checks
+ * that this still closes the connection with the installed client.
+ */
+const closeClientSocket = (client: object): void => {
+    (client as { socket?: { close(): void } }).socket?.close()
+}
+
 /** Opens a Speechmatics realtime client, loading the SDK only when needed. */
 export const createRealtimeConnection = async (url: string): Promise<RealtimeConnection> => {
     const { RealtimeClient } = await import("@speechmatics/real-time-client")
@@ -110,6 +120,7 @@ export const createRealtimeConnection = async (url: string): Promise<RealtimeCon
         // Recorder audio is posted from the worklet, so it is never a SharedArrayBuffer.
         sendAudio: (data) => client.sendAudio(data as Float32Array<ArrayBuffer>),
         stopRecognition: () => client.stopRecognition({ noTimeout: true }),
+        close: () => closeClientSocket(client),
     }
 }
 

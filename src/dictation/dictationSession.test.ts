@@ -21,7 +21,6 @@ const SETTLE_TIMEOUT_MS = timings.settleTimeoutSeconds * 1000
 const createFakeConnection = () => {
     let messageListener: (message: RealtimeMessage) => void = () => undefined
     let closedListener: () => void = () => undefined
-    let resolveStop: () => void = () => undefined
 
     const connection = {
         onMessage: (listener: (message: RealtimeMessage) => void) => {
@@ -32,16 +31,15 @@ const createFakeConnection = () => {
         },
         start: vi.fn(async () => undefined),
         sendAudio: vi.fn(),
-        stopRecognition: vi.fn(() => new Promise<void>((resolve) => {
-            resolveStop = resolve
-        })),
+        // Like the real client, this resolves as soon as the request is sent.
+        stopRecognition: vi.fn(async () => undefined),
+        close: vi.fn(),
     } satisfies RealtimeConnection
 
     return {
         connection,
         receive: (message: RealtimeMessage) => messageListener(message),
         close: () => closedListener(),
-        finishStopping: () => resolveStop(),
     }
 }
 
@@ -194,24 +192,64 @@ describe("DictationSession", () => {
         expect(listener.onStopped).toHaveBeenCalledWith("user", undefined)
         expect(fake.connection.stopRecognition).toHaveBeenCalled()
 
+        // The stop request has resolved by now, but results are still to come.
+        await vi.advanceTimersByTimeAsync(0)
+        expect(listener.onSettled).not.toHaveBeenCalled()
+        expect(fake.connection.close).not.toHaveBeenCalled()
+
         fake.receive({ message: "AddTranscript", results: words("Fix", "bug") })
         expect(listener.onTranscript).toHaveBeenLastCalledWith(true, expect.any(Array))
         expect(listener.onSettled).not.toHaveBeenCalled()
 
         fake.receive({ message: "EndOfTranscript" })
         expect(listener.onSettled).toHaveBeenCalledTimes(1)
+        expect(fake.connection.close).toHaveBeenCalled()
 
         fake.receive({ message: "AddTranscript", results: words("late") })
         expect(listener.onTranscript).toHaveBeenCalledTimes(1)
     })
 
-    it("ends settling after the settling cap", async () => {
-        const { session, listener } = await startSession()
+    it("ends settling after the settling cap and closes the connection", async () => {
+        const { session, fake, listener } = await startSession()
 
         session.stop("user")
-        vi.advanceTimersByTime(SETTLE_TIMEOUT_MS)
+        await vi.advanceTimersByTimeAsync(SETTLE_TIMEOUT_MS - 1)
+        expect(listener.onSettled).not.toHaveBeenCalled()
+
+        await vi.advanceTimersByTimeAsync(1)
+        expect(listener.onSettled).toHaveBeenCalledTimes(1)
+        expect(fake.connection.close).toHaveBeenCalled()
+    })
+
+    it("ends settling when the connection closes", async () => {
+        const { session, fake, listener } = await startSession()
+
+        session.stop("user")
+        await vi.advanceTimersByTimeAsync(0)
+        fake.close()
 
         expect(listener.onSettled).toHaveBeenCalledTimes(1)
+    })
+
+    it("ends settling when asking Speechmatics to finish fails", async () => {
+        const { session, fake, listener } = await startSession()
+        fake.connection.stopRecognition.mockRejectedValue(new Error("socket gone"))
+
+        session.stop("user")
+        await vi.advanceTimersByTimeAsync(0)
+
+        expect(listener.onSettled).toHaveBeenCalledTimes(1)
+        expect(fake.connection.close).toHaveBeenCalled()
+    })
+
+    it("closes the connection after a service error", async () => {
+        const { fake, listener } = await startSession()
+
+        fake.receive({ message: "Error", type: "job_error" })
+
+        expect(listener.onStopped).toHaveBeenCalledWith("error", "service_unavailable")
+        expect(listener.onSettled).toHaveBeenCalledTimes(1)
+        expect(fake.connection.close).toHaveBeenCalled()
     })
 
     it("reports a lost connection while listening", async () => {
@@ -267,6 +305,106 @@ describe("DictationSession", () => {
         await session.start()
 
         expect(listener.onStopped).toHaveBeenCalledWith("error", "not_configured")
+    })
+
+    describe("stopped while starting", () => {
+        /** Starts a session whose given startup step waits until released. */
+        const startUntil = (step: "token" | "connection" | "recognition") => {
+            const fake = createFakeConnection()
+            const audio = createFakeAudioSource()
+            const listener = createListener()
+            let release: (error?: Error) => void = () => undefined
+            const waitHere = <T,>(value: T) => new Promise<T>((resolve, reject) => {
+                release = (error) => (error ? reject(error) : resolve(value))
+            })
+            const createConnection = vi.fn(async () =>
+                step === "connection" ? waitHere(fake.connection) : fake.connection)
+
+            if (step === "recognition") {
+                fake.connection.start.mockImplementation(() => waitHere(undefined))
+            }
+
+            const session = new DictationSession({
+                fetchToken: async () => (step === "token" ? waitHere(token) : token),
+                createConnection,
+                createAudioSource: () => audio.source,
+                vocabulary: [],
+                listener,
+            })
+
+            return { session, fake, audio, listener, createConnection, starting: session.start(), release: () => release(), fail: () => release(new Error("failed")) }
+        }
+
+        it("opens no connection when stopped while fetching the token", async () => {
+            const { session, audio, listener, createConnection, starting, release } = startUntil("token")
+            await vi.advanceTimersByTimeAsync(0)
+
+            session.stop("user")
+            release()
+            await starting
+
+            expect(audio.source.stop).toHaveBeenCalled()
+            expect(createConnection).not.toHaveBeenCalled()
+            expect(listener.onSettled).toHaveBeenCalledTimes(1)
+        })
+
+        it("closes a connection created after stopping without starting it", async () => {
+            const { session, fake, starting, release } = startUntil("connection")
+            await vi.advanceTimersByTimeAsync(0)
+
+            session.stop("user")
+            release()
+            await starting
+
+            expect(fake.connection.close).toHaveBeenCalled()
+            expect(fake.connection.start).not.toHaveBeenCalled()
+        })
+
+        it("closes a starting connection at once, and again if it then succeeds", async () => {
+            const { session, fake, listener, starting, release } = startUntil("recognition")
+            await vi.advanceTimersByTimeAsync(0)
+
+            session.stop("user")
+            expect(fake.connection.close).toHaveBeenCalledTimes(1)
+
+            release()
+            await starting
+
+            expect(fake.connection.close).toHaveBeenCalledTimes(2)
+            expect(listener.onListening).not.toHaveBeenCalled()
+            expect(fake.connection.sendAudio).not.toHaveBeenCalled()
+        })
+
+        it("leaves a closed connection closed if starting then fails", async () => {
+            const { session, fake, listener, starting, fail } = startUntil("recognition")
+            await vi.advanceTimersByTimeAsync(0)
+
+            session.stop("user")
+            fail()
+            await starting
+
+            expect(fake.connection.close).toHaveBeenCalled()
+            expect(listener.onStopped).toHaveBeenCalledTimes(1)
+            expect(listener.onStopped).toHaveBeenCalledWith("user", undefined)
+        })
+    })
+
+    it("closes the connection when starting recognition fails", async () => {
+        const fake = createFakeConnection()
+        const listener = createListener()
+        fake.connection.start.mockRejectedValue(new Error("Timed out waiting for RecognitionStarted"))
+        const session = new DictationSession({
+            fetchToken: async () => token,
+            createConnection: async () => fake.connection,
+            createAudioSource: () => createFakeAudioSource().source,
+            vocabulary: [],
+            listener,
+        })
+
+        await session.start()
+
+        expect(listener.onStopped).toHaveBeenCalledWith("error", "service_unavailable")
+        expect(fake.connection.close).toHaveBeenCalled()
     })
 
     it("buffers audio captured before recognition starts", async () => {

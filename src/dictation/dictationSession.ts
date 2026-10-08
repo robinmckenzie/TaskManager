@@ -34,7 +34,13 @@ export interface RealtimeConnection {
     onClosed(listener: () => void): void
     start(jwt: string, config: object): Promise<unknown>
     sendAudio(data: Float32Array): void
+    /**
+     * Asks Speechmatics to finish. Resolves once it has been asked, which is
+     * before the remaining final results and EndOfTranscript arrive.
+     */
     stopRecognition(): Promise<unknown>
+    /** Closes the connection at once. Safe at any stage and more than once. */
+    close(): void
 }
 
 /** A microphone source that delivers 32-bit float PCM audio. */
@@ -159,20 +165,29 @@ export class DictationSession {
             }
 
             const token = await fetchToken()
-            this.sessionTimings = token.timings
-            const connection = await createConnection(token.url)
-            this.connection = connection
-            connection.onMessage((message) => this.receiveMessage(message))
-            connection.onClosed(() => this.handleConnectionClosed())
 
             if (this.isStopped) {
                 return
             }
 
+            this.sessionTimings = token.timings
+            const connection = await createConnection(token.url)
+
+            if (this.isStopped) {
+                connection.close()
+                return
+            }
+
+            // Once the session holds the connection, stopping closes it.
+            this.connection = connection
+            connection.onMessage((message) => this.receiveMessage(message))
+            connection.onClosed(() => this.handleConnectionClosed())
             await connection.start(token.jwt, createTranscriptionConfig(token, this.sampleRate, vocabulary))
 
             if (this.isStopped) {
-                void connection.stopRecognition().catch(() => undefined)
+                // Stopping closed the connection while it was starting. Close
+                // it again in case it finished starting regardless.
+                connection.close()
                 return
             }
 
@@ -206,9 +221,9 @@ export class DictationSession {
                 () => this.finishSettling(),
                 toMilliseconds(this.sessionTimings?.settleTimeoutSeconds ?? 0),
             )
-            this.connection.stopRecognition()
-                .catch(() => undefined)
-                .finally(() => this.finishSettling())
+            // Settling ends on EndOfTranscript, the connection closing or the
+            // timer, not when this request has merely been sent.
+            this.connection.stopRecognition().catch(() => this.finishSettling())
         } else {
             this.finishSettling()
         }
@@ -289,6 +304,7 @@ export class DictationSession {
 
         this.phase = "settled"
         clearTimeout(this.settleTimer)
+        this.connection?.close()
         this.dependencies.listener.onSettled()
     }
 }
