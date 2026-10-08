@@ -40,6 +40,7 @@ problems, such as a blocked microphone. Dictation needs setting up first; see
 - Speechmatics realtime speech to text for dictation, using the official
   `@speechmatics/real-time-client`, `@speechmatics/browser-audio-input` and
   `@speechmatics/auth` packages.
+- Vercel for hosting the deployed app and its dictation endpoints.
 
 ## Install dependencies
 
@@ -75,9 +76,9 @@ dictation is unavailable.
 3. Restart `npm run dev` (or `npm run preview`) after changing `.env.local`.
 
 The key stays on the local Vite server. The browser only receives temporary keys
-that expire after 60 seconds, from `/api/dictation/token`. These endpoints exist
-only under `npm run dev` and `npm run preview`; hosting them for a production
-deployment is not set up.
+that expire after 60 seconds, from `/api/dictation/token`. Locally these
+endpoints are served by `npm run dev` and `npm run preview`. The deployed app
+serves the same endpoints as hosted functions; see [Deployment](#deployment).
 
 Other dictation settings live in `dictation.config.toml` in the project
 directory. It is committed, so it must never contain the API key, and each
@@ -110,6 +111,46 @@ Microphone access needs a secure context, so open the app on `localhost` or over
 HTTPS. The browser asks for microphone permission the first time you dictate.
 The local server must be able to reach `mp.speechmatics.com`, and the browser
 must be able to reach the realtime endpoint.
+
+## Deployment
+
+The app is deployed on [Vercel](https://vercel.com/) as one project: the built
+front end, and the dictation endpoints as Vercel Functions on the same address.
+The browser connects directly to Speechmatics for realtime dictation, so the
+host only issues temporary keys.
+
+- Public address: not yet recorded. It is added here after the final
+  verification of the deployment.
+- The functions are `api/dictation/status.ts` and `api/dictation/token.ts`.
+  Both run the handler that local development uses, in
+  `server/dictationHandler.ts`.
+- The Speechmatics API key is the `SPEECHMATICS_API_KEY` environment variable
+  in the Vercel project's settings. It is not in the repository, and it is a
+  different key from the one used locally so that either can be revoked alone.
+  Without it the deployed app works and shows dictation as unavailable.
+- The other dictation settings come from `dictation.config.toml`, which
+  `vercel.json` deploys with the functions. `SPEECHMATICS_MODEL`,
+  `SPEECHMATICS_LANGUAGE` and `SPEECHMATICS_RT_URL` can be set in Vercel to
+  override it, as they can locally.
+- Vercel compiles the functions with the options in the root `tsconfig.json`.
+- The endpoints are public and have no access control. Usage is limited by the
+  Speechmatics account's credit.
+
+To update the deployed app, push to the branch that Vercel deploys as
+production. Vercel builds and deploys it automatically. After changing an
+environment variable in Vercel, redeploy for it to take effect. Running the app
+locally needs no Vercel account or tools.
+
+### Before a demonstration
+
+1. Open the public address in a fresh browser window that is not signed in to
+   anything, and confirm it loads without a sign-in prompt.
+2. Dictate into a task title and confirm the words appear as you speak.
+3. Stop dictation, start it again, then refresh the page and confirm the text
+   is still there.
+4. Check the remaining credit in the
+   [Speechmatics portal](https://portal.speechmatics.com/).
+5. Confirm in Vercel that the production deployment is the intended commit.
 
 ## Available npm commands
 
