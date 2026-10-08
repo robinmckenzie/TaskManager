@@ -16,56 +16,100 @@ import type { DictationSessionListener } from "./dictationSession"
 export const ACTIVITY_USER_STORAGE_KEY = "taskmanager.activityUser"
 const ACTIVITY_USER_PARAMETER = "user"
 
+type ActivityUserStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">
+
+/** The testing label that this page's dictation activity is reported under. */
+export interface ActivityUser {
+    /**
+     * Applies `?user=NAME` from a page address. A valid name becomes this
+     * page's label at once and is remembered for later visits. `?user=PUBLIC`
+     * clears it. Anything else is ignored and changes nothing.
+     */
+    applyAddress(search: string): void
+    /** This page's label: from its address, else as remembered, else PUBLIC. */
+    read(): string
+}
+
 const isPublicUser = (label: string): boolean =>
     label.toUpperCase() === DICTATION_ACTIVITY_PUBLIC_USER
 
-/**
- * Sets this browser's testing label when the page address carries
- * `?user=NAME`, and remembers it in local storage. `?user=PUBLIC` clears it.
- * A value that is not a valid label is ignored and changes nothing.
- */
-export const rememberActivityUserFromAddress = (
-    search: string,
-    storage: Pick<Storage, "setItem" | "removeItem">,
-): void => {
-    const label = new URLSearchParams(search).get(ACTIVITY_USER_PARAMETER)
-
-    if (!isDictationActivityUser(label)) {
-        return
-    }
-
-    try {
-        if (isPublicUser(label)) {
-            storage.removeItem(ACTIVITY_USER_STORAGE_KEY)
-        } else {
-            storage.setItem(ACTIVITY_USER_STORAGE_KEY, label)
+/** Finds the user parameter whatever its capitalisation, without surrounding spaces. */
+const readUserParameter = (search: string): string | undefined => {
+    for (const [name, value] of new URLSearchParams(search)) {
+        if (name.toLowerCase() === ACTIVITY_USER_PARAMETER) {
+            return value.trim()
         }
-    } catch {
-        // Without storage, activity is reported as PUBLIC.
+    }
+
+    return undefined
+}
+
+/**
+ * Creates the testing label for a page. A label given in the page address
+ * applies to that page even when browser storage is unavailable or refuses to
+ * save it, as some private browsing modes and embedded browsers do. Storage is
+ * only what carries the label to later visits.
+ *
+ * Storage is fetched through a function because, in some browsers, merely
+ * referring to `localStorage` throws when storage is blocked.
+ */
+export const createActivityUser = (getStorage: () => ActivityUserStorage): ActivityUser => {
+    let addressUser: string | undefined
+
+    return {
+        applyAddress: (search) => {
+            const label = readUserParameter(search)
+
+            if (!isDictationActivityUser(label)) {
+                return
+            }
+
+            addressUser = isPublicUser(label) ? DICTATION_ACTIVITY_PUBLIC_USER : label
+
+            try {
+                if (addressUser === DICTATION_ACTIVITY_PUBLIC_USER) {
+                    getStorage().removeItem(ACTIVITY_USER_STORAGE_KEY)
+                } else {
+                    getStorage().setItem(ACTIVITY_USER_STORAGE_KEY, addressUser)
+                }
+            } catch {
+                // The label still applies to this page; it is just not kept.
+            }
+        },
+        read: () => {
+            if (addressUser !== undefined) {
+                return addressUser
+            }
+
+            try {
+                const label = getStorage().getItem(ACTIVITY_USER_STORAGE_KEY)
+
+                return isDictationActivityUser(label) ? label : DICTATION_ACTIVITY_PUBLIC_USER
+            } catch {
+                return DICTATION_ACTIVITY_PUBLIC_USER
+            }
+        },
     }
 }
 
-/** This browser's testing label, or PUBLIC when none has been set. */
-export const readActivityUser = (storage: Pick<Storage, "getItem">): string => {
-    try {
-        const label = storage.getItem(ACTIVITY_USER_STORAGE_KEY)
-
-        return isDictationActivityUser(label) ? label : DICTATION_ACTIVITY_PUBLIC_USER
-    } catch {
-        return DICTATION_ACTIVITY_PUBLIC_USER
-    }
-}
+/** The testing label of the page that is running. */
+export const activityUser = createActivityUser(() => localStorage)
 
 export type ReportDictationActivity = (event: DictationActivityEvent) => void
 
-/** Sends an activity event to the server without waiting for a reply. */
-export const reportDictationActivity: ReportDictationActivity = (event) => {
-    const url = `${DICTATION_ACTIVITY_PATH}?event=${event}&user=${readActivityUser(localStorage)}`
+/**
+ * Creates a function that sends an activity event to the server, under the
+ * label current at that moment, without waiting for a reply.
+ */
+export const createActivityReporter = (user: ActivityUser): ReportDictationActivity => (event) => {
+    const url = `${DICTATION_ACTIVITY_PATH}?event=${event}&user=${user.read()}`
 
     if (!navigator.sendBeacon?.(url)) {
         void fetch(url, { method: "POST", keepalive: true }).catch(() => undefined)
     }
 }
+
+export const reportDictationActivity = createActivityReporter(activityUser)
 
 /**
  * Wraps a session listener so that the session's progress is reported: when it

@@ -1,9 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
     ACTIVITY_USER_STORAGE_KEY,
-    readActivityUser,
-    rememberActivityUserFromAddress,
-    reportDictationActivity,
+    createActivityReporter,
+    createActivityUser,
     reportSessionActivity,
 } from "./dictationActivity"
 import type { DictationSessionListener } from "./dictationSession"
@@ -20,6 +19,25 @@ const createStorage = (initial: Record<string, string> = {}) => {
     }
 }
 
+/** A page's label, as it would be after loading with the given address. */
+const openPage = (search: string, getStorage: Parameters<typeof createActivityUser>[0]) => {
+    const user = createActivityUser(getStorage)
+    user.applyAddress(search)
+
+    return user
+}
+
+/** Storage that can be read but refuses every write, as some private modes do. */
+const createReadOnlyStorage = (initial: Record<string, string> = {}) => ({
+    ...createStorage(initial),
+    setItem: (): void => {
+        throw new DOMException("The quota has been exceeded.", "QuotaExceededError")
+    },
+    removeItem: (): void => {
+        throw new DOMException("The operation is insecure.", "SecurityError")
+    },
+})
+
 const brokenStorage = {
     getItem: (): string | null => {
         throw new Error("storage unavailable")
@@ -32,90 +50,186 @@ const brokenStorage = {
     },
 }
 
-describe("testing labels", () => {
+/** A browser in which even referring to storage throws. */
+const blockedStorage = (): never => {
+    throw new DOMException("The operation is insecure.", "SecurityError")
+}
+
+describe("testing labels with working storage", () => {
     it("is PUBLIC until a label has been set in this browser", () => {
-        expect(readActivityUser(createStorage())).toBe("PUBLIC")
+        expect(openPage("", () => createStorage()).read()).toBe("PUBLIC")
     })
 
     it.each(["Robin", "Dad", "Claude", "test-2", "qa_team"])(
-        "stores the label from ?user=%s and keeps it for later visits without it",
+        "uses the label from ?user=%s on that page and stores it",
         (label) => {
             const storage = createStorage()
 
-            rememberActivityUserFromAddress(`?user=${label}`, storage)
-            rememberActivityUserFromAddress("", storage)
-            rememberActivityUserFromAddress("?other=1", storage)
-
-            expect(readActivityUser(storage)).toBe(label)
+            expect(openPage(`?user=${label}`, () => storage).read()).toBe(label)
+            expect(storage.values.get(ACTIVITY_USER_STORAGE_KEY)).toBe(label)
         },
     )
 
-    it("replaces an earlier label with a new one", () => {
+    it("keeps the stored label on later visits without the parameter", () => {
+        const storage = createStorage()
+
+        openPage("?user=Dad", () => storage)
+
+        expect(openPage("", () => storage).read()).toBe("Dad")
+        expect(openPage("?other=1", () => storage).read()).toBe("Dad")
+    })
+
+    it("gives a label in the address precedence over a stored one, and replaces it", () => {
         const storage = createStorage({ [ACTIVITY_USER_STORAGE_KEY]: "Robin" })
 
-        rememberActivityUserFromAddress("?user=Dad", storage)
-
-        expect(readActivityUser(storage)).toBe("Dad")
+        expect(openPage("?user=Dad", () => storage).read()).toBe("Dad")
+        expect(openPage("", () => storage).read()).toBe("Dad")
     })
 
     it.each(["PUBLIC", "public", "Public"])("clears the stored label with ?user=%s", (value) => {
         const storage = createStorage({ [ACTIVITY_USER_STORAGE_KEY]: "Robin" })
 
-        rememberActivityUserFromAddress(`?user=${value}`, storage)
-
+        expect(openPage(`?user=${value}`, () => storage).read()).toBe("PUBLIC")
         expect(storage.values.has(ACTIVITY_USER_STORAGE_KEY)).toBe(false)
-        expect(readActivityUser(storage)).toBe("PUBLIC")
+        expect(openPage("", () => storage).read()).toBe("PUBLIC")
     })
 
     it.each([
-        ["spaces", "?user=two+words"],
-        ["punctuation", "?user=a.b%40example.com"],
+        ["a capitalised parameter name", "?User=Dad"],
+        ["an upper-case parameter name", "?USER=Dad"],
+        ["a trailing space", "?user=Dad%20"],
+        ["other parameters around it", "?ref=mail&user=Dad&x=1"],
+    ])("accepts the label with %s", (_description, search) => {
+        expect(openPage(search, () => createStorage()).read()).toBe("Dad")
+    })
+
+    it.each([
+        ["spaces inside", "?user=two+words"],
+        ["trailing punctuation", "?user=Dad."],
+        ["an email address", "?user=a.b%40example.com"],
         ["markup", "?user=%3Cscript%3E"],
         ["a label that is too long", `?user=${"x".repeat(21)}`],
         ["an empty label", "?user="],
-    ])("ignores %s and keeps the existing label", (_description, search) => {
+    ])("rejects a label with %s and keeps the stored one", (_description, search) => {
         const storage = createStorage({ [ACTIVITY_USER_STORAGE_KEY]: "Robin" })
 
-        rememberActivityUserFromAddress(search, storage)
+        expect(openPage(search, () => storage).read()).toBe("Robin")
+        expect(storage.values.get(ACTIVITY_USER_STORAGE_KEY)).toBe("Robin")
+    })
 
-        expect(readActivityUser(storage)).toBe("Robin")
+    it("rejects an invalid label as PUBLIC when nothing is stored", () => {
+        expect(openPage("?user=two+words", () => createStorage()).read()).toBe("PUBLIC")
     })
 
     it("reports PUBLIC when the stored value is not a valid label", () => {
-        expect(readActivityUser(createStorage({ [ACTIVITY_USER_STORAGE_KEY]: "not a label!" }))).toBe("PUBLIC")
-    })
+        const storage = createStorage({ [ACTIVITY_USER_STORAGE_KEY]: "not a label!" })
 
-    it("falls back to PUBLIC when browser storage is unavailable", () => {
-        expect(() => rememberActivityUserFromAddress("?user=Robin", brokenStorage)).not.toThrow()
-        expect(readActivityUser(brokenStorage)).toBe("PUBLIC")
+        expect(openPage("", () => storage).read()).toBe("PUBLIC")
     })
 })
 
-describe("reportDictationActivity", () => {
+describe("testing labels when storage fails", () => {
+    it.each([
+        ["storage refuses writes", () => createReadOnlyStorage()],
+        ["every storage call throws", () => brokenStorage],
+        ["referring to storage throws", blockedStorage],
+    ])("uses the label from the address on that page when %s", (_description, getStorage) => {
+        expect(() => openPage("?user=Dad", getStorage)).not.toThrow()
+        expect(openPage("?user=Dad", getStorage).read()).toBe("Dad")
+    })
+
+    it("uses ?user=PUBLIC on that page even when the stored label cannot be removed", () => {
+        const getStorage = () => createReadOnlyStorage({ [ACTIVITY_USER_STORAGE_KEY]: "Robin" })
+
+        expect(openPage("?user=PUBLIC", getStorage).read()).toBe("PUBLIC")
+    })
+
+    it.each([
+        ["every storage call throws", () => brokenStorage],
+        ["referring to storage throws", blockedStorage],
+    ])("is PUBLIC without a label in the address when %s", (_description, getStorage) => {
+        expect(() => openPage("", getStorage)).not.toThrow()
+        expect(openPage("", getStorage).read()).toBe("PUBLIC")
+    })
+
+    it("still reads a stored label when storage can be read but not written", () => {
+        const getStorage = () => createReadOnlyStorage({ [ACTIVITY_USER_STORAGE_KEY]: "Robin" })
+
+        expect(openPage("", getStorage).read()).toBe("Robin")
+    })
+})
+
+describe("createActivityReporter", () => {
     afterEach(() => {
         vi.unstubAllGlobals()
     })
 
-    it("sends only the event name and testing label, without a body", () => {
+    const reportFrom = (search: string, getStorage: Parameters<typeof createActivityUser>[0]) => {
         const sendBeacon = vi.fn(() => true)
-        vi.stubGlobal("localStorage", createStorage({ [ACTIVITY_USER_STORAGE_KEY]: "Robin" }))
         vi.stubGlobal("navigator", { sendBeacon })
+        createActivityReporter(openPage(search, getStorage))("dictation_started")
 
-        reportDictationActivity("dictation_started")
+        return sendBeacon
+    }
+
+    it("sends only the event name and testing label, without a body", () => {
+        const sendBeacon = reportFrom("?user=Robin", () => createStorage())
 
         expect(sendBeacon).toHaveBeenCalledTimes(1)
         expect(sendBeacon).toHaveBeenCalledWith("/api/dictation/activity?event=dictation_started&user=Robin")
+    })
+
+    it("sends the label from the address even when storage cannot keep it", () => {
+        expect(reportFrom("?user=Dad", () => createReadOnlyStorage()))
+            .toHaveBeenCalledWith("/api/dictation/activity?event=dictation_started&user=Dad")
+        expect(reportFrom("?user=Dad", blockedStorage))
+            .toHaveBeenCalledWith("/api/dictation/activity?event=dictation_started&user=Dad")
+    })
+
+    it("sends the stored label on a later visit", () => {
+        const storage = createStorage()
+        openPage("?user=Dad", () => storage)
+
+        expect(reportFrom("", () => storage))
+            .toHaveBeenCalledWith("/api/dictation/activity?event=dictation_started&user=Dad")
+    })
+
+    it("sends PUBLIC when no label is set, cleared, or invalid", () => {
+        const storage = createStorage({ [ACTIVITY_USER_STORAGE_KEY]: "Robin" })
+
+        expect(reportFrom("", () => createStorage()))
+            .toHaveBeenCalledWith("/api/dictation/activity?event=dictation_started&user=PUBLIC")
+        expect(reportFrom("?user=PUBLIC", () => storage))
+            .toHaveBeenCalledWith("/api/dictation/activity?event=dictation_started&user=PUBLIC")
+        expect(reportFrom("?user=not+valid", () => createStorage()))
+            .toHaveBeenCalledWith("/api/dictation/activity?event=dictation_started&user=PUBLIC")
+    })
+
+    it("reads the label when each event is sent, not when the reporter is created", () => {
+        const sendBeacon = vi.fn(() => true)
+        vi.stubGlobal("navigator", { sendBeacon })
+        const user = createActivityUser(() => createStorage())
+        const report = createActivityReporter(user)
+
+        report("dictation_started")
+        user.applyAddress("?user=Dad")
+        report("dictation_completed")
+
+        expect(sendBeacon.mock.calls).toEqual([
+            ["/api/dictation/activity?event=dictation_started&user=PUBLIC"],
+            ["/api/dictation/activity?event=dictation_completed&user=Dad"],
+        ])
     })
 
     it("falls back to a request it does not wait for, and ignores its failure", async () => {
         const fetchActivity = vi.fn(async () => {
             throw new Error("offline")
         })
-        vi.stubGlobal("localStorage", createStorage())
         vi.stubGlobal("navigator", {})
         vi.stubGlobal("fetch", fetchActivity)
+        const report = createActivityReporter(openPage("", () => createStorage()))
 
-        expect(() => reportDictationActivity("dictation_completed")).not.toThrow()
+        expect(() => report("dictation_completed")).not.toThrow()
         await Promise.resolve()
 
         expect(fetchActivity).toHaveBeenCalledWith(

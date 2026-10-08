@@ -252,6 +252,12 @@ other visits. It is stored in that browser only, and has no control in the app.
 A label is 1 to 20 letters, digits, hyphens or underscores. Anything else is
 ignored and leaves the current label as it was.
 
+A label in the address applies to that page straight away and takes precedence
+over a stored one. It does not depend on the browser being able to save it. If
+the browser cannot save it, as in some private browsing modes and browsers
+embedded in other apps, the label lasts only for pages opened with it in the
+address, so use the full `?user=` link each time on such a browser.
+
 Events from a labelled browser are logged with that label as `user`. All
 others are logged with `"user":"PUBLIC"`, which means only that no label was
 set in that browser. It does not confirm an unknown visitor: your own phone, a

@@ -3,9 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { Analytics } from '@vercel/analytics/react'
 import './index.css'
 import App from './App.tsx'
-import { rememberActivityUserFromAddress } from './dictation/dictationActivity.ts'
+import { activityUser } from './dictation/dictationActivity.ts'
 
-rememberActivityUserFromAddress(window.location.search, localStorage)
+activityUser.applyAddress(window.location.search)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
