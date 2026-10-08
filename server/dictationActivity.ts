@@ -1,16 +1,16 @@
 import {
     DICTATION_ACTIVITY_EVENTS,
-    DICTATION_ACTIVITY_MODES,
     DICTATION_ACTIVITY_PATH,
+    isDictationActivityUser,
 } from "../shared/dictationApi.ts"
-import type { DictationActivityEvent, DictationActivityMode } from "../shared/dictationApi.ts"
+import type { DictationActivityEvent } from "../shared/dictationApi.ts"
 
 /** One line in the server log for a dictation activity event. */
 export interface DictationActivityRecord {
     type: "dictation_activity"
     event: DictationActivityEvent
-    /** DEV means the browser was marked as its owner's. PUBLIC means only that it was not. */
-    mode: DictationActivityMode
+    /** A testing label set in the browser, or PUBLIC when none was set. */
+    user: string
     timestamp: string
 }
 
@@ -20,14 +20,15 @@ const writeToServerLog: WriteActivityRecord = (record) => {
     console.log(JSON.stringify(record))
 }
 
-const isOneOf = <T extends string>(values: readonly T[], value: string | null): value is T =>
-    value !== null && (values as readonly string[]).includes(value)
+const isActivityEvent = (value: string | null): value is DictationActivityEvent =>
+    value !== null && (DICTATION_ACTIVITY_EVENTS as readonly string[]).includes(value)
 
 /**
  * Records a dictation activity event in the server log and returns the HTTP
  * status to answer with, or undefined for any other path. Only an event name
- * and mode from the fixed lists are ever logged, so nothing else a caller
- * sends, such as transcript text, can reach the log.
+ * from the fixed list and a short label of letters, digits, hyphens and
+ * underscores are ever logged, so nothing else a caller sends, such as
+ * transcript text, can reach the log.
  */
 export const handleDictationActivityRequest = (
     method: string | undefined,
@@ -44,12 +45,12 @@ export const handleDictationActivityRequest = (
     }
 
     const event = url.searchParams.get("event")
-    const mode = url.searchParams.get("mode")
+    const user = url.searchParams.get("user")
 
-    if (!isOneOf(DICTATION_ACTIVITY_EVENTS, event) || !isOneOf(DICTATION_ACTIVITY_MODES, mode)) {
+    if (!isActivityEvent(event) || !isDictationActivityUser(user)) {
         return 400
     }
 
-    write({ type: "dictation_activity", event, mode, timestamp: getNow().toISOString() })
+    write({ type: "dictation_activity", event, user, timestamp: getNow().toISOString() })
     return 204
 }

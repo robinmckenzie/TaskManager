@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
-    DEV_MODE_STORAGE_KEY,
-    readActivityMode,
-    rememberDevModeFromAddress,
+    ACTIVITY_USER_STORAGE_KEY,
+    readActivityUser,
+    rememberActivityUserFromAddress,
     reportDictationActivity,
     reportSessionActivity,
 } from "./dictationActivity"
@@ -32,43 +32,62 @@ const brokenStorage = {
     },
 }
 
-describe("DEV mode", () => {
-    it("is PUBLIC unless this browser has been marked", () => {
-        expect(readActivityMode(createStorage())).toBe("PUBLIC")
-        expect(readActivityMode(createStorage({ [DEV_MODE_STORAGE_KEY]: "on" }))).toBe("DEV")
+describe("testing labels", () => {
+    it("is PUBLIC until a label has been set in this browser", () => {
+        expect(readActivityUser(createStorage())).toBe("PUBLIC")
     })
 
-    it("is turned on by ?devmode=on and stays on for later visits without it", () => {
-        const storage = createStorage()
+    it.each(["Robin", "Dad", "Claude", "test-2", "qa_team"])(
+        "stores the label from ?user=%s and keeps it for later visits without it",
+        (label) => {
+            const storage = createStorage()
 
-        rememberDevModeFromAddress("?devmode=on", storage)
-        rememberDevModeFromAddress("", storage)
-        rememberDevModeFromAddress("?other=1", storage)
+            rememberActivityUserFromAddress(`?user=${label}`, storage)
+            rememberActivityUserFromAddress("", storage)
+            rememberActivityUserFromAddress("?other=1", storage)
 
-        expect(readActivityMode(storage)).toBe("DEV")
+            expect(readActivityUser(storage)).toBe(label)
+        },
+    )
+
+    it("replaces an earlier label with a new one", () => {
+        const storage = createStorage({ [ACTIVITY_USER_STORAGE_KEY]: "Robin" })
+
+        rememberActivityUserFromAddress("?user=Dad", storage)
+
+        expect(readActivityUser(storage)).toBe("Dad")
     })
 
-    it("is turned off by ?devmode=off", () => {
-        const storage = createStorage({ [DEV_MODE_STORAGE_KEY]: "on" })
+    it.each(["PUBLIC", "public", "Public"])("clears the stored label with ?user=%s", (value) => {
+        const storage = createStorage({ [ACTIVITY_USER_STORAGE_KEY]: "Robin" })
 
-        rememberDevModeFromAddress("?devmode=off", storage)
+        rememberActivityUserFromAddress(`?user=${value}`, storage)
 
-        expect(readActivityMode(storage)).toBe("PUBLIC")
-        expect(storage.values.has(DEV_MODE_STORAGE_KEY)).toBe(false)
+        expect(storage.values.has(ACTIVITY_USER_STORAGE_KEY)).toBe(false)
+        expect(readActivityUser(storage)).toBe("PUBLIC")
     })
 
-    it("ignores other values of the parameter", () => {
-        const storage = createStorage()
+    it.each([
+        ["spaces", "?user=two+words"],
+        ["punctuation", "?user=a.b%40example.com"],
+        ["markup", "?user=%3Cscript%3E"],
+        ["a label that is too long", `?user=${"x".repeat(21)}`],
+        ["an empty label", "?user="],
+    ])("ignores %s and keeps the existing label", (_description, search) => {
+        const storage = createStorage({ [ACTIVITY_USER_STORAGE_KEY]: "Robin" })
 
-        rememberDevModeFromAddress("?devmode=yes", storage)
-        rememberDevModeFromAddress("?devmode=", storage)
+        rememberActivityUserFromAddress(search, storage)
 
-        expect(readActivityMode(storage)).toBe("PUBLIC")
+        expect(readActivityUser(storage)).toBe("Robin")
+    })
+
+    it("reports PUBLIC when the stored value is not a valid label", () => {
+        expect(readActivityUser(createStorage({ [ACTIVITY_USER_STORAGE_KEY]: "not a label!" }))).toBe("PUBLIC")
     })
 
     it("falls back to PUBLIC when browser storage is unavailable", () => {
-        expect(() => rememberDevModeFromAddress("?devmode=on", brokenStorage)).not.toThrow()
-        expect(readActivityMode(brokenStorage)).toBe("PUBLIC")
+        expect(() => rememberActivityUserFromAddress("?user=Robin", brokenStorage)).not.toThrow()
+        expect(readActivityUser(brokenStorage)).toBe("PUBLIC")
     })
 })
 
@@ -77,15 +96,15 @@ describe("reportDictationActivity", () => {
         vi.unstubAllGlobals()
     })
 
-    it("sends only the event name and mode, without a body", () => {
+    it("sends only the event name and testing label, without a body", () => {
         const sendBeacon = vi.fn(() => true)
-        vi.stubGlobal("localStorage", createStorage({ [DEV_MODE_STORAGE_KEY]: "on" }))
+        vi.stubGlobal("localStorage", createStorage({ [ACTIVITY_USER_STORAGE_KEY]: "Robin" }))
         vi.stubGlobal("navigator", { sendBeacon })
 
         reportDictationActivity("dictation_started")
 
         expect(sendBeacon).toHaveBeenCalledTimes(1)
-        expect(sendBeacon).toHaveBeenCalledWith("/api/dictation/activity?event=dictation_started&mode=DEV")
+        expect(sendBeacon).toHaveBeenCalledWith("/api/dictation/activity?event=dictation_started&user=Robin")
     })
 
     it("falls back to a request it does not wait for, and ignores its failure", async () => {
@@ -100,7 +119,7 @@ describe("reportDictationActivity", () => {
         await Promise.resolve()
 
         expect(fetchActivity).toHaveBeenCalledWith(
-            "/api/dictation/activity?event=dictation_completed&mode=PUBLIC",
+            "/api/dictation/activity?event=dictation_completed&user=PUBLIC",
             { method: "POST", keepalive: true },
         )
     })

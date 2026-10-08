@@ -1,43 +1,58 @@
-import { DICTATION_ACTIVITY_PATH } from "../../shared/dictationApi"
-import type { DictationActivityEvent, DictationActivityMode } from "../../shared/dictationApi"
+import {
+    DICTATION_ACTIVITY_PATH,
+    DICTATION_ACTIVITY_PUBLIC_USER,
+    isDictationActivityUser,
+} from "../../shared/dictationApi"
+import type { DictationActivityEvent } from "../../shared/dictationApi"
 import type { DictationSessionListener } from "./dictationSession"
 
 /*
  * Reports that dictation was used, so its owner can see activity on the
- * deployed app. Only an event name and a mode are sent: never transcript text
- * or audio. Reporting is best-effort and never holds dictation up.
+ * deployed app. Only an event name and a testing label are sent: never
+ * transcript text or audio. Reporting is best-effort and never holds
+ * dictation up.
  */
 
-export const DEV_MODE_STORAGE_KEY = "taskmanager.devMode"
-const DEV_MODE_PARAMETER = "devmode"
+export const ACTIVITY_USER_STORAGE_KEY = "taskmanager.activityUser"
+const ACTIVITY_USER_PARAMETER = "user"
+
+const isPublicUser = (label: string): boolean =>
+    label.toUpperCase() === DICTATION_ACTIVITY_PUBLIC_USER
 
 /**
- * Turns DEV mode on or off for this browser when the page address carries
- * `?devmode=on` or `?devmode=off`, and remembers the choice in local storage.
+ * Sets this browser's testing label when the page address carries
+ * `?user=NAME`, and remembers it in local storage. `?user=PUBLIC` clears it.
+ * A value that is not a valid label is ignored and changes nothing.
  */
-export const rememberDevModeFromAddress = (
+export const rememberActivityUserFromAddress = (
     search: string,
     storage: Pick<Storage, "setItem" | "removeItem">,
 ): void => {
-    const choice = new URLSearchParams(search).get(DEV_MODE_PARAMETER)
+    const label = new URLSearchParams(search).get(ACTIVITY_USER_PARAMETER)
+
+    if (!isDictationActivityUser(label)) {
+        return
+    }
 
     try {
-        if (choice === "on") {
-            storage.setItem(DEV_MODE_STORAGE_KEY, "on")
-        } else if (choice === "off") {
-            storage.removeItem(DEV_MODE_STORAGE_KEY)
+        if (isPublicUser(label)) {
+            storage.removeItem(ACTIVITY_USER_STORAGE_KEY)
+        } else {
+            storage.setItem(ACTIVITY_USER_STORAGE_KEY, label)
         }
     } catch {
         // Without storage, activity is reported as PUBLIC.
     }
 }
 
-/** DEV when this browser has been marked as its owner's, otherwise PUBLIC. */
-export const readActivityMode = (storage: Pick<Storage, "getItem">): DictationActivityMode => {
+/** This browser's testing label, or PUBLIC when none has been set. */
+export const readActivityUser = (storage: Pick<Storage, "getItem">): string => {
     try {
-        return storage.getItem(DEV_MODE_STORAGE_KEY) === "on" ? "DEV" : "PUBLIC"
+        const label = storage.getItem(ACTIVITY_USER_STORAGE_KEY)
+
+        return isDictationActivityUser(label) ? label : DICTATION_ACTIVITY_PUBLIC_USER
     } catch {
-        return "PUBLIC"
+        return DICTATION_ACTIVITY_PUBLIC_USER
     }
 }
 
@@ -45,7 +60,7 @@ export type ReportDictationActivity = (event: DictationActivityEvent) => void
 
 /** Sends an activity event to the server without waiting for a reply. */
 export const reportDictationActivity: ReportDictationActivity = (event) => {
-    const url = `${DICTATION_ACTIVITY_PATH}?event=${event}&mode=${readActivityMode(localStorage)}`
+    const url = `${DICTATION_ACTIVITY_PATH}?event=${event}&user=${readActivityUser(localStorage)}`
 
     if (!navigator.sendBeacon?.(url)) {
         void fetch(url, { method: "POST", keepalive: true }).catch(() => undefined)

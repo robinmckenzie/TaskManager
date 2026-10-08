@@ -152,11 +152,11 @@ locally needs no Vercel account or tools.
 ### Dictation activity log
 
 The app reports when dictation is used, so that activity on the deployed app
-can be seen in Vercel. The browser sends an event name and a mode to
+can be seen in Vercel. The browser sends an event name and a testing label to
 `/api/dictation/activity`, and the server writes one line of JSON to its log:
 
 ```json
-{"type":"dictation_activity","event":"dictation_started","mode":"PUBLIC","timestamp":"2026-10-08T15:30:00.000Z"}
+{"type":"dictation_activity","event":"dictation_transcript_received","user":"Dad","timestamp":"2026-10-08T15:30:00.000Z"}
 ```
 
 | Event | What it shows |
@@ -166,30 +166,39 @@ can be seen in Vercel. The browser sends an event name and a mode to
 | `dictation_completed` | A started session ended normally: stopped by the user or by an automatic stop. |
 | `dictation_failed` | A session ended with an error, before or after it started. |
 
-Transcript text, audio, keys, tokens, error messages and anything identifying
-the visitor are never logged. The server accepts only the four event names and
-two modes above and ignores everything else in a request. Reporting is
-best-effort: if it fails, dictation carries on and nothing is retried.
+Transcript text, audio, keys, tokens and error messages are never logged. The
+server accepts only the four event names above and a valid testing label, and
+ignores everything else in a request. Reporting is best-effort: if it fails,
+dictation carries on and nothing is retried.
 
 To see the log, open the project in Vercel, choose Logs, and search for
 `dictation_activity`. The Hobby plan keeps runtime logs for one hour, so they
 show recent activity only and are not a history.
 
-#### DEV mode
+#### Testing labels
 
-DEV mode marks your own browser so that your testing can be told apart from
+A testing label names the browser that dictation was used from, so that your
+own testing, and that of people you ask to try the app, can be told apart from
 other visits. It is stored in that browser only, and has no control in the app.
 
-- Turn it on: open the app with `?devmode=on` added to the address, for
-  example `https://your-address/?devmode=on`. It stays on for later visits.
-- Turn it off: open the app with `?devmode=off`.
-- Check it: in the browser console, `localStorage.getItem("taskmanager.devMode")`
-  is `"on"` when DEV mode is on.
+- Set a label: open the app with `?user=NAME` added to the address, for example
+  `https://your-address/?user=Robin`. It stays set for later visits without
+  the parameter. Opening the app with a different name replaces it.
+- Clear the label: open the app with `?user=PUBLIC`.
+- Check it: in the browser console,
+  `localStorage.getItem("taskmanager.activityUser")` shows the label, or `null`
+  when none is set.
 
-Events from a browser in DEV mode are logged with `"mode":"DEV"`. All others
-are logged with `"mode":"PUBLIC"`, which means only that the browser was not
-marked DEV. It does not confirm an outside visitor: your own phone, a private
-window, or a browser where you have not turned DEV mode on all count as PUBLIC.
+A label is 1 to 20 letters, digits, hyphens or underscores. Anything else is
+ignored and leaves the current label as it was.
+
+Events from a labelled browser are logged with that label as `user`. All
+others are logged with `"user":"PUBLIC"`, which means only that no label was
+set in that browser. It does not confirm an unknown visitor: your own phone, a
+private window, or any browser where you have not set a label all count as
+PUBLIC. A label is a convenience and not proof of who someone is, because
+anyone can open the app with any label. Giving someone a link that includes
+`?user=` labels their dictation activity with that name.
 
 ### Before a demonstration
 

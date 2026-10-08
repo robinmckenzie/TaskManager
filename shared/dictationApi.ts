@@ -16,9 +16,17 @@ export const DICTATION_ACTIVITY_EVENTS = [
 ] as const
 export type DictationActivityEvent = (typeof DICTATION_ACTIVITY_EVENTS)[number]
 
-/** DEV is a browser its owner has marked as their own. PUBLIC is any other. */
-export const DICTATION_ACTIVITY_MODES = ["DEV", "PUBLIC"] as const
-export type DictationActivityMode = (typeof DICTATION_ACTIVITY_MODES)[number]
+/** Reported as the user by a browser that has no testing label set. */
+export const DICTATION_ACTIVITY_PUBLIC_USER = "PUBLIC"
+
+const ACTIVITY_USER_PATTERN = /^[A-Za-z0-9_-]{1,20}$/
+
+/**
+ * Whether a value may be logged as an activity user: a short testing label of
+ * letters, digits, hyphens and underscores, which includes PUBLIC.
+ */
+export const isDictationActivityUser = (value: string | null | undefined): value is string =>
+    typeof value === "string" && ACTIVITY_USER_PATTERN.test(value)
 
 /** Timings from dictation.config.toml, in seconds. */
 export interface DictationTimings {

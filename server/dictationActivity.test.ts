@@ -16,42 +16,49 @@ const record = (method: string, query: string) => {
 }
 
 describe("handleDictationActivityRequest", () => {
-    it.each(DICTATION_ACTIVITY_EVENTS)("logs %s with its mode and a timestamp", (event) => {
-        expect(record("POST", `?event=${event}&mode=PUBLIC`)).toEqual({
+    it.each(DICTATION_ACTIVITY_EVENTS)("logs %s with its user and a timestamp", (event) => {
+        expect(record("POST", `?event=${event}&user=PUBLIC`)).toEqual({
             status: 204,
-            written: [{ type: "dictation_activity", event, mode: "PUBLIC", timestamp: "2026-10-08T15:30:00.000Z" }],
+            written: [{ type: "dictation_activity", event, user: "PUBLIC", timestamp: "2026-10-08T15:30:00.000Z" }],
         })
     })
 
-    it("logs DEV mode separately from PUBLIC", () => {
-        expect(record("POST", "?event=dictation_started&mode=DEV").written[0].mode).toBe("DEV")
-    })
+    it.each(["Robin", "Dad", "Claude", "test-2", "qa_team", "A", "x".repeat(20)])(
+        "logs the testing label %s as the user",
+        (label) => {
+            expect(record("POST", `?event=dictation_started&user=${label}`).written[0].user).toBe(label)
+        },
+    )
 
-    it("logs nothing beyond the event, mode and timestamp, whatever else is sent", () => {
+    it("logs nothing beyond the event, user and timestamp, whatever else is sent", () => {
         const { status, written } = record(
             "POST",
-            "?event=dictation_completed&mode=PUBLIC&transcript=secret+words&token=abc&user=robin",
+            "?event=dictation_completed&user=Dad&transcript=secret+words&token=abc&mode=DEV",
         )
 
         expect(status).toBe(204)
-        expect(Object.keys(written[0]).sort()).toEqual(["event", "mode", "timestamp", "type"])
-        expect(JSON.stringify(written)).not.toMatch(/secret|abc|robin/)
+        expect(Object.keys(written[0]).sort()).toEqual(["event", "timestamp", "type", "user"])
+        expect(JSON.stringify(written)).not.toMatch(/secret|abc|DEV/)
     })
 
     it.each([
-        ["an unknown event", "?event=dictation_exploded&mode=PUBLIC"],
-        ["free text as the event", "?event=some+transcript+text&mode=PUBLIC"],
-        ["an unknown mode", "?event=dictation_started&mode=ADMIN"],
-        ["a lower-case mode", "?event=dictation_started&mode=dev"],
-        ["a missing event", "?mode=PUBLIC"],
-        ["a missing mode", "?event=dictation_started"],
+        ["an unknown event", "?event=dictation_exploded&user=PUBLIC"],
+        ["free text as the event", "?event=some+transcript+text&user=PUBLIC"],
+        ["a label with spaces", "?event=dictation_started&user=some+spoken+words"],
+        ["a label with punctuation", "?event=dictation_started&user=a.b%40example.com"],
+        ["a label with markup", "?event=dictation_started&user=%3Cscript%3E"],
+        ["a label with a line break", "?event=dictation_started&user=Dad%0Afake"],
+        ["a label that is too long", `?event=dictation_started&user=${"x".repeat(21)}`],
+        ["an empty label", "?event=dictation_started&user="],
+        ["a missing event", "?user=PUBLIC"],
+        ["a missing user", "?event=dictation_started"],
         ["no details", ""],
     ])("rejects %s and logs nothing", (_description, query) => {
         expect(record("POST", query)).toEqual({ status: 400, written: [] })
     })
 
     it("rejects other methods and logs nothing", () => {
-        expect(record("GET", "?event=dictation_started&mode=PUBLIC")).toEqual({ status: 405, written: [] })
+        expect(record("GET", "?event=dictation_started&user=PUBLIC")).toEqual({ status: 405, written: [] })
     })
 
     it("leaves other paths alone", () => {
@@ -59,7 +66,7 @@ describe("handleDictationActivityRequest", () => {
 
         expect(handleDictationActivityRequest(
             "POST",
-            new URL("https://taskmanager.example/api/dictation/token?event=dictation_started&mode=DEV"),
+            new URL("https://taskmanager.example/api/dictation/token?event=dictation_started&user=Robin"),
             write,
         )).toBeUndefined()
         expect(write).not.toHaveBeenCalled()
@@ -69,13 +76,13 @@ describe("handleDictationActivityRequest", () => {
         const log = vi.spyOn(console, "log").mockImplementation(() => undefined)
 
         try {
-            handleDictationActivityRequest("POST", activityUrl("?event=dictation_failed&mode=DEV"))
+            handleDictationActivityRequest("POST", activityUrl("?event=dictation_failed&user=Robin"))
 
             expect(log).toHaveBeenCalledTimes(1)
             expect(JSON.parse(log.mock.calls[0][0] as string)).toMatchObject({
                 type: "dictation_activity",
                 event: "dictation_failed",
-                mode: "DEV",
+                user: "Robin",
             })
         } finally {
             log.mockRestore()
@@ -93,7 +100,7 @@ describe("hosted activity endpoint", () => {
         const createToken = vi.fn(async () => "temporary-jwt")
         const handler = createDictationFetchHandler(getConfig, createToken, (entry) => written.push(entry))
 
-        const response = await handler(new Request(activityUrl("?event=dictation_started&mode=PUBLIC"), { method: "POST" }))
+        const response = await handler(new Request(activityUrl("?event=dictation_started&user=PUBLIC"), { method: "POST" }))
 
         expect(response.status).toBe(204)
         expect(response.headers.get("Cache-Control")).toBe("no-store")
@@ -104,7 +111,7 @@ describe("hosted activity endpoint", () => {
 
     it("answers an invalid event with 400", async () => {
         const handler = createDictationFetchHandler(getConfig, async () => "temporary-jwt", () => undefined)
-        const response = await handler(new Request(activityUrl("?event=nonsense&mode=PUBLIC"), { method: "POST" }))
+        const response = await handler(new Request(activityUrl("?event=nonsense&user=PUBLIC"), { method: "POST" }))
 
         expect(response.status).toBe(400)
     })
