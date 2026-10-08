@@ -4,11 +4,15 @@ import { join } from "node:path"
 import { createSpeechmaticsJWT, SpeechmaticsJWTError } from "@speechmatics/auth"
 import { loadEnv } from "vite"
 import type { Connect, Plugin } from "vite"
+import { DICTATION_STATUS_PATH, DICTATION_TOKEN_PATH } from "../shared/dictationApi.ts"
+import type {
+    DictationErrorResponse,
+    DictationStatusResponse,
+    DictationTimings,
+    DictationToken,
+} from "../shared/dictationApi.ts"
 import { DICTATION_CONFIG_FILE, parseDictationSettings } from "./dictationConfig.ts"
-import type { DictationSettings, DictationTimings } from "./dictationConfig.ts"
-
-export const DICTATION_CONFIG_PATH = "/api/dictation/config"
-export const DICTATION_TOKEN_PATH = "/api/dictation/token"
+import type { DictationSettings } from "./dictationConfig.ts"
 
 // Speechmatics temporary keys must live for at least 60 seconds.
 const TOKEN_TTL_SECONDS = 60
@@ -23,7 +27,7 @@ export interface DictationServerConfig {
 
 export interface DictationResponse {
     status: number
-    body: unknown
+    body: DictationStatusResponse | DictationToken | DictationErrorResponse
 }
 
 export type CreateDictationToken = (apiKey: string) => Promise<string>
@@ -63,7 +67,7 @@ export const handleDictationRequest = async (
     config: DictationServerConfig,
     createToken: CreateDictationToken,
 ): Promise<DictationResponse | undefined> => {
-    if (path === DICTATION_CONFIG_PATH) {
+    if (path === DICTATION_STATUS_PATH) {
         if (method !== "GET") {
             return { status: 405, body: { error: "method_not_allowed" } }
         }

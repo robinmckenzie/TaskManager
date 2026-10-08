@@ -1,11 +1,7 @@
 import { SpeechmaticsJWTError } from "@speechmatics/auth"
 import { describe, expect, it, vi } from "vitest"
-import {
-    DICTATION_CONFIG_PATH,
-    DICTATION_TOKEN_PATH,
-    handleDictationRequest,
-    readDictationConfig,
-} from "./dictationEndpoints.ts"
+import { DICTATION_STATUS_PATH, DICTATION_TOKEN_PATH } from "../shared/dictationApi.ts"
+import { handleDictationRequest, readDictationConfig } from "./dictationEndpoints.ts"
 import type { DictationSettings } from "./dictationConfig.ts"
 
 const settings: DictationSettings = {
@@ -52,11 +48,11 @@ describe("handleDictationRequest", () => {
     const createToken = vi.fn(async () => "temporary-jwt")
 
     it("reports whether dictation is configured without revealing the key", async () => {
-        const result = await handleDictationRequest("GET", DICTATION_CONFIG_PATH, configured, createToken)
+        const result = await handleDictationRequest("GET", DICTATION_STATUS_PATH, configured, createToken)
 
         expect(result).toEqual({ status: 200, body: { configured: true } })
         expect(JSON.stringify(result)).not.toContain("secret-key")
-        expect(await handleDictationRequest("GET", DICTATION_CONFIG_PATH, unconfigured, createToken))
+        expect(await handleDictationRequest("GET", DICTATION_STATUS_PATH, unconfigured, createToken))
             .toEqual({ status: 200, body: { configured: false } })
     })
 

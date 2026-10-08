@@ -4,22 +4,8 @@ import {
     getRealtimeErrorKind,
 } from "./dictationMessages"
 import type { DictationErrorKind, DictationStopReason } from "./dictationMessages"
+import type { DictationTimings, DictationToken } from "../../shared/dictationApi"
 import type { TranscriptToken } from "./insertionText"
-
-/** Timings from dictation.config.toml, in seconds. */
-export interface DictationTimings {
-    inactivityTimeoutSeconds: number
-    maxSessionSeconds: number
-    settleTimeoutSeconds: number
-}
-
-export interface DictationToken {
-    jwt: string
-    url: string
-    model: string
-    language: string
-    timings: DictationTimings
-}
 
 export interface RealtimeResult {
     type: string

@@ -1,15 +1,18 @@
 import workletScriptUrl from "@speechmatics/browser-audio-input/pcm-audio-worklet.min.js?url&no-inline"
+import { DICTATION_STATUS_PATH, DICTATION_TOKEN_PATH } from "../../shared/dictationApi"
+import type {
+    DictationApiErrorCode,
+    DictationErrorResponse,
+    DictationStatusResponse,
+    DictationToken,
+} from "../../shared/dictationApi"
 import { DictationError } from "./dictationMessages"
 import type { DictationErrorKind } from "./dictationMessages"
 import type {
     AudioSource,
-    DictationToken,
     RealtimeConnection,
     RealtimeMessage,
 } from "./dictationSession"
-
-const DICTATION_CONFIG_URL = "/api/dictation/config"
-const DICTATION_TOKEN_URL = "/api/dictation/token"
 
 // Speechmatics recommends 16 kHz for realtime transcription. Firefox only
 // records at the device's default rate, so it uses that instead.
@@ -30,10 +33,10 @@ export const checkDictationAvailability = async (): Promise<DictationAvailabilit
     }
 
     try {
-        const response = await fetch(DICTATION_CONFIG_URL)
+        const response = await fetch(DICTATION_STATUS_PATH)
         const body: unknown = response.ok ? await response.json() : undefined
 
-        return (body as { configured?: unknown } | undefined)?.configured === true
+        return (body as Partial<DictationStatusResponse> | undefined)?.configured === true
             ? "available"
             : "not_configured"
     } catch {
@@ -41,7 +44,7 @@ export const checkDictationAvailability = async (): Promise<DictationAvailabilit
     }
 }
 
-const getTokenErrorKind = (error: unknown): DictationErrorKind => {
+const getTokenErrorKind = (error: DictationApiErrorCode | undefined): DictationErrorKind => {
     switch (error) {
         case "not_configured":
             return "not_configured"
@@ -75,7 +78,7 @@ export const fetchDictationToken = async (): Promise<DictationToken> => {
     let response: Response
 
     try {
-        response = await fetch(DICTATION_TOKEN_URL, { method: "POST" })
+        response = await fetch(DICTATION_TOKEN_PATH, { method: "POST" })
     } catch (error) {
         throw new DictationError("service_unavailable", { cause: error })
     }
@@ -86,7 +89,7 @@ export const fetchDictationToken = async (): Promise<DictationToken> => {
         return body
     }
 
-    throw new DictationError(getTokenErrorKind((body as { error?: unknown } | undefined)?.error))
+    throw new DictationError(getTokenErrorKind((body as Partial<DictationErrorResponse> | undefined)?.error))
 }
 
 /** Opens a Speechmatics realtime client, loading the SDK only when needed. */

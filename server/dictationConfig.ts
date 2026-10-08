@@ -1,12 +1,7 @@
 import { parse } from "smol-toml"
+import type { DictationTimings } from "../shared/dictationApi.ts"
 
 export const DICTATION_CONFIG_FILE = "dictation.config.toml"
-
-export interface DictationTimings {
-    inactivityTimeoutSeconds: number
-    maxSessionSeconds: number
-    settleTimeoutSeconds: number
-}
 
 export interface DictationSettings {
     model: string
