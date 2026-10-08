@@ -31,3 +31,6 @@ dist-ssr
 
 # Vercel CLI project link and local build output
 .vercel
+
+# Screenshots and other files written by browser checks
+.playwright-mcp/

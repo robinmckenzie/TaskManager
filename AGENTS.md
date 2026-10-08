@@ -34,6 +34,7 @@ Use npm. Keep `package-lock.json` in sync with `package.json` when dependencies 
 
 - `npm install` — install dependencies.
 - `npm run dev` — start the development server.
+- `npm run dev:browser-check` - start the isolated server for browser checks (see Browser verification).
 - `npm run build` — check TypeScript and create the production build.
 - `npm run lint` — run ESLint.
 - `npm test` — run unit tests once.
@@ -70,6 +71,23 @@ See README for supported Node.js versions.
 - For code changes, run `npm run build`, `npm run lint`, and `npm test`. Report failures or checks that could not run.
 - Add or update regression tests for changed logic where useful.
 - For UI changes, verify affected behavior in a browser. Check drag-and-drop and refresh persistence when those features are affected.
+
+## Browser verification
+
+Claude Code can drive a real browser through the Playwright MCP server registered in `.mcp.json`. README describes the setup.
+
+- Use it when a change affects what the app renders or how it responds to input. It is not needed for changes that cannot affect the UI.
+- Run checks only against the dedicated server started with `npm run dev:browser-check`, at `http://127.0.0.1:5183`. Do not use the usual development server, `npm run preview`, `vercel dev`, or the deployed site for them. Do not stop or restart a server the owner already has running.
+- Before starting the dedicated server, confirm that the shell has no Speechmatics, database or Vercel variables set, by listing variable names only. Never print a value. The server loads no `.env` files and refuses to start if such a variable is present; do not work around a refusal.
+- After it starts, confirm that `GET /api/dictation/status` reports `configured: false` before opening the browser.
+- Never give browser checks production credentials, and never let them reach the production database or the Speechmatics service. Live dictation stays a manual check.
+- Use only the isolated browser that the MCP server opens. Never connect to the owner's own browser or browser profile.
+- Open only `http://127.0.0.1:5183`. The address allow-list in `.mcp.json` is a guardrail, not a security boundary, so do not rely on it to stop a visit elsewhere.
+- Begin each check from a known state by using "Reset to sample tasks".
+- Screenshots and other files belong in `.playwright-mcp/`, which Git ignores. A file name given explicitly is resolved against the project root, so start it with `.playwright-mcp/`. Do not commit these files.
+- Do not use `browser_run_code_unsafe`, which runs arbitrary code outside the page. `.claude/settings.json` denies it; do not remove that rule or reach the same effect another way.
+- If any part of this isolation cannot be verified, stop and report instead of continuing.
+- When handing over, state which behaviours were verified in a browser, which were not, and why. Do not report something as verified if automation could not check it reliably.
 
 ## Future considerations
 
