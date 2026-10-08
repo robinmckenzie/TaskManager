@@ -420,6 +420,8 @@ const App: FC = () => {
 
     const dictation = useDictation({
         vocabulary: users.map((user: User): string => user.name),
+        getText: (id: string): string | undefined =>
+            tasks.find((task: TaskType): boolean => task.id === id)?.text,
         setText: (id: string, text: string): void => updateTask(id, { text }),
     })
 
