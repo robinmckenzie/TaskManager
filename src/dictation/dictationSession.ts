@@ -68,6 +68,13 @@ export interface DictationSessionDependencies {
 
 type SessionPhase = "starting" | "listening" | "settling" | "settled"
 
+/**
+ * How long connecting to Speechmatics may take once the microphone is
+ * recording. The configured timings are not known until the token arrives, so
+ * this cannot come from them.
+ */
+export const STARTUP_TIMEOUT_MS = 15_000
+
 // Melia 1 does not yet support a custom dictionary or max_delay.
 const supportsCustomVocabulary = (model: string): boolean => model !== "melia-1"
 
@@ -120,6 +127,8 @@ export class DictationSession {
     private sampleRate = 0
     private samplesSent = 0
     private pendingAudio: Float32Array[] = []
+    private recordingStartedAt = 0
+    private startupTimer?: ReturnType<typeof setTimeout>
     private inactivityTimer?: ReturnType<typeof setTimeout>
     private maxDurationTimer?: ReturnType<typeof setTimeout>
     private settleTimer?: ReturnType<typeof setTimeout>
@@ -164,6 +173,13 @@ export class DictationSession {
                 return
             }
 
+            // The microphone is recording from here, so starting is bounded
+            // and the maximum session duration is counted from now.
+            this.recordingStartedAt = Date.now()
+            this.startupTimer = setTimeout(
+                () => this.stop("error", "service_unavailable"),
+                STARTUP_TIMEOUT_MS,
+            )
             const token = await fetchToken()
 
             if (this.isStopped) {
@@ -171,6 +187,10 @@ export class DictationSession {
             }
 
             this.sessionTimings = token.timings
+            this.maxDurationTimer = setTimeout(
+                () => this.stop("max_duration"),
+                toMilliseconds(token.timings.maxSessionSeconds) - (Date.now() - this.recordingStartedAt),
+            )
             const connection = await createConnection(token.url)
 
             if (this.isStopped) {
@@ -192,12 +212,9 @@ export class DictationSession {
             }
 
             this.phase = "listening"
+            clearTimeout(this.startupTimer)
             this.flushPendingAudio()
             this.restartInactivityTimer()
-            this.maxDurationTimer = setTimeout(
-                () => this.stop("max_duration"),
-                toMilliseconds(token.timings.maxSessionSeconds),
-            )
             this.dependencies.listener.onListening()
         } catch (error) {
             this.stop("error", getErrorKind(error, "service_unavailable"))
@@ -293,6 +310,7 @@ export class DictationSession {
     }
 
     private clearTimers(): void {
+        clearTimeout(this.startupTimer)
         clearTimeout(this.inactivityTimer)
         clearTimeout(this.maxDurationTimer)
     }

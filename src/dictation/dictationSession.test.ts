@@ -3,6 +3,7 @@ import { DictationError } from "./dictationMessages"
 import {
     createTranscriptionConfig,
     DictationSession,
+    STARTUP_TIMEOUT_MS,
     toTranscriptTokens,
 } from "./dictationSession"
 import type {
@@ -386,6 +387,99 @@ describe("DictationSession", () => {
             expect(fake.connection.close).toHaveBeenCalled()
             expect(listener.onStopped).toHaveBeenCalledTimes(1)
             expect(listener.onStopped).toHaveBeenCalledWith("user", undefined)
+        })
+    })
+
+    describe("slow or stalled starting", () => {
+        const startStalled = (step: "token" | "recognition", timingOverrides = {}) => {
+            const fake = createFakeConnection()
+            const audio = createFakeAudioSource()
+            const listener = createListener()
+            let finishStarting: () => void = () => undefined
+            const stalled = <T,>(value: T) => new Promise<T>((resolve) => {
+                finishStarting = () => resolve(value)
+            })
+            const sessionToken = { ...token, timings: { ...timings, ...timingOverrides } }
+
+            if (step === "recognition") {
+                fake.connection.start.mockImplementation(() => stalled(undefined))
+            }
+
+            const session = new DictationSession({
+                fetchToken: async () => (step === "token" ? stalled(sessionToken) : sessionToken),
+                createConnection: async () => fake.connection,
+                createAudioSource: () => audio.source,
+                vocabulary: [],
+                listener,
+            })
+
+            return { session, fake, audio, listener, starting: session.start(), finishStarting: () => finishStarting() }
+        }
+
+        it("gives up and releases the microphone when the token request stalls", async () => {
+            const { audio, listener } = startStalled("token")
+
+            await vi.advanceTimersByTimeAsync(STARTUP_TIMEOUT_MS - 1)
+            audio.speak(1_600)
+            expect(listener.onStopped).not.toHaveBeenCalled()
+
+            await vi.advanceTimersByTimeAsync(1)
+            expect(listener.onStopped).toHaveBeenCalledWith("error", "service_unavailable")
+            expect(audio.source.stop).toHaveBeenCalled()
+            expect(listener.onSettled).toHaveBeenCalledTimes(1)
+        })
+
+        it("gives up and closes the connection when recognition does not start", async () => {
+            const { fake, audio, listener } = startStalled("recognition")
+
+            await vi.advanceTimersByTimeAsync(STARTUP_TIMEOUT_MS)
+
+            expect(listener.onStopped).toHaveBeenCalledWith("error", "service_unavailable")
+            expect(audio.source.stop).toHaveBeenCalled()
+            expect(fake.connection.close).toHaveBeenCalled()
+        })
+
+        it("does not time out starting once listening", async () => {
+            const { fake, listener } = await startSession()
+
+            for (let elapsed = 0; elapsed < STARTUP_TIMEOUT_MS; elapsed += 5_000) {
+                fake.receive({ message: "AddPartialTranscript", results: words("radio") })
+                await vi.advanceTimersByTimeAsync(5_000)
+            }
+
+            expect(listener.onStopped).not.toHaveBeenCalled()
+        })
+
+        it("counts the maximum duration from when recording starts", async () => {
+            const { fake, listener, starting, finishStarting } = startStalled("recognition")
+            const startupDelay = 6_000
+
+            await vi.advanceTimersByTimeAsync(startupDelay)
+            finishStarting()
+            await starting
+            expect(listener.onListening).toHaveBeenCalled()
+
+            const keepSpeakingFor = async (duration: number): Promise<void> => {
+                for (let elapsed = 0; elapsed < duration; elapsed += 1_000) {
+                    fake.receive({ message: "AddPartialTranscript", results: words("radio") })
+                    await vi.advanceTimersByTimeAsync(1_000)
+                }
+            }
+
+            await keepSpeakingFor(MAX_SESSION_MS - startupDelay - 1_000)
+            expect(listener.onStopped).not.toHaveBeenCalled()
+
+            await keepSpeakingFor(1_000)
+            expect(listener.onStopped).toHaveBeenCalledWith("max_duration", undefined)
+        })
+
+        it("applies a short maximum duration even while still starting", async () => {
+            const { audio, listener } = startStalled("recognition", { maxSessionSeconds: 3 })
+
+            await vi.advanceTimersByTimeAsync(3_000)
+
+            expect(listener.onStopped).toHaveBeenCalledWith("max_duration", undefined)
+            expect(audio.source.stop).toHaveBeenCalled()
         })
     })
 
