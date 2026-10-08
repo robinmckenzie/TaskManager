@@ -116,6 +116,13 @@ export const shiftRange = (range: TextRange, edit: TextEdit): TextRange => ({
 })
 
 /**
+ * Moves a cursor position or selection to follow a change made to the text
+ * around it, given the text before and after the change.
+ */
+export const shiftRangeForChange = (range: TextRange, before: string, after: string): TextRange =>
+    shiftRange(range, findEdit(before, after))
+
+/**
  * Moves an area to account for an edit, or returns undefined when the edit
  * overlaps the area's existing text. Text typed immediately after an area
  * leaves the area unchanged.

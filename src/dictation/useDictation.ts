@@ -11,6 +11,7 @@ import { DictationController } from "./dictationController"
 import type { DictationPhase, DictationState, DictationTextTarget } from "./dictationController"
 import { describeDictationError } from "./dictationMessages"
 import { DictationSession } from "./dictationSession"
+import { shiftRangeForChange } from "./insertionText"
 import type { TextRange } from "./insertionText"
 import {
     checkDictationAvailability,
@@ -84,11 +85,17 @@ export const useDictation = ({ vocabulary, setText }: UseDictationOptions): Dict
         getSelection: () => getInputSelection(input),
         isFocused: () => document.activeElement === input,
         writeValue: (value, selection) => {
+            const before = input.value
+            const saved = savedSelections.current.get(targetId)
             flushSync(() => setTextRef.current(targetId, value))
 
             if (selection) {
                 input.setSelectionRange(selection.start, selection.end)
                 scrollCaretIntoView(input)
+            } else if (saved) {
+                // Not focused: keep the selection that focusing will restore
+                // pointing at the same text.
+                savedSelections.current.set(targetId, shiftRangeForChange(saved, before, value))
             }
         },
     }), [])

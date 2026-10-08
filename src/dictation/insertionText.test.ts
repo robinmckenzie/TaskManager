@@ -6,6 +6,7 @@ import {
     moveAreaForEdit,
     prepareInsertion,
     shiftPosition,
+    shiftRangeForChange,
 } from "./insertionText"
 import type { TextRange, TranscriptToken } from "./insertionText"
 
@@ -109,6 +110,28 @@ describe("shiftPosition", () => {
 
     it("moves positions inside a replaced range to the end of the insertion", () => {
         expect(shiftPosition(5, edit)).toBe(9)
+    })
+})
+
+describe("shiftRangeForChange", () => {
+    it("keeps a selection on the same text when earlier text grows", () => {
+        const before = "Fix urgent bug"
+        const after = "Fix urgent problem bug"
+        const selection = shiftRangeForChange({ start: 11, end: 14 }, before, after)
+
+        expect(before.slice(11, 14)).toBe("bug")
+        expect(after.slice(selection.start, selection.end)).toBe("bug")
+    })
+
+    it("keeps a selection on the same text when earlier text shrinks", () => {
+        const selection = shiftRangeForChange({ start: 15, end: 18 }, "Fix the urgent bug", "Fix urgent bug")
+
+        expect(selection).toEqual({ start: 11, end: 14 })
+    })
+
+    it("leaves a selection alone when later text or nothing changes", () => {
+        expect(shiftRangeForChange({ start: 0, end: 3 }, "Fix bug", "Fix bug today")).toEqual({ start: 0, end: 3 })
+        expect(shiftRangeForChange({ start: 4, end: 7 }, "Fix bug", "Fix bug")).toEqual({ start: 4, end: 7 })
     })
 })
 
