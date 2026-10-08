@@ -7,7 +7,7 @@ import type { DropTargetMonitor } from "react-dnd"
 
 import { HTML5Backend } from "react-dnd-html5-backend"
 
-import { differenceInDays, format, parseISO } from "date-fns"
+import { format } from "date-fns"
 
 import { loadTasks, reorderTasks, TASKS_STORAGE_KEY } from "./tasks"
 import type { TaskType } from "./tasks"
@@ -16,6 +16,7 @@ import {
     loadAssigneeFilter,
     saveAssigneeFilter,
 } from "./assigneeFilter"
+import { describeDueStatus, getDaysUntilDue } from "./dueDates"
 import { getNewTaskAssignee, sortAssigneesByName } from "./users"
 import { DictationButton } from "./dictation/DictationButton"
 import { useDictation } from "./dictation/useDictation"
@@ -65,17 +66,6 @@ const initialUsers: User[] = [
     },
     { id: "4", name: "Aaron", photo: "https://i.pravatar.cc/100?img=4" },
 ]
-
-/**
- * Returns the number of days until the task is due.
- *
- * Positive = future
- * 0 = today
- * Negative = overdue
- */
-const getDaysUntilDue = (dueDate: string): number => {
-    return differenceInDays(parseISO(dueDate), new Date())
-}
 
 /**
  * Calculate how quickly an overdue task should pulse.
@@ -323,15 +313,7 @@ const Task: FC<TaskProps> = ({
                     </label>
 
                     <span>
-                        {task.completed
-                            ? "Completed"
-                            : overdue
-                              ? `${Math.abs(daysUntilDue)} day${
-                                    Math.abs(daysUntilDue) === 1 ? "" : "s"
-                                } overdue`
-                              : `${daysUntilDue} day${
-                                    daysUntilDue === 1 ? "" : "s"
-                                } remaining`}
+                        {describeDueStatus(daysUntilDue, task.completed)}
                     </span>
                 </div>
             </div>
