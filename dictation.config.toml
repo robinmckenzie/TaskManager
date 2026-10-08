@@ -1,0 +1,31 @@
+# Voice dictation settings.
+#
+# Restart `npm run dev` or `npm run preview` after changing this file.
+#
+# Never put the Speechmatics API key here: this file is committed. Put the key
+# in .env.local as SPEECHMATICS_API_KEY. SPEECHMATICS_MODEL,
+# SPEECHMATICS_LANGUAGE and SPEECHMATICS_RT_URL in .env.local override the
+# matching [speechmatics] settings below for your machine only.
+
+[speechmatics]
+# Model: "enhanced" (most accurate) or "standard" (fastest).
+# "melia-1" is a multilingual preview for evaluation only; see the README.
+model = "enhanced"
+
+# Language code, such as "en" or "de", or a bilingual pack such as "cmn_en".
+# Use "multi" with "melia-1".
+language = "en"
+
+# Realtime endpoint. Regional endpoints: eu, us and au.
+realtime_url = "wss://eu.rt.speechmatics.com/v2"
+
+[timings]
+# Stop dictation after this many seconds without recognised speech.
+inactivity_timeout_seconds = 10
+
+# Maximum length of one dictation session, however much speech is recognised.
+# This is an initial value, expected to be tuned after using the feature.
+max_session_seconds = 20
+
+# After dictation stops, how long recognised text may keep settling.
+settle_timeout_seconds = 4

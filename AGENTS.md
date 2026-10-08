@@ -5,7 +5,8 @@
 - Work against a local ticket with a stable ID such as `TM-1`.
 - Changes limited to project process or housekeeping files (such as `AGENTS.md`, `FUTURE_CONSIDERATIONS.md`, or `.gitignore`) do not need a ticket when explicitly requested, provided they do not change application behaviour, setup, dependencies, or tool permissions. Explain the reason in the commit or PR.
 - Store local tickets in the repository as `tickets/<ticket-id>.md`.
-- Once a ticket has been agreed and reviewed, commit it before beginning investigation or planning.
+- A ticket may be committed and pushed while still a draft, for example as a checkpoint when stopping work. Show its status below the title as `Status: Draft` or `Status: Agreed`. Only a human can agree a ticket; tickets without a status line predate this rule and count as agreed.
+- Do not begin investigation, planning, or implementation until the ticket is agreed and its agreed status is committed.
 - If investigation or planning leads to an agreed change in requirements, update the relevant ticket to reflect that decision before implementing it.
 - Scope changes to the ticket. Avoid unrelated refactors, formatting changes, cleanup, or dependency upgrades.
 - Reference the relevant ticket ID in commits.
@@ -20,7 +21,8 @@
     3. Acceptance criteria — how will we know we've achieved it?
 - Describe the problem and required behaviour without unnecessarily prescribing implementation details.
 - Distinguish genuine constraints from implementation choices. Include a constraint, such as one imposed by an external API, security, or saved-data compatibility, in Requirements only when it is genuinely required, and leave other implementation choices to investigation and planning.
-- When asked to draft a ticket, write only `tickets/<ticket-id>.md`. Do not modify other files or begin implementation until the ticket has been agreed.
+- When asked to draft a ticket, write only `tickets/<ticket-id>.md`, marked `Status: Draft`. During ticket drafting, do not modify other files or begin investigation, planning, or implementation until the ticket has been agreed.
+- A draft ticket needs to be coherent enough to investigate, not to settle every implementation detail. Distinguish product decisions needed before investigation, provisional or tunable defaults, questions for investigation, and product questions that investigation exposes, which are brought back for a decision.
 - When handing over a drafted or revised ticket for review, separately summarise:
     - what it leaves out of scope, whether stated explicitly or left out by omission;
     - any assumptions made while drafting;
