@@ -137,6 +137,9 @@ host only issues temporary keys.
   `SPEECHMATICS_LANGUAGE` and `SPEECHMATICS_RT_URL` can be set in Vercel to
   override it, as they can locally.
 - Vercel compiles the functions with the options in the root `tsconfig.json`.
+- Visits and page views are reported to Vercel Web Analytics, which must be
+  enabled for the project in Vercel. It uses no cookies. Under `npm run dev`
+  it only logs to the browser console and records nothing.
 - The endpoints are public and have no access control. Usage is limited by the
   Speechmatics account's credit.
 

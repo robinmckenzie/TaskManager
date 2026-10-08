@@ -15,6 +15,7 @@
     "@speechmatics/auth": "^0.1.0",
     "@speechmatics/browser-audio-input": "^2.0.4",
     "@speechmatics/real-time-client": "^8.5.1",
+    "@vercel/analytics": "^2.0.1",
     "date-fns": "^4.4.0",
     "react": "^19.2.8",
     "react-dnd": "^16.0.1",

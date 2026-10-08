@@ -35,7 +35,8 @@ to obtain Speechmatics credentials.
 - README documents how the deployment is configured, including where the API key is kept and how the dictation settings reach the deployed endpoints, and how to update the deployed app, without exposing secrets.
 - Constraint (dependency on TM-4): TM-5 is developed on a branch based on the TM-4 branch, in a separate worktree, keeping their shared history. TM-4 merges into `main` first. TM-5 then takes in the final TM-4 changes and passes validation again before it merges. TM-4's commits are not squashed or rewritten as part of TM-5.
 - Changes to files introduced or changed by TM-4 are kept to what the deployment needs, because TM-4 is under review while this work proceeds.
-- Scope is proportionate to a personal demonstration with very low traffic. Keep the following outside this ticket: authentication or password protection, origin-based access restrictions, rate limiting and usage quotas, monitoring, alerting and analytics, custom domains, server-side storage of tasks, changes to TM-4 dictation behaviour, screen recordings or special microphone workarounds, and refactoring unrelated to deployment.
+- The deployed app reports visits and page views through Vercel Web Analytics, using Vercel's official package, so the owner can see whether the demonstration has been opened. No custom events, cookies, visitor identification or other analytics provider are added.
+- Scope is proportionate to a personal demonstration with very low traffic. Keep the following outside this ticket: authentication or password protection, origin-based access restrictions, rate limiting and usage quotas, monitoring and alerting, custom domains, server-side storage of tasks, changes to TM-4 dictation behaviour, screen recordings or special microphone workarounds, and refactoring unrelated to deployment.
 
 ## Acceptance criteria
 
@@ -64,4 +65,5 @@ to obtain Speechmatics credentials.
 - README contains the pre-demonstration checklist with the five checks listed in Requirements.
 - README explains how the deployment is configured, where the key is kept, and how to update the deployed app, and contains no secrets.
 - TM-5 is not merged before TM-4. Before merging, the TM-5 branch contains the final TM-4 commits with their history intact, and build, lint and tests pass on the result.
+- Vercel Web Analytics is included in the app with no custom events and no other analytics provider, and the app behaves the same with it as without.
 - No authentication, access control, rate limiting or monitoring has been added.
