@@ -74,6 +74,31 @@ describe("createSampleTasks", () => {
         ])
     })
 
+    it("creates a separate set each time, so a reset shares nothing with edited tasks", () => {
+        const first = createSampleTasks(today)
+        first[0].text = "Edited"
+        first.pop()
+
+        const second = createSampleTasks(today)
+
+        expect(second).toHaveLength(4)
+        expect(second[0].text).toBe("Design UI")
+        expect(second[0]).not.toBe(first[0])
+    })
+
+    it("re-dates a later set from the date it is created on", () => {
+        const laterTasks = createSampleTasks(new Date(2026, 9, 20, 9))
+
+        expect(laterTasks.map((task) => task.dueDate))
+            .toEqual(["2026-10-19", "2026-10-22", "2026-10-30", "2026-11-10"])
+    })
+
+    it("creates tasks that load back unchanged once saved", () => {
+        const saved = JSON.stringify(createSampleTasks(today))
+
+        expect(loadTasks(storageWith(saved), new Date(2027, 5, 1))).toEqual(sampleTasks)
+    })
+
     it("uses the current date when none is given", () => {
         vi.useFakeTimers()
         vi.setSystemTime(new Date(2027, 0, 15, 9))

@@ -64,11 +64,38 @@ select {
   gap: 10px;
 }
 
+.task-list-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
 .assignee-filter {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 6px;
+}
+
+/* A button that reads as a quiet text link. */
+.reset-tasks-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #666;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.reset-tasks-button:hover {
+  color: #2563eb;
+}
+
+.reset-tasks-button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .assignee-filter select {

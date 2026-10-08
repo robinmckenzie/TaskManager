@@ -6,8 +6,11 @@ Drag and drop tasks to reorder them. Due-date colors and pulsing overdue tasks
 highlight upcoming and missed deadlines.
 
 Tasks are saved in this browser using localStorage and restored on refresh.
-The sample tasks appear on your first visit. If browser storage is unavailable,
-tasks remain usable in memory, but changes will not persist.
+The sample tasks appear on your first visit, with due dates relative to that
+day. "Reset to sample tasks", beside the Assignee dropdown, replaces the current
+tasks with a fresh sample set at once, without asking for confirmation. If
+browser storage is unavailable, tasks remain usable in memory, but changes will
+not persist.
 
 Use the Assignee dropdown above the task list to show one user's tasks or
 "All assignees". Both completed and incomplete matching tasks remain visible.

@@ -9,7 +9,7 @@ import { HTML5Backend } from "react-dnd-html5-backend"
 
 import { format } from "date-fns"
 
-import { loadTasks, reorderTasks, TASKS_STORAGE_KEY } from "./tasks"
+import { createSampleTasks, loadTasks, reorderTasks, TASKS_STORAGE_KEY } from "./tasks"
 import type { TaskType } from "./tasks"
 import {
     getVisibleTasks,
@@ -430,6 +430,12 @@ const App: FC = () => {
         )
     }
 
+    const resetToSampleTasks = (): void => {
+        // Stop dictating into, and revising, the titles being replaced.
+        tasks.forEach((task: TaskType): void => dictation.removeTarget(task.id))
+        setTasks(createSampleTasks())
+    }
+
     const moveTask = (fromIndex: number, toIndex: number): void => {
         setTasks((currentTasks: TaskType[]): TaskType[] =>
             reorderTasks(currentTasks, fromIndex, toIndex),
@@ -462,22 +468,31 @@ const App: FC = () => {
                 </p>
 
                 <section className="task-list">
-                    <label className="assignee-filter">
-                        Assignee
-                        <select
-                            value={assigneeFilter}
-                            onChange={(
-                                event: React.ChangeEvent<HTMLSelectElement>,
-                            ): void => setAssigneeFilter(event.target.value)}
+                    <div className="task-list-controls">
+                        <label className="assignee-filter">
+                            Assignee
+                            <select
+                                value={assigneeFilter}
+                                onChange={(
+                                    event: React.ChangeEvent<HTMLSelectElement>,
+                                ): void => setAssigneeFilter(event.target.value)}
+                            >
+                                <option value="">All assignees</option>
+                                {alphabeticalUsers.map((user: User) => (
+                                    <option key={user.id} value={user.id}>
+                                        {user.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <button
+                            type="button"
+                            onClick={resetToSampleTasks}
+                            className="reset-tasks-button"
                         >
-                            <option value="">All assignees</option>
-                            {alphabeticalUsers.map((user: User) => (
-                                <option key={user.id} value={user.id}>
-                                    {user.name}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
+                            Reset to sample tasks
+                        </button>
+                    </div>
                     {visibleTasks.map(({ task, index }) => (
                         <Task
                             key={task.id}
