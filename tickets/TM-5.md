@@ -22,7 +22,7 @@ to obtain Speechmatics credentials.
 - Decision (shared implementation): the deployed dictation endpoints use the same request-handling implementation as local development, through a server module that does not depend on Vite.
 - Extracting that module preserves existing server behaviour: the TOML defaults, the environment-variable overrides and their precedence, the HTTP status codes, the response headers including `Content-Type` and `Cache-Control`, and the API response shapes and behaviour.
 - Constraint (Speechmatics authentication and security, carried over from TM-4): the long-lived Speechmatics API key stays server-side. It is held as a hosting secret, is not committed, and does not appear in client code, the production build or any response. The browser receives only short-lived credentials.
-- The deployment uses its own Speechmatics API key, separate from the one used for local development, if the Speechmatics account allows more than one key. If it does not, the existing key is used.
+- The deployment reads the Speechmatics API key from a hosting environment variable. The same key may be used for local development and the deployment.
 - When the deployment has no API key configured, the deployed app behaves as the local app does without one: it works, and shows dictation as unavailable.
 - The local development workflow is unchanged: `npm run dev` and `npm run preview` work as they do today, with the same configuration files and no hosting account or hosting tools needed.
 - The deployed endpoints are publicly reachable. No password protection, user accounts, origin restriction or other access control is added. The owner accepts the risk of unauthorised use of the token endpoint for this demonstration.
@@ -44,7 +44,7 @@ to obtain Speechmatics credentials.
 - Automated tests of the production adapter assert, for the status request, a successful token request, a missing key, a rejected key, a service failure, a wrong method and an unknown path: the HTTP status code, the `Content-Type` and `Cache-Control` headers, and the response body.
 - Automated tests show the production configuration uses the TOML defaults and gives environment variables precedence over them, as local development does.
 - The long-lived API key does not appear in the repository, the client code, the production build, or any response from the deployed endpoints, including error responses.
-- The deployment's API key is set as a hosting secret. If the account supports it, it is a different key from the local one.
+- The deployment's API key is set as a hosting secret, and may be the same key that is used locally.
 - With the hosting secret absent, the deployed app loads and shows dictation as unavailable.
 - `npm run dev` and `npm run preview` start and support dictation locally exactly as before, without Vercel tooling installed.
 - Build, lint and unit tests pass without calling the real Speechmatics service or Vercel.

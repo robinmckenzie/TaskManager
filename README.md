@@ -124,10 +124,11 @@ host only issues temporary keys.
 - The functions are `api/dictation/status.ts` and `api/dictation/token.ts`.
   Both run the handler that local development uses, in
   `server/dictationHandler.ts`.
-- The Speechmatics API key is the `SPEECHMATICS_API_KEY` environment variable
-  in the Vercel project's settings. It is not in the repository, and it is a
-  different key from the one used locally so that either can be revoked alone.
-  Without it the deployed app works and shows dictation as unavailable.
+- Vercel reads the Speechmatics API key from the `SPEECHMATICS_API_KEY`
+  environment variable in the project's settings. The key must never be
+  committed to the repository or exposed in browser code. The same key can be
+  used for local development and the deployment. If the key is missing, the
+  deployed app remains usable but dictation is unavailable.
 - The other dictation settings come from `dictation.config.toml`, which
   `vercel.json` deploys with the functions. `SPEECHMATICS_MODEL`,
   `SPEECHMATICS_LANGUAGE` and `SPEECHMATICS_RT_URL` can be set in Vercel to
