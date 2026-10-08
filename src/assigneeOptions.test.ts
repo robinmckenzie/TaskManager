@@ -19,7 +19,7 @@ it("shares the sorted user options with every task dropdown", () => {
             .map((select) => [...select[1].matchAll(/<option[^>]*>([^<]*)<\/option>/g)]
                 .map((option) => option[1]))
         expect(dropdowns[0]).toEqual(["All assignees", "Amy", "Ben", "Zoe"])
-        expect(dropdowns).toHaveLength(5)
+        expect(dropdowns).toHaveLength(6)
         for (const options of dropdowns.slice(1)) {
             expect(options).toEqual(["Amy", "Ben", "Zoe"])
         }

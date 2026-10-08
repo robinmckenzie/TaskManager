@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { describeDueStatus, getDaysUntilDue } from "./dueDates"
 import { createSampleTasks, loadTasks, TASKS_STORAGE_KEY } from "./tasks"
 import type { TaskType } from "./tasks"
 
@@ -38,6 +39,7 @@ describe("createSampleTasks", () => {
 
     it("dates the sample tasks relative to today's calendar date", () => {
         expect(createSampleTasks(today).map(({ text, dueDate }) => [text, dueDate])).toEqual([
+            ["Deploy initial build", "2026-10-06"],
             ["Design UI", "2026-10-07"],
             ["Fix authentication bug", "2026-10-10"],
             ["Write documentation", "2026-10-18"],
@@ -46,7 +48,7 @@ describe("createSampleTasks", () => {
     })
 
     it("gives the same dates at any time of day", () => {
-        const expected = ["2026-10-07", "2026-10-10", "2026-10-18", "2026-10-29"]
+        const expected = ["2026-10-06", "2026-10-07", "2026-10-10", "2026-10-18", "2026-10-29"]
 
         expect(dueDates(new Date(2026, 9, 8, 0, 0, 1))).toEqual(expected)
         expect(dueDates(new Date(2026, 9, 8, 23, 59, 59))).toEqual(expected)
@@ -54,12 +56,33 @@ describe("createSampleTasks", () => {
 
     it("counts calendar days across month, year and clock changes", () => {
         expect(dueDates(new Date(2026, 11, 31, 12))).toEqual(
-            ["2026-12-30", "2027-01-02", "2027-01-10", "2027-01-21"],
+            ["2026-12-29", "2026-12-30", "2027-01-02", "2027-01-10", "2027-01-21"],
         )
         // UK and US clocks both change within three weeks of this date.
         expect(dueDates(new Date(2026, 9, 24, 23, 30))).toEqual(
-            ["2026-10-23", "2026-10-26", "2026-11-03", "2026-11-14"],
+            ["2026-10-22", "2026-10-23", "2026-10-26", "2026-11-03", "2026-11-14"],
         )
+    })
+
+    it("starts with a completed task for Alice that was due 2 days ago", () => {
+        const [first, second] = createSampleTasks(today)
+
+        expect(first).toEqual({
+            id: "task-5",
+            text: "Deploy initial build",
+            userId: "1",
+            priority: 5,
+            dueDate: "2026-10-06",
+            completed: true,
+        })
+        expect(describeDueStatus(getDaysUntilDue(first.dueDate, today), first.completed)).toBe("Completed")
+        expect(second.text).toBe("Design UI")
+    })
+
+    it("gives every sample task its own id", () => {
+        const ids = createSampleTasks(today).map((task) => task.id)
+
+        expect(new Set(ids).size).toBe(ids.length)
     })
 
     it("keeps the other sample task properties", () => {
@@ -67,6 +90,7 @@ describe("createSampleTasks", () => {
             void dueDate
             return task
         })).toEqual([
+            { id: "task-5", text: "Deploy initial build", userId: "1", priority: 5, completed: true },
             { id: "task-1", text: "Design UI", userId: "1", priority: 4, completed: false },
             { id: "task-2", text: "Fix authentication bug", userId: "2", priority: 5, completed: false },
             { id: "task-3", text: "Write documentation", userId: "3", priority: 2, completed: false },
@@ -81,8 +105,8 @@ describe("createSampleTasks", () => {
 
         const second = createSampleTasks(today)
 
-        expect(second).toHaveLength(4)
-        expect(second[0].text).toBe("Design UI")
+        expect(second).toHaveLength(5)
+        expect(second[0].text).toBe("Deploy initial build")
         expect(second[0]).not.toBe(first[0])
     })
 
@@ -90,7 +114,7 @@ describe("createSampleTasks", () => {
         const laterTasks = createSampleTasks(new Date(2026, 9, 20, 9))
 
         expect(laterTasks.map((task) => task.dueDate))
-            .toEqual(["2026-10-19", "2026-10-22", "2026-10-30", "2026-11-10"])
+            .toEqual(["2026-10-18", "2026-10-19", "2026-10-22", "2026-10-30", "2026-11-10"])
     })
 
     it("creates tasks that load back unchanged once saved", () => {
@@ -103,8 +127,8 @@ describe("createSampleTasks", () => {
         vi.useFakeTimers()
         vi.setSystemTime(new Date(2027, 0, 15, 9))
 
-        expect(createSampleTasks()[0].dueDate).toBe("2027-01-14")
-        expect(loadTasks(storageWith(null))[1].dueDate).toBe("2027-01-17")
+        expect(createSampleTasks()[0].dueDate).toBe("2027-01-13")
+        expect(loadTasks(storageWith(null))[2].dueDate).toBe("2027-01-17")
 
         vi.useRealTimers()
     })

@@ -29,6 +29,7 @@ export const reorderTasks = (
 
 /** Sample tasks, with due dates as calendar days relative to today. */
 const sampleTasks: (Omit<TaskType, "dueDate"> & { dueInDays: number })[] = [
+    { id: "task-5", text: "Deploy initial build", userId: "1", priority: 5, dueInDays: -2, completed: true },
     { id: "task-1", text: "Design UI", userId: "1", priority: 4, dueInDays: -1, completed: false },
     { id: "task-2", text: "Fix authentication bug", userId: "2", priority: 5, dueInDays: 2, completed: false },
     { id: "task-3", text: "Write documentation", userId: "3", priority: 2, dueInDays: 10, completed: false },

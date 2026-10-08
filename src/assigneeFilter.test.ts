@@ -9,9 +9,9 @@ import { createSampleTasks, reorderTasks } from "./tasks"
 
 const users = [{ id: "1" }, { id: "2" }, { id: "3" }]
 const tasks = [
-    { ...createSampleTasks()[0], id: "A", completed: true },
-    { ...createSampleTasks()[1], id: "B" },
-    { ...createSampleTasks()[3], id: "C" },
+    { ...createSampleTasks()[1], id: "A", completed: true },
+    { ...createSampleTasks()[2], id: "B" },
+    { ...createSampleTasks()[4], id: "C" },
 ]
 
 describe("assignee filtering", () => {
