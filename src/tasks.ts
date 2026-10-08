@@ -1,3 +1,5 @@
+import { addDays, format } from "date-fns"
+
 export interface TaskType {
     id: string
     text: string
@@ -25,40 +27,24 @@ export const reorderTasks = (
     return updatedTasks
 }
 
-export const initialTasks: TaskType[] = [
-    {
-        id: "task-1",
-        text: "Design UI",
-        userId: "1",
-        priority: 4,
-        dueDate: "2026-10-05",
-        completed: false,
-    },
-    {
-        id: "task-2",
-        text: "Fix authentication bug",
-        userId: "2",
-        priority: 5,
-        dueDate: "2026-10-03",
-        completed: false,
-    },
-    {
-        id: "task-3",
-        text: "Write documentation",
-        userId: "3",
-        priority: 2,
-        dueDate: "2026-10-12",
-        completed: false,
-    },
-    {
-        id: "task-4",
-        text: "Deploy to production",
-        userId: "1",
-        priority: 3,
-        dueDate: "2026-10-01",
-        completed: false,
-    },
+/** Sample tasks, with due dates as calendar days relative to today. */
+const sampleTasks: (Omit<TaskType, "dueDate"> & { dueInDays: number })[] = [
+    { id: "task-5", text: "Deploy initial build", userId: "1", priority: 5, dueInDays: -2, completed: true },
+    { id: "task-1", text: "Design UI", userId: "1", priority: 4, dueInDays: -1, completed: false },
+    { id: "task-2", text: "Fix authentication bug", userId: "2", priority: 5, dueInDays: 2, completed: false },
+    { id: "task-3", text: "Write documentation", userId: "3", priority: 2, dueInDays: 10, completed: false },
+    { id: "task-4", text: "Deploy to production", userId: "1", priority: 3, dueInDays: 21, completed: false },
 ]
+
+/**
+ * Creates the sample tasks shown when nothing is saved. Their due dates are
+ * worked out from the local calendar date of `today`, whatever its time of day.
+ */
+export const createSampleTasks = (today: Date = new Date()): TaskType[] =>
+    sampleTasks.map(({ dueInDays, ...task }) => ({
+        ...task,
+        dueDate: format(addDays(today, dueInDays), "yyyy-MM-dd"),
+    }))
 
 const isTask = (value: unknown): value is TaskType => {
     if (typeof value !== "object" || value === null) {
@@ -77,12 +63,15 @@ const isTask = (value: unknown): value is TaskType => {
     )
 }
 
-export const loadTasks = (storage?: Pick<Storage, "getItem">): TaskType[] => {
+export const loadTasks = (
+    storage?: Pick<Storage, "getItem">,
+    today: Date = new Date(),
+): TaskType[] => {
     try {
         const savedTasks = (storage ?? localStorage).getItem(TASKS_STORAGE_KEY)
 
         if (savedTasks === null) {
-            return initialTasks
+            return createSampleTasks(today)
         }
 
         const parsedTasks: unknown = JSON.parse(savedTasks)
@@ -96,5 +85,5 @@ export const loadTasks = (storage?: Pick<Storage, "getItem">): TaskType[] => {
         console.warn("Unable to load saved tasks. Using sample tasks.", error)
     }
 
-    return initialTasks
+    return createSampleTasks(today)
 }

@@ -64,11 +64,38 @@ select {
   gap: 10px;
 }
 
+.task-list-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
 .assignee-filter {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 6px;
+}
+
+/* A button that reads as a quiet text link. */
+.reset-tasks-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #666;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.reset-tasks-button:hover {
+  color: #2563eb;
+}
+
+.reset-tasks-button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .assignee-filter select {
@@ -250,7 +277,7 @@ select {
 }
 
 /*
- * Overdue tasks pulse red.
+ * Overdue tasks pulse gently between pastel pink and white.
  *
  * The animationDuration is supplied inline by React,
  * based on how far overdue the task is.
@@ -270,7 +297,7 @@ select {
   }
 
   50% {
-    background-color: #ef4444;
+    background-color: #ffffff;
   }
 }
 
@@ -344,6 +371,12 @@ select {
 .dictation-button[aria-disabled="true"] {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.dictation-notice {
+  margin: 0 0 10px;
+  color: #777;
+  font-size: 12px;
 }
 
 /* Sits inside the header's bottom margin so messages do not move the list. */

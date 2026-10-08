@@ -124,47 +124,100 @@ export const createRealtimeConnection = async (url: string): Promise<RealtimeCon
     }
 }
 
-/** Captures microphone audio as 32-bit float PCM. */
-export const createBrowserAudioSource = (): AudioSource => {
-    let stopRecording: (() => void) | undefined
+/** The parts of the Speechmatics PCM recorder that the audio source uses. */
+export interface AudioRecorder {
+    readonly isRecording: boolean
+    onAudio(listener: (data: Float32Array) => void): void
+    startRecording(audioContext: AudioContext): Promise<void>
+    stopRecording(): void
+}
+
+export interface AudioSourceDependencies {
+    /** Loads the recorder, which is fetched only once dictation is used. */
+    createRecorder(): Promise<AudioRecorder>
+    createAudioContext(options?: AudioContextOptions): AudioContext
+}
+
+const browserAudioDependencies: AudioSourceDependencies = {
+    createRecorder: async () => {
+        const { PCMRecorder } = await import("@speechmatics/browser-audio-input")
+        const recorder = new PCMRecorder(workletScriptUrl)
+
+        return {
+            get isRecording() {
+                return recorder.isRecording
+            },
+            onAudio: (listener) => recorder.addEventListener("audio", (event) => listener(event.data)),
+            startRecording: (audioContext) => recorder.startRecording({ audioContext }),
+            stopRecording: () => recorder.stopRecording(),
+        }
+    },
+    createAudioContext: (options) => new AudioContext(options),
+}
+
+/**
+ * Captures microphone audio as 32-bit float PCM.
+ *
+ * Stopping is safe at any point, including while starting. Nothing is created
+ * once stopped, and anything already created is released: at once where
+ * possible, or as soon as a pending microphone request settles, since a
+ * request for the microphone cannot be withdrawn.
+ */
+export const createBrowserAudioSource = (
+    { createRecorder, createAudioContext }: AudioSourceDependencies = browserAudioDependencies,
+): AudioSource => {
+    let release: (() => void) | undefined
     let isStopped = false
+
+    const failIfStopped = (): void => {
+        if (isStopped) {
+            throw new Error("Audio capture was stopped while it was starting.")
+        }
+    }
 
     return {
         start: async (onAudio) => {
-            const { PCMRecorder } = await import("@speechmatics/browser-audio-input")
+            const recorder = await createRecorder()
+            failIfStopped()
+
             const isFirefox = navigator.userAgent.includes("Firefox")
-            const audioContext = new AudioContext(
+            const audioContext = createAudioContext(
                 isFirefox ? undefined : { sampleRate: RECORDING_SAMPLE_RATE },
             )
-            const recorder = new PCMRecorder(workletScriptUrl)
-            const release = (): void => {
+            let isContextClosed = false
+
+            // Installed before the microphone is requested, and safe to call
+            // again once a pending request has produced a recording to stop.
+            release = (): void => {
                 if (recorder.isRecording) {
                     recorder.stopRecording()
                 }
 
-                void audioContext.close().catch(() => undefined)
+                if (!isContextClosed) {
+                    isContextClosed = true
+                    void audioContext.close().catch(() => undefined)
+                }
             }
 
-            recorder.addEventListener("audio", (event) => onAudio(event.data))
+            recorder.onAudio((data) => {
+                if (!isStopped) {
+                    onAudio(data)
+                }
+            })
 
             try {
-                await recorder.startRecording({ audioContext })
+                await recorder.startRecording(audioContext)
+                failIfStopped()
             } catch (error) {
                 release()
                 throw error
-            }
-
-            stopRecording = release
-
-            if (isStopped) {
-                release()
             }
 
             return { sampleRate: audioContext.sampleRate }
         },
         stop: () => {
             isStopped = true
-            stopRecording?.()
+            release?.()
         },
     }
 }

@@ -5,6 +5,35 @@
 
 export const DICTATION_STATUS_PATH = "/api/dictation/status"
 export const DICTATION_TOKEN_PATH = "/api/dictation/token"
+export const DICTATION_ACTIVITY_PATH = "/api/dictation/activity"
+export const DICTATION_TRANSCRIPT_PATH = "/api/dictation/transcript"
+
+/**
+ * The longest transcript, in characters, that is kept for one dictation
+ * session. A full session of fast speech comes to well under half of this.
+ */
+export const DICTATION_TRANSCRIPT_MAX_LENGTH = 4000
+
+/** What the browser may report about a dictation session. Never its content. */
+export const DICTATION_ACTIVITY_EVENTS = [
+    "dictation_started",
+    "dictation_transcript_received",
+    "dictation_completed",
+    "dictation_failed",
+] as const
+export type DictationActivityEvent = (typeof DICTATION_ACTIVITY_EVENTS)[number]
+
+/** Reported as the user by a browser that has no testing label set. */
+export const DICTATION_ACTIVITY_PUBLIC_USER = "PUBLIC"
+
+const ACTIVITY_USER_PATTERN = /^[A-Za-z0-9_-]{1,20}$/
+
+/**
+ * Whether a value may be logged as an activity user: a short testing label of
+ * letters, digits, hyphens and underscores, which includes PUBLIC.
+ */
+export const isDictationActivityUser = (value: string | null | undefined): value is string =>
+    typeof value === "string" && ACTIVITY_USER_PATTERN.test(value)
 
 /** Timings from dictation.config.toml, in seconds. */
 export interface DictationTimings {

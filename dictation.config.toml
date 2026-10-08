@@ -20,12 +20,13 @@ language = "en"
 realtime_url = "wss://eu.rt.speechmatics.com/v2"
 
 [timings]
-# Stop dictation after this many seconds without recognised speech.
-inactivity_timeout_seconds = 10
+# Stop dictation after this many seconds without recognised speech. Only
+# recognised words count: microphone sound that produces no words does not.
+inactivity_timeout_seconds = 15
 
-# Maximum length of one dictation session, however much speech is recognised.
-# This is an initial value, expected to be tuned after using the feature.
-max_session_seconds = 20
+# Maximum length of one dictation session, however much speech is recognised,
+# counted from when the microphone starts recording.
+max_session_seconds = 60
 
 # After dictation stops, how long recognised text may keep settling.
 settle_timeout_seconds = 4

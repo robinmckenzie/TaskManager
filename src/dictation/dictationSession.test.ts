@@ -172,6 +172,95 @@ describe("DictationSession", () => {
         expect(listener.onStopped).toHaveBeenCalledWith("max_duration", undefined)
     })
 
+    describe("with a 15 second inactivity timeout and a 60 second maximum", () => {
+        const startWithLongerTimings = async () => {
+            const fake = createFakeConnection()
+            const audio = createFakeAudioSource()
+            const listener = createListener()
+            const session = new DictationSession({
+                fetchToken: async () => ({
+                    ...token,
+                    timings: { inactivityTimeoutSeconds: 15, maxSessionSeconds: 60, settleTimeoutSeconds: 4 },
+                }),
+                createConnection: async () => fake.connection,
+                createAudioSource: () => audio.source,
+                vocabulary: [],
+                listener,
+            })
+
+            await session.start()
+
+            return { fake, audio, listener }
+        }
+
+        it("stops after exactly 15 seconds without recognised speech", async () => {
+            const { listener } = await startWithLongerTimings()
+
+            await vi.advanceTimersByTimeAsync(14_999)
+            expect(listener.onStopped).not.toHaveBeenCalled()
+
+            await vi.advanceTimersByTimeAsync(1)
+            expect(listener.onStopped).toHaveBeenCalledTimes(1)
+            expect(listener.onStopped).toHaveBeenCalledWith("inactivity", undefined)
+        })
+
+        it("counts the 15 seconds again from each recognised word", async () => {
+            const { fake, listener } = await startWithLongerTimings()
+
+            await vi.advanceTimersByTimeAsync(14_000)
+            fake.receive({ message: "AddPartialTranscript", results: words("Fix") })
+            await vi.advanceTimersByTimeAsync(14_999)
+            expect(listener.onStopped).not.toHaveBeenCalled()
+
+            await vi.advanceTimersByTimeAsync(1)
+            expect(listener.onStopped).toHaveBeenCalledWith("inactivity", undefined)
+        })
+
+        it("does not count microphone sound or empty transcripts as activity", async () => {
+            const { fake, audio, listener } = await startWithLongerTimings()
+
+            for (let elapsed = 0; elapsed < 15_000; elapsed += 1_000) {
+                audio.speak(16_000)
+                fake.receive({ message: "AddPartialTranscript", results: [] })
+                fake.receive({ message: "AddTranscript", results: [] })
+                await vi.advanceTimersByTimeAsync(1_000)
+            }
+
+            expect(fake.connection.sendAudio).toHaveBeenCalled()
+            expect(listener.onStopped).toHaveBeenCalledWith("inactivity", undefined)
+        })
+
+        it("stops at exactly 60 seconds even while speech is recognised", async () => {
+            const { fake, listener } = await startWithLongerTimings()
+
+            for (let elapsed = 0; elapsed < 59_000; elapsed += 1_000) {
+                fake.receive({ message: "AddPartialTranscript", results: words("radio") })
+                await vi.advanceTimersByTimeAsync(1_000)
+            }
+
+            fake.receive({ message: "AddTranscript", results: words("radio") })
+            await vi.advanceTimersByTimeAsync(999)
+            expect(listener.onStopped).not.toHaveBeenCalled()
+
+            await vi.advanceTimersByTimeAsync(1)
+            expect(listener.onStopped).toHaveBeenCalledTimes(1)
+            expect(listener.onStopped).toHaveBeenCalledWith("max_duration", undefined)
+        })
+
+        it("still lets finals settle for four seconds after an automatic stop", async () => {
+            const { listener } = await startWithLongerTimings()
+
+            await vi.advanceTimersByTimeAsync(15_000)
+            expect(listener.onStopped).toHaveBeenCalledWith("inactivity", undefined)
+
+            await vi.advanceTimersByTimeAsync(3_999)
+            expect(listener.onSettled).not.toHaveBeenCalled()
+
+            await vi.advanceTimersByTimeAsync(1)
+            expect(listener.onSettled).toHaveBeenCalledTimes(1)
+        })
+    })
+
     it("stops at the maximum duration even while speech is recognised", async () => {
         const { fake, listener } = await startSession()
 

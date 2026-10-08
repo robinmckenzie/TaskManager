@@ -7,15 +7,16 @@ import type { DropTargetMonitor } from "react-dnd"
 
 import { HTML5Backend } from "react-dnd-html5-backend"
 
-import { differenceInDays, format, parseISO } from "date-fns"
+import { format } from "date-fns"
 
-import { loadTasks, reorderTasks, TASKS_STORAGE_KEY } from "./tasks"
+import { createSampleTasks, loadTasks, reorderTasks, TASKS_STORAGE_KEY } from "./tasks"
 import type { TaskType } from "./tasks"
 import {
     getVisibleTasks,
     loadAssigneeFilter,
     saveAssigneeFilter,
 } from "./assigneeFilter"
+import { describeDueStatus, getDaysUntilDue } from "./dueDates"
 import { getNewTaskAssignee, sortAssigneesByName } from "./users"
 import { DictationButton } from "./dictation/DictationButton"
 import { useDictation } from "./dictation/useDictation"
@@ -65,17 +66,6 @@ const initialUsers: User[] = [
     },
     { id: "4", name: "Aaron", photo: "https://i.pravatar.cc/100?img=4" },
 ]
-
-/**
- * Returns the number of days until the task is due.
- *
- * Positive = future
- * 0 = today
- * Negative = overdue
- */
-const getDaysUntilDue = (dueDate: string): number => {
-    return differenceInDays(parseISO(dueDate), new Date())
-}
 
 /**
  * Calculate how quickly an overdue task should pulse.
@@ -323,15 +313,7 @@ const Task: FC<TaskProps> = ({
                     </label>
 
                     <span>
-                        {task.completed
-                            ? "Completed"
-                            : overdue
-                              ? `${Math.abs(daysUntilDue)} day${
-                                    Math.abs(daysUntilDue) === 1 ? "" : "s"
-                                } overdue`
-                              : `${daysUntilDue} day${
-                                    daysUntilDue === 1 ? "" : "s"
-                                } remaining`}
+                        {describeDueStatus(daysUntilDue, task.completed)}
                     </span>
                 </div>
             </div>
@@ -438,6 +420,8 @@ const App: FC = () => {
 
     const dictation = useDictation({
         vocabulary: users.map((user: User): string => user.name),
+        getText: (id: string): string | undefined =>
+            tasks.find((task: TaskType): boolean => task.id === id)?.text,
         setText: (id: string, text: string): void => updateTask(id, { text }),
     })
 
@@ -446,6 +430,12 @@ const App: FC = () => {
         setTasks((currentTasks: TaskType[]): TaskType[] =>
             currentTasks.filter((task: TaskType): boolean => task.id !== id),
         )
+    }
+
+    const resetToSampleTasks = (): void => {
+        // Stop dictating into, and revising, the titles being replaced.
+        tasks.forEach((task: TaskType): void => dictation.removeTarget(task.id))
+        setTasks(createSampleTasks())
     }
 
     const moveTask = (fromIndex: number, toIndex: number): void => {
@@ -479,23 +469,36 @@ const App: FC = () => {
                     {dictation.message}
                 </p>
 
+                <p className="dictation-notice">
+                    This demo may retain dictated text for diagnostics.
+                </p>
+
                 <section className="task-list">
-                    <label className="assignee-filter">
-                        Assignee
-                        <select
-                            value={assigneeFilter}
-                            onChange={(
-                                event: React.ChangeEvent<HTMLSelectElement>,
-                            ): void => setAssigneeFilter(event.target.value)}
+                    <div className="task-list-controls">
+                        <label className="assignee-filter">
+                            Assignee
+                            <select
+                                value={assigneeFilter}
+                                onChange={(
+                                    event: React.ChangeEvent<HTMLSelectElement>,
+                                ): void => setAssigneeFilter(event.target.value)}
+                            >
+                                <option value="">All assignees</option>
+                                {alphabeticalUsers.map((user: User) => (
+                                    <option key={user.id} value={user.id}>
+                                        {user.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <button
+                            type="button"
+                            onClick={resetToSampleTasks}
+                            className="reset-tasks-button"
                         >
-                            <option value="">All assignees</option>
-                            {alphabeticalUsers.map((user: User) => (
-                                <option key={user.id} value={user.id}>
-                                    {user.name}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
+                            Reset to sample tasks
+                        </button>
+                    </div>
                     {visibleTasks.map(({ task, index }) => (
                         <Task
                             key={task.id}

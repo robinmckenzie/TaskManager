@@ -7,11 +7,12 @@ import {
     trackShortcutKeyUp,
 } from "./ctrlAltShortcut"
 import type { ShortcutKeyEvent } from "./ctrlAltShortcut"
+import { reportSessionActivity } from "./dictationActivity"
 import { DictationController } from "./dictationController"
-import type { DictationPhase, DictationState, DictationTextTarget } from "./dictationController"
+import type { DictationPhase, DictationState } from "./dictationController"
 import { describeDictationError } from "./dictationMessages"
 import { DictationSession } from "./dictationSession"
-import { shiftRangeForChange } from "./insertionText"
+import { createDictationTargets, getInputSelection } from "./dictationTargets"
 import type { TextRange } from "./insertionText"
 import {
     checkDictationAvailability,
@@ -23,6 +24,8 @@ import type { DictationAvailability } from "./speechmaticsAdapters"
 
 interface UseDictationOptions {
     vocabulary: readonly string[]
+    /** The current text of a target, or undefined when it no longer exists. */
+    getText(targetId: string): string | undefined
     setText(targetId: string, text: string): void
 }
 
@@ -37,11 +40,6 @@ export interface Dictation {
     recordEdit(targetId: string, before: string, after: string): void
     removeTarget(targetId: string): void
 }
-
-const getInputSelection = (input: HTMLInputElement): TextRange => ({
-    start: input.selectionStart ?? input.value.length,
-    end: input.selectionEnd ?? input.value.length,
-})
 
 const findTargetId = <T extends Element>(
     elements: Map<string, T>,
@@ -64,42 +62,40 @@ const describeUnavailability = (availability: DictationAvailability): string =>
  * Connects dictation to registered text inputs: their dictation buttons, the
  * Ctrl + Alt shortcut, cursor and focus tracking, and status messages.
  */
-export const useDictation = ({ vocabulary, setText }: UseDictationOptions): Dictation => {
+export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptions): Dictation => {
     const [availability, setAvailability] = useState<DictationAvailability>("checking")
     const [state, setState] = useState<DictationState>({ phase: "idle", targetId: null, message: "" })
     const inputs = useRef(new Map<string, HTMLInputElement>())
     const buttons = useRef(new Map<string, HTMLButtonElement>())
     const savedSelections = useRef(new Map<string, TextRange>())
     const vocabularyRef = useRef(vocabulary)
+    const getTextRef = useRef(getText)
     const setTextRef = useRef(setText)
     const availabilityRef = useRef(availability)
     const controllerRef = useRef<DictationController | null>(null)
 
     useEffect(() => {
         vocabularyRef.current = vocabulary
+        getTextRef.current = getText
         setTextRef.current = setText
         availabilityRef.current = availability
     })
 
-    const createInputTarget = useCallback((targetId: string, input: HTMLInputElement): DictationTextTarget => ({
-        getValue: () => input.value,
-        getSelection: () => getInputSelection(input),
-        isFocused: () => document.activeElement === input,
-        writeValue: (value, selection) => {
-            const before = input.value
-            const saved = savedSelections.current.get(targetId)
-            flushSync(() => setTextRef.current(targetId, value))
+    // Targets outlive their inputs, so that text still settling reaches a
+    // task whose input has left the page, such as one that was filtered out.
+    const targetsRef = useRef<ReturnType<typeof createDictationTargets<HTMLInputElement>> | null>(null)
+    const getTargets = useCallback(() => {
+        targetsRef.current ??= createDictationTargets<HTMLInputElement>({
+            getInput: (targetId) => inputs.current.get(targetId),
+            getText: (targetId) => getTextRef.current(targetId),
+            setText: (targetId, text) => flushSync(() => setTextRef.current(targetId, text)),
+            isFocused: (input) => document.activeElement === input,
+            revealCaret: scrollCaretIntoView,
+            savedSelections: savedSelections.current,
+        })
 
-            if (selection) {
-                input.setSelectionRange(selection.start, selection.end)
-                scrollCaretIntoView(input)
-            } else if (saved) {
-                // Not focused: keep the selection that focusing will restore
-                // pointing at the same text.
-                savedSelections.current.set(targetId, shiftRangeForChange(saved, before, value))
-            }
-        },
-    }), [])
+        return targetsRef.current
+    }, [])
 
     const getController = useCallback((): DictationController => {
         controllerRef.current ??= new DictationController({
@@ -108,17 +104,14 @@ export const useDictation = ({ vocabulary, setText }: UseDictationOptions): Dict
                 createConnection: createRealtimeConnection,
                 createAudioSource: createBrowserAudioSource,
                 vocabulary: vocabularyRef.current,
-                listener,
+                listener: reportSessionActivity(listener),
             }),
-            getTarget: (targetId) => {
-                const input = inputs.current.get(targetId)
-                return input && createInputTarget(targetId, input)
-            },
+            getTarget: (targetId) => getTargets().get(targetId),
             onStateChange: setState,
         })
 
         return controllerRef.current
-    }, [createInputTarget])
+    }, [getTargets])
 
     const isReadyToStart = useCallback((): boolean => {
         if (availabilityRef.current === "available") {
@@ -282,8 +275,22 @@ export const useDictation = ({ vocabulary, setText }: UseDictationOptions): Dict
     const registerInput = useCallback((targetId: string, input: HTMLInputElement | null): void => {
         if (input) {
             inputs.current.set(targetId, input)
-        } else {
-            inputs.current.delete(targetId)
+            return
+        }
+
+        inputs.current.delete(targetId)
+
+        // An input leaving the page may not report losing focus. If it is the
+        // one being dictated into and has not come straight back, as it does
+        // on an ordinary re-render, dictation stops as it does when focus leaves.
+        if (controllerRef.current?.isActive && controllerRef.current.activeTargetId === targetId) {
+            setTimeout(() => {
+                const controller = controllerRef.current
+
+                if (controller?.isActive && controller.activeTargetId === targetId && !inputs.current.has(targetId)) {
+                    controller.stop("focus")
+                }
+            }, 0)
         }
     }, [])
 
@@ -301,8 +308,8 @@ export const useDictation = ({ vocabulary, setText }: UseDictationOptions): Dict
 
     const removeTarget = useCallback((targetId: string): void => {
         controllerRef.current?.removeTarget(targetId)
-        savedSelections.current.delete(targetId)
-    }, [])
+        getTargets().forget(targetId)
+    }, [getTargets])
 
     return {
         availability,

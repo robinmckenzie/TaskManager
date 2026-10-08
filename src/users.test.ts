@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { getNewTaskAssignee, sortAssigneesByName } from "./users"
 import { getVisibleTasks } from "./assigneeFilter"
-import { initialTasks } from "./tasks"
+import { createSampleTasks } from "./tasks"
 
 const users = [{ id: "1" }, { id: "2" }, { id: "3" }]
 
@@ -38,7 +38,7 @@ describe("new-task assignment", () => {
     it.each(["1", "2", "3"])("uses selected user %s", (selection) => {
         const userId = getNewTaskAssignee(selection, users)
         expect(userId).toBe(selection)
-        const newTask = { ...initialTasks[0], userId }
+        const newTask = { ...createSampleTasks()[0], userId }
         expect(getVisibleTasks([newTask], selection)).toEqual([{ task: newTask, index: 0 }])
     })
 

@@ -33,8 +33,8 @@ describe("parseDictationSettings", () => {
         )
 
         expect(settings.timings).toEqual({
-            inactivityTimeoutSeconds: 10,
-            maxSessionSeconds: 20,
+            inactivityTimeoutSeconds: 15,
+            maxSessionSeconds: 60,
             settleTimeoutSeconds: 4,
         })
         expect(settings.model).toBe("enhanced")

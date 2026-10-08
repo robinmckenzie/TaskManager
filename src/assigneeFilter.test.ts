@@ -5,13 +5,13 @@ import {
     loadAssigneeFilter,
     saveAssigneeFilter,
 } from "./assigneeFilter"
-import { initialTasks, reorderTasks } from "./tasks"
+import { createSampleTasks, reorderTasks } from "./tasks"
 
 const users = [{ id: "1" }, { id: "2" }, { id: "3" }]
 const tasks = [
-    { ...initialTasks[0], id: "A", completed: true },
-    { ...initialTasks[1], id: "B" },
-    { ...initialTasks[3], id: "C" },
+    { ...createSampleTasks()[1], id: "A", completed: true },
+    { ...createSampleTasks()[2], id: "B" },
+    { ...createSampleTasks()[4], id: "C" },
 ]
 
 describe("assignee filtering", () => {
