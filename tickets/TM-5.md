@@ -17,6 +17,7 @@ to obtain Speechmatics credentials.
 - TaskManager is available at a public HTTPS address and works entirely through it. Opening it needs no installation, development server, account, sign-in or special configuration, and the deployment does not rely on a local fallback.
 - Dictation on the deployed app is live Speechmatics realtime dictation, behaving as TM-4 specifies. A static, recorded or simulated demonstration does not meet this ticket.
 - Apart from where it is served from, the deployed app behaves as the local app does. Task data continues to be stored only in the visitor's browser.
+- A visitor with no saved tasks sees sample tasks whose due dates are relative to their current local calendar date, so that the demonstration looks current whenever it is opened: "Design UI" due yesterday, "Fix authentication bug" in 2 days, "Write documentation" in 10 days and "Deploy to production" in 21 days. The dates are worked out when the sample tasks are created, not at build time, and do not depend on the time of day. Other sample task properties, the overdue styling and animations, and existing saved data are unchanged.
 - Decision (hosting): the app is hosted on Vercel's Hobby plan, with the built Vite front end and the dictation endpoints served from the same origin, the endpoints running as Vercel Functions. The browser connects directly to Speechmatics for realtime dictation.
 - Early deployment validation: the first Vercel deployment must show more than the home page loading. It must show that `GET /api/dictation/status` and `POST /api/dictation/token` return the expected JSON, and that the deployed function loads and resolves its configuration, including the bundled `dictation.config.toml` and the existing environment-variable overrides. If the Vercel arrangement does not work as expected, stop and discuss alternatives before making substantial changes.
 - Decision (shared implementation): the deployed dictation endpoints use the same request-handling implementation as local development, through a server module that does not depend on Vite.
@@ -38,6 +39,7 @@ to obtain Speechmatics credentials.
 
 - The first Vercel deployment returns the expected JSON from `GET /api/dictation/status` and `POST /api/dictation/token`, with the token response carrying the model, language, realtime URL and timings from `dictation.config.toml`, and an environment-variable override taking effect when set.
 - If that validation fails, the question is brought back for a decision before substantial changes are made.
+- With no saved tasks, the four sample tasks are due yesterday and in 2, 10 and 21 days, counted in local calendar days at any time of day, and saved tasks are loaded unchanged.
 - The front end and the dictation endpoints are served from the same Vercel deployment and origin.
 - The deployed endpoints and the local Vite endpoints call the same request-handling code, which does not import Vite.
 - After the extraction, the existing server tests pass without changes to what they assert.
