@@ -1,10 +1,10 @@
-import { neon } from "@neondatabase/serverless"
 import {
     DICTATION_TRANSCRIPT_MAX_LENGTH,
     DICTATION_TRANSCRIPT_PATH,
     isDictationActivityUser,
 } from "../shared/dictationApi.ts"
-import type { RunActivityQuery } from "./dictationActivityStore.ts"
+import { connectToNeon, lockRowLimit, sql } from "./dictationActivityStore.ts"
+import type { RunInTransaction } from "./dictationActivityStore.ts"
 
 /*
  * Keeps the final text that Speechmatics recognised during dictation on the
@@ -42,6 +42,7 @@ export type WriteTranscriptLogEntry = (entry: DictationTranscriptLogEntry) => vo
 /** The most transcript rows stored in any 24 hours. */
 export const TRANSCRIPT_DAILY_ROW_LIMIT = 1000
 
+const TRANSCRIPT_ROW_LIMIT_LOCK = 724_050_002
 const MAX_SEQUENCE = 10_000
 // A character can take up to four bytes.
 const MAX_BODY_BYTES = DICTATION_TRANSCRIPT_MAX_LENGTH * 4
@@ -104,17 +105,20 @@ const readSequence = (value: string | null): number | undefined => {
  * record for a session and sequence that is already stored is ignored, so a
  * repeated or replayed request adds nothing.
  */
-export const createTranscriptStore = (runQuery: RunActivityQuery): StoreTranscriptRecord =>
+export const createTranscriptStore = (runInTransaction: RunInTransaction): StoreTranscriptRecord =>
     async ({ sessionId, sequence, user, text, timestamp }) => {
-        await runQuery`
-            insert into dictation_transcripts (session_id, sequence, user_label, transcript, occurred_at)
-            select ${sessionId}::uuid, ${sequence}::integer, ${user}, ${text}, ${timestamp}::timestamptz
-            where (
-                select count(*) from dictation_transcripts
-                where occurred_at > now() - interval '1 day'
-            ) < ${TRANSCRIPT_DAILY_ROW_LIMIT}
-            on conflict (session_id, sequence) do nothing
-        `
+        await runInTransaction([
+            lockRowLimit(TRANSCRIPT_ROW_LIMIT_LOCK),
+            sql`
+                insert into dictation_transcripts (session_id, sequence, user_label, transcript, occurred_at)
+                select ${sessionId}::uuid, ${sequence}::integer, ${user}, ${text}, ${timestamp}::timestamptz
+                where (
+                    select count(*) from dictation_transcripts
+                    where occurred_at > now() - interval '1 day'
+                ) < ${TRANSCRIPT_DAILY_ROW_LIMIT}
+                on conflict (session_id, sequence) do nothing
+            `,
+        ])
     }
 
 /**
@@ -123,7 +127,7 @@ export const createTranscriptStore = (runQuery: RunActivityQuery): StoreTranscri
  */
 export const createTranscriptStoreFromEnvironment = (
     env: Record<string, string | undefined>,
-    connect: (connectionString: string) => RunActivityQuery = neon,
+    connect: (connectionString: string) => RunInTransaction = connectToNeon,
 ): StoreTranscriptRecord | undefined => {
     const connectionString = env.DATABASE_URL?.trim()
 

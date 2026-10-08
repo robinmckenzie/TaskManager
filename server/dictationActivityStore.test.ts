@@ -9,7 +9,7 @@ import {
     createActivityStoreFromEnvironment,
     storeActivitySafely,
 } from "./dictationActivityStore.ts"
-import type { RunActivityQuery } from "./dictationActivityStore.ts"
+import type { RunInTransaction } from "./dictationActivityStore.ts"
 import { createDictationFetchHandler } from "./dictationFunction.ts"
 
 const record: DictationActivityRecord = {
@@ -19,14 +19,18 @@ const record: DictationActivityRecord = {
     timestamp: "2026-10-08T15:30:00.000Z",
 }
 
-/** A query function that records the SQL text and values it was given. */
-const createFakeQuery = () => {
-    const queries: { sql: string; values: unknown[] }[] = []
-    const runQuery: RunActivityQuery = async (strings, ...values) => {
-        queries.push({ sql: strings.join("?").replace(/\s+/g, " ").trim(), values })
+/** A database that records the statements of each transaction it is given. */
+const createFakeDatabase = () => {
+    const transactions: { sql: string; values: unknown[] }[][] = []
+    const runInTransaction: RunInTransaction = async (statements) => {
+        transactions.push(statements.map(({ strings, values }) => ({
+            sql: strings.join("?").replace(/\s+/g, " ").trim(),
+            values,
+        })))
     }
 
-    return { queries, runQuery }
+    // The insert is the last statement of each transaction.
+    return { transactions, runInTransaction, queries: { get 0() { return transactions[0].at(-1)! }, get length() { return transactions.length } } }
 }
 
 const activityRequest = (query: string): Request =>
@@ -38,9 +42,9 @@ const getConfig = (): never => {
 
 describe("createActivityStore", () => {
     it("inserts only the event, the testing label and the timestamp", async () => {
-        const { queries, runQuery } = createFakeQuery()
+        const { queries, runInTransaction } = createFakeDatabase()
 
-        await createActivityStore(runQuery)(record)
+        await createActivityStore(runInTransaction)(record)
 
         expect(queries).toHaveLength(1)
         expect(queries[0].sql).toMatch(/^insert into dictation_activity \(event, user_label, occurred_at\)/)
@@ -53,27 +57,40 @@ describe("createActivityStore", () => {
     })
 
     it("passes values as parameters, never as part of the SQL text", async () => {
-        const { queries, runQuery } = createFakeQuery()
+        const { queries, runInTransaction } = createFakeDatabase()
 
-        await createActivityStore(runQuery)(record)
+        await createActivityStore(runInTransaction)(record)
 
         expect(queries[0].sql).not.toContain("Dad")
         expect(queries[0].sql).not.toContain("dictation_transcript_received")
     })
 
     it("skips the insert once the daily limit of stored rows is reached", async () => {
-        const { queries, runQuery } = createFakeQuery()
+        const { queries, runInTransaction } = createFakeDatabase()
 
-        await createActivityStore(runQuery)(record)
+        await createActivityStore(runInTransaction)(record)
 
         expect(queries[0].sql).toContain("where ( select count(*) from dictation_activity")
         expect(queries[0].sql).toContain("interval '1 day' ) < ?")
     })
 
-    it("does not create or check the table when saving", async () => {
-        const { queries, runQuery } = createFakeQuery()
+    it("takes the row limit lock before inserting, in the same transaction", async () => {
+        const { transactions, runInTransaction } = createFakeDatabase()
 
-        await createActivityStore(runQuery)(record)
+        await createActivityStore(runInTransaction)(record)
+
+        expect(transactions).toHaveLength(1)
+        expect(transactions[0].map((statement) => statement.sql.split(" ").slice(0, 2).join(" "))).toEqual([
+            "select pg_advisory_xact_lock(?::bigint)",
+            "insert into",
+        ])
+        expect(transactions[0][0].values).toEqual([expect.any(Number)])
+    })
+
+    it("does not create or check the table when saving", async () => {
+        const { queries, runInTransaction } = createFakeDatabase()
+
+        await createActivityStore(runInTransaction)(record)
 
         expect(queries[0].sql).not.toMatch(/create table|information_schema|pg_tables/i)
     })
@@ -91,8 +108,8 @@ describe("createActivityStoreFromEnvironment", () => {
     )
 
     it("uses DATABASE_URL when it is set", async () => {
-        const { queries, runQuery } = createFakeQuery()
-        const connect = vi.fn(() => runQuery)
+        const { queries, runInTransaction } = createFakeDatabase()
+        const connect = vi.fn(() => runInTransaction)
         const store = createActivityStoreFromEnvironment({ DATABASE_URL: "postgres://example" }, connect)
 
         await store?.(record)

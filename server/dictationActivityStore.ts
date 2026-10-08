@@ -10,8 +10,40 @@ import type { DictationActivityRecord } from "./dictationActivity.ts"
 /** Saves one activity record. Rejects if it could not be saved. */
 export type StoreActivityRecord = (record: DictationActivityRecord) => Promise<void>
 
-/** Runs one SQL statement written as a tagged template, as the Neon client does. */
-export type RunActivityQuery = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>
+/** One SQL statement with its parameters kept apart from its text. */
+export interface SqlStatement {
+    strings: TemplateStringsArray
+    values: unknown[]
+}
+
+/** Writes a statement as a tagged template, keeping its values as parameters. */
+export const sql = (strings: TemplateStringsArray, ...values: unknown[]): SqlStatement => ({ strings, values })
+
+/** Runs statements in order inside a single database transaction. */
+export type RunInTransaction = (statements: SqlStatement[]) => Promise<unknown>
+
+/** Connects to Neon. Nothing is sent until a transaction is run. */
+export const connectToNeon = (connectionString: string): RunInTransaction => {
+    const query = neon(connectionString)
+
+    return (statements) =>
+        query.transaction(statements.map(({ strings, values }) => query(strings, ...values)))
+}
+
+/**
+ * Takes the lock that makes a table's row limit exact. Counting rows and then
+ * inserting is not safe when requests arrive together: each could count before
+ * any had inserted, and all would insert. Each save therefore first takes a
+ * lock for its table, held until its transaction ends, so that saves to one
+ * table happen one at a time and each count sees the inserts before it.
+ *
+ * This must be a statement of its own, before the insert, because a statement
+ * only sees rows committed before it began.
+ */
+export const lockRowLimit = (lockKey: number): SqlStatement =>
+    sql`select pg_advisory_xact_lock(${lockKey}::bigint)`
+
+const ACTIVITY_ROW_LIMIT_LOCK = 724_050_001
 
 /**
  * The most rows stored in any 24 hours. Further events are skipped until
@@ -22,17 +54,20 @@ export const ACTIVITY_DAILY_ROW_LIMIT = 1000
 /** How long a save may take before it is abandoned. */
 export const ACTIVITY_STORE_TIMEOUT_MS = 5000
 
-/** Creates a store that inserts records with the given query function. */
-export const createActivityStore = (runQuery: RunActivityQuery): StoreActivityRecord =>
+/** Creates a store that inserts records through the given database. */
+export const createActivityStore = (runInTransaction: RunInTransaction): StoreActivityRecord =>
     async ({ event, user, timestamp }) => {
-        await runQuery`
-            insert into dictation_activity (event, user_label, occurred_at)
-            select ${event}, ${user}, ${timestamp}::timestamptz
-            where (
-                select count(*) from dictation_activity
-                where occurred_at > now() - interval '1 day'
-            ) < ${ACTIVITY_DAILY_ROW_LIMIT}
-        `
+        await runInTransaction([
+            lockRowLimit(ACTIVITY_ROW_LIMIT_LOCK),
+            sql`
+                insert into dictation_activity (event, user_label, occurred_at)
+                select ${event}, ${user}, ${timestamp}::timestamptz
+                where (
+                    select count(*) from dictation_activity
+                    where occurred_at > now() - interval '1 day'
+                ) < ${ACTIVITY_DAILY_ROW_LIMIT}
+            `,
+        ])
     }
 
 /**
@@ -42,7 +77,7 @@ export const createActivityStore = (runQuery: RunActivityQuery): StoreActivityRe
  */
 export const createActivityStoreFromEnvironment = (
     env: Record<string, string | undefined>,
-    connect: (connectionString: string) => RunActivityQuery = neon,
+    connect: (connectionString: string) => RunInTransaction = connectToNeon,
 ): StoreActivityRecord | undefined => {
     const connectionString = env.DATABASE_URL?.trim()
 

@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import transcriptFunction from "../api/dictation/transcript.ts"
 import { DICTATION_TRANSCRIPT_MAX_LENGTH, DICTATION_TRANSCRIPT_PATH } from "../shared/dictationApi.ts"
-import type { RunActivityQuery } from "./dictationActivityStore.ts"
+import { createActivityStore } from "./dictationActivityStore.ts"
+import type { RunInTransaction } from "./dictationActivityStore.ts"
 import { createDictationFetchHandler, handleHostedDictationRequest } from "./dictationFunction.ts"
 import {
     createTranscriptStore,
@@ -250,19 +251,23 @@ describe("createTranscriptStore", () => {
         timestamp: "2026-10-09T10:00:00.000Z",
     }
 
-    const createFakeQuery = () => {
-        const queries: { sql: string; values: unknown[] }[] = []
-        const runQuery: RunActivityQuery = async (strings, ...values) => {
-            queries.push({ sql: strings.join("?").replace(/\s+/g, " ").trim(), values })
+    const createFakeDatabase = () => {
+        const transactions: { sql: string; values: unknown[] }[][] = []
+        const runInTransaction: RunInTransaction = async (statements) => {
+            transactions.push(statements.map(({ strings, values }) => ({
+                sql: strings.join("?").replace(/\s+/g, " ").trim(),
+                values,
+            })))
         }
 
-        return { queries, runQuery }
+        // The insert is the last statement of each transaction.
+        return { transactions, runInTransaction, queries: { get 0() { return transactions[0].at(-1)! }, get length() { return transactions.length } } }
     }
 
     it("inserts the transcript with its session, sequence, label and time as parameters", async () => {
-        const { queries, runQuery } = createFakeQuery()
+        const { queries, runInTransaction } = createFakeDatabase()
 
-        await createTranscriptStore(runQuery)(record)
+        await createTranscriptStore(runInTransaction)(record)
 
         expect(queries).toHaveLength(1)
         expect(queries[0].sql).toMatch(
@@ -280,20 +285,39 @@ describe("createTranscriptStore", () => {
     })
 
     it("ignores a repeat of a session and sequence that is already stored", async () => {
-        const { queries, runQuery } = createFakeQuery()
+        const { queries, runInTransaction } = createFakeDatabase()
 
-        await createTranscriptStore(runQuery)(record)
+        await createTranscriptStore(runInTransaction)(record)
 
         expect(queries[0].sql).toContain("on conflict (session_id, sequence) do nothing")
     })
 
     it("skips the insert once the daily limit of stored rows is reached, and never creates the table", async () => {
-        const { queries, runQuery } = createFakeQuery()
+        const { queries, runInTransaction } = createFakeDatabase()
 
-        await createTranscriptStore(runQuery)(record)
+        await createTranscriptStore(runInTransaction)(record)
 
         expect(queries[0].sql).toContain("where ( select count(*) from dictation_transcripts")
         expect(queries[0].sql).not.toMatch(/create table/i)
+    })
+
+    it("takes its own row limit lock before inserting, in the same transaction", async () => {
+        const transcripts = createFakeDatabase()
+        const activity = createFakeDatabase()
+
+        await createTranscriptStore(transcripts.runInTransaction)(record)
+        await createActivityStore(activity.runInTransaction)({
+            type: "dictation_activity",
+            event: "dictation_started",
+            user: "Dad",
+            timestamp: record.timestamp,
+        })
+
+        expect(transcripts.transactions).toHaveLength(1)
+        expect(transcripts.transactions[0]).toHaveLength(2)
+        expect(transcripts.transactions[0][0].sql).toBe("select pg_advisory_xact_lock(?::bigint)")
+        // Saving a transcript does not wait behind saving activity, or the reverse.
+        expect(transcripts.transactions[0][0].values).not.toEqual(activity.transactions[0][0].values)
     })
 
     it.each([{}, { DATABASE_URL: "" }, { DATABASE_URL: "  " }])(
