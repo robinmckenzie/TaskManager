@@ -122,3 +122,49 @@ Not yet verified:
   merged and Vercel production tracks `main` again.
 - The final checks in Chrome in a fresh session with no sign-in, and in a
   second mainstream browser, on that final deployment.
+
+### After merging
+
+Recorded on 2026-10-08, after TM-4 and TM-5 merged. It adds to the record
+above, which is left as it was written.
+
+Public address: <https://task-manager-three-phi-83.vercel.app/>. Vercel
+production now tracks `main`, and the production deployment is of merge commit
+`7b75fec`.
+
+Verified:
+
+- TM-4 merged into `main` through pull request #2, as merge commit `2fc2ffe`,
+  and TM-5 through pull request #3, as merge commit `7b75fec`. Both were merge
+  commits, so the branches' commits are in `main` with their history intact.
+- The files in `main` at `7b75fec` are identical to those at the TM-5 branch
+  tip `2c0b263`.
+- The owner verified the production deployment of `7b75fec` on Vercel.
+- Live Speechmatics dictation works on that deployment.
+- Dictation activity is recorded in the `dictation_activity` table in Neon,
+  with its events and user labels.
+- Complete transcripts are stored in the `dictation_session_transcripts` table
+  in Neon.
+- In a fresh Chrome Incognito session, which is not signed in to anything, the
+  app opened and a dictation session's transcript was stored.
+
+Observed during verification:
+
+- A browser tab that had been open since before the update was still running
+  the earlier version of the app, which sent each final result to the
+  transcript endpoint separately. The updated endpoint refuses those requests
+  with HTTP 400, as intended, so that a fragment is never stored as a whole
+  session. Opening the app in a fresh browser session loaded the current
+  version, and transcripts were then stored. This is the expected behaviour of
+  a page loaded before a deployment, not a defect in the deployed app, and no
+  change was needed. Reloading such a tab has the same effect.
+
+Not yet verified:
+
+- The testing-label change has still not been retested on the owner's father's
+  iPad. This is now tracked as TM-7.
+- The checks in a second mainstream browser on the final deployment have not
+  been recorded.
+- Within the fresh Chrome session, stopping and restarting dictation and task
+  text surviving a refresh were not recorded as separate checks on the final
+  deployment.
