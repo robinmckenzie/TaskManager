@@ -2,8 +2,9 @@
   "mcpServers": {
     "playwright": {
       "type": "stdio",
-      "command": "npx",
+      "command": "node",
       "args": [
+        "server/startPlaywrightMcp.mjs",
         "-y",
         "@playwright/mcp@0.0.83",
         "--browser",

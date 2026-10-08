@@ -181,3 +181,58 @@ the computer where the checks ran:
 - The browser-check server kept its Vite dependency cache in
   `node_modules/.vite-browser-check` and did not change `node_modules/.vite`.
 - Codex has not been given the same setup. README records what it would need.
+
+### After the Codex review
+
+Recorded on 2026-10-09. It adds to the record above, which is left as it was
+written. The UI checks above were run before this fix and have not been
+repeated since.
+
+An independent Codex review of the branch at `4f69c71` found that Playwright
+MCP 0.0.83 also takes settings from inherited environment variables, which
+could undo the isolation that `.mcp.json` asks for. Reading the package's code
+confirmed it:
+
+- Settings are merged in this order: defaults, a configuration file,
+  environment variables, then command-line options. A command-line option only
+  overrides the setting it names.
+- `PLAYWRIGHT_MCP_STORAGE_STATE` is passed into the isolated browser context,
+  so it would preload cookies and localStorage.
+- `PLAYWRIGHT_MCP_CDP_ENDPOINT` is checked before `--isolated`, so it would
+  attach to a browser that is already running.
+- `PLAYWRIGHT_MCP_CONFIG` and `PLAYWRIGHT_MCP_SECRETS_FILE` would read another
+  configuration or secrets file.
+- Others have similar effects, including `PLAYWRIGHT_MCP_INIT_SCRIPT`,
+  `PLAYWRIGHT_MCP_INIT_PAGE`, `PLAYWRIGHT_MCP_EXTENSION`,
+  `PLAYWRIGHT_MCP_EXECUTABLE_PATH`, `PLAYWRIGHT_MCP_PROXY_SERVER`,
+  `PLAYWRIGHT_MCP_BLOCKED_ORIGINS`, `PLAYWRIGHT_MCP_CAPS` and
+  `PLAYWRIGHT_MCP_ALLOW_UNRESTRICTED_FILE_ACCESS`, and some variables with
+  other Playwright prefixes choose a profile or attach to a browser.
+
+The fix: `.mcp.json` now starts the server through
+`server/startPlaywrightMcp.mjs`, which refuses to start it when any variable
+beginning `PLAYWRIGHT_`, `PW_`, `PWTEST_`, `PWMCP_` or `PWDEBUG` is set. The
+check runs in the process the server inherits its environment from. The package
+version and options are still named in `.mcp.json`.
+
+Verified for the fix:
+
+- `npm run build`, `npm run lint` and `npm test` pass, with 415 tests across
+  23 files. The new tests use made-up values, cover each variable named above,
+  and check that `.mcp.json` goes through the launcher.
+- Run directly with made-up `PLAYWRIGHT_MCP_STORAGE_STATE` and
+  `PLAYWRIGHT_MCP_CDP_ENDPOINT` values, the launcher exited with status 1
+  before starting anything, named both variables, and showed neither value.
+- Run directly with `--version` in place of the package, the launcher ran
+  `npx`, passed its output through and returned its exit status. This checked
+  how it starts a command on Windows without starting Playwright MCP.
+
+Not yet verified:
+
+- That Claude Code starts Playwright MCP through the launcher and that the
+  browser tools still work. This needs a new Claude Code conversation, which
+  reads `.mcp.json` when it starts.
+- The earlier checks did not record whether a Playwright variable was set in
+  the MCP server's environment. The shell used for the checks had none when
+  this was recorded, the browser was seen to be started by the MCP server with
+  a temporary profile, and the first page load showed only the sample tasks.

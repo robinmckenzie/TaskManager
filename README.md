@@ -390,9 +390,22 @@ follows.
 
 ### What the setup consists of
 
-- `.mcp.json` starts `@playwright/mcp` at exactly version 0.0.83. It drives the
-  Google Chrome installed on this computer, in a visible window, with these
-  options:
+- `.mcp.json` starts `@playwright/mcp` at exactly version 0.0.83, through the
+  launcher `server/startPlaywrightMcp.mjs`:
+  - Playwright MCP also takes settings from environment variables, and an
+    option in `.mcp.json` only overrides the setting it names. An inherited
+    variable could otherwise load saved cookies
+    (`PLAYWRIGHT_MCP_STORAGE_STATE`), attach to a browser that is already
+    running (`PLAYWRIGHT_MCP_CDP_ENDPOINT`), or read another configuration or
+    secrets file (`PLAYWRIGHT_MCP_CONFIG`, `PLAYWRIGHT_MCP_SECRETS_FILE`),
+    whatever `--isolated` says.
+  - The launcher refuses to start the server if any variable beginning
+    `PLAYWRIGHT_`, `PW_`, `PWTEST_`, `PWMCP_` or `PWDEBUG` is set, and names
+    the variable without showing its value. This includes harmless ones such
+    as `PLAYWRIGHT_BROWSERS_PATH`. If `/mcp` shows `playwright` as failed,
+    start Claude Code from a shell without those variables.
+- The server drives the Google Chrome installed on this computer, in a visible
+  window, with these options:
   - `--isolated` keeps the browser profile in memory, so it starts empty, is
     discarded when the browser closes, and never touches your own profile.
   - `--allowed-origins http://127.0.0.1:5183` limits the browser's requests to
@@ -449,8 +462,9 @@ expected during a browser check.
 
 ### Run a browser check
 
-1. Check that the shell has no Speechmatics, database or Vercel variable set,
-   by listing names only, and that nothing is listening on port 5183.
+1. Check that the shell has no Speechmatics, database, Vercel or Playwright
+   variable set, by listing names only, and that nothing is listening on port
+   5183.
 2. Start `npm run dev:browser-check` as a process that can be stopped on its
    own. Confirm that it listens on `127.0.0.1:5183` and that
    `GET /api/dictation/status` returns `{"configured":false}`.
@@ -488,9 +502,11 @@ Things to know while checking:
 ### Remove it
 
 1. Delete `.mcp.json`, `.claude/settings.json`, `vite.browser-check.config.ts`,
-   `server/browserCheckEnvironment.ts` and its test, the `dev:browser-check`
-   script in `package.json`, and the `vite.browser-check.config.ts` entry in
-   `tsconfig.node.json`.
+   `server/browserCheckEnvironment.ts` and its test,
+   `server/startPlaywrightMcp.mjs`, `server/playwrightMcpEnvironment.mjs` and
+   its test, the `dev:browser-check` script in `package.json`, and the
+   `vite.browser-check.config.ts` entry and the `allowJs` and `checkJs` options
+   in `tsconfig.node.json`.
 2. Delete the `.playwright-mcp` folder if it exists. Optionally delete
    `node_modules/.vite-browser-check`, the browser-check server's dependency
    cache, which is otherwise removed along with `node_modules`.
