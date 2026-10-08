@@ -86,3 +86,39 @@ to obtain Speechmatics credentials.
 - README gives the Neon configuration, the one-time schema setup, how to inspect stored events, and the limitations and privacy considerations.
 - With the committed configuration, dictation stops automatically after 15 seconds without recognised speech and not before, recognised speech restarts that count, and a session stops at 60 seconds from the start of recording even while speech is being recognised, and not before.
 - No authentication, access control, rate limiting or monitoring has been added.
+
+## Verification record
+
+Recorded on 2026-10-08, before TM-4 and TM-5 merge. This records what has been
+checked and does not change the requirements or acceptance criteria above.
+
+Public address: <https://task-manager-three-phi-83.vercel.app/>. At the time of
+recording, Vercel production tracks the TM-5 branch, not `main`.
+
+Verified:
+
+- `npm run build`, `npm run lint` and `npm test` pass at commit `74b3129`, with
+  354 tests across 21 files.
+- At `74b3129` the TM-5 branch contains the TM-4 branch tip `316ad57` with its
+  history intact, and `main` is an ancestor of it.
+- An independent Codex follow-up review, after the five fixes from the first
+  review, found no actionable P0 to P3 issues.
+- Live Speechmatics dictation works on the production deployment, and
+  `GET /api/dictation/status` there returns `{"configured":true}`.
+- Dictation activity is logged with the user label.
+- Each dictation session stores one complete transcript, with the correct user
+  label, in the `dictation_session_transcripts` table in Neon. That table has
+  been created in the production database.
+- The filtering regression was tested by hand: task titles and stored
+  transcripts agreed, including when the task was filtered out during
+  dictation.
+
+Not yet verified:
+
+- The testing-label fix, which applies a label from `?user=NAME` without
+  relying on browser storage, has not been retested on the owner's father's
+  iPad.
+- The final production deployment and its commit, after TM-4 and then TM-5 have
+  merged and Vercel production tracks `main` again.
+- The final checks in Chrome in a fresh session with no sign-in, and in a
+  second mainstream browser, on that final deployment.

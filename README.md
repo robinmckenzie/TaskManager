@@ -29,9 +29,14 @@ with a space added where it meets existing words. Words appear as you speak and
 may be corrected for a few seconds, including just after you stop. Moving the
 cursor, or moving to another task title, sends further speech there. Dictation
 stops automatically after a period without recognised speech (15 seconds by
-default), after a maximum time (60 seconds by default), when focus leaves the
-task titles, or when the task being dictated is deleted. A status line above the task list reports these changes and any
-problems, such as a blocked microphone. Dictation needs setting up first; see
+default), after a maximum time (60 seconds by default, counted from when the
+microphone starts recording), when focus leaves the
+task titles, or when the task being dictated is deleted. Recognised text may
+keep settling for up to four seconds after dictation stops. A status line above the task list reports these changes and any
+problems, such as a blocked microphone. A line above the task list says "This
+demo may retain dictated text for diagnostics.", because the deployed app keeps
+the final recognised text; see [Stored transcripts](#stored-transcripts).
+Dictation needs setting up first; see
 [Set up voice dictation](#set-up-voice-dictation).
 
 ## Technologies
@@ -96,6 +101,10 @@ setting is explained by a comment in the file:
 | `[timings] max_session_seconds` | `60` | Maximum length of one dictation session, from when the microphone starts recording. |
 | `[timings] settle_timeout_seconds` | `4` | How long recognised text may keep settling after dictation stops. |
 
+One timing is fixed in the code and not in the file: connecting to Speechmatics
+may take up to 15 seconds from when the microphone starts recording. After that,
+dictation stops and reports that the service is unavailable.
+
 Restart `npm run dev` or `npm run preview` after changing it. The server checks
 the file when it starts and stops with a message naming the problem, such as a
 misspelt setting or a timing that is not a positive number.
@@ -122,11 +131,10 @@ front end, and the dictation endpoints as Vercel Functions on the same address.
 The browser connects directly to Speechmatics for realtime dictation, so the
 host only issues temporary keys.
 
-- Public address: not yet recorded. It is added here after the final
-  verification of the deployment.
+- Public address: <https://task-manager-three-phi-83.vercel.app/>
 - The functions are `api/dictation/status.ts`, `api/dictation/token.ts`,
   `api/dictation/activity.ts` and `api/dictation/transcript.ts`.
-  Both run the handler that local development uses, in
+  All four run the handler that local development uses, in
   `server/dictationHandler.ts`.
 - Vercel reads the Speechmatics API key from the `SPEECHMATICS_API_KEY`
   environment variable in the project's settings. The key must never be
@@ -141,9 +149,12 @@ host only issues temporary keys.
 - Visits and page views are reported to Vercel Web Analytics, which must be
   enabled for the project in Vercel. It uses no cookies. Under `npm run dev`
   it only logs to the browser console and records nothing.
-- Dictation activity is saved to a Neon Postgres database through the
-  `DATABASE_URL` environment variable, which Vercel sets when the database is
-  connected to the project. See [Stored activity](#stored-activity).
+- A Neon Postgres database holds two things: dictation activity events, one
+  row per event, and the complete final transcript of each dictation session,
+  one row per session. The functions reach it through the `DATABASE_URL`
+  environment variable, which Vercel sets when the database is connected to
+  the project. See [Stored activity](#stored-activity) and
+  [Stored transcripts](#stored-transcripts).
 - The endpoints are public and have no access control. Usage is limited by the
   Speechmatics account's credit.
 
