@@ -58,6 +58,12 @@ interface InsertionArea {
     text: string
 }
 
+/**
+ * One dictation, from starting until its recognised text has settled: its
+ * session and the insertion areas its speech goes to. The last area is the
+ * current one. A stopped run is kept until settled so that late revisions
+ * still reach their areas.
+ */
 interface DictationRun {
     session: DictationSessionHandle
     areas: InsertionArea[]
@@ -73,6 +79,10 @@ const isSameRange = (left: TextRange, right: TextRange): boolean => {
 const getCursorRange = (area: InsertionArea): TextRange =>
     area.isPrepared ? { start: area.range.end, end: area.range.end } : normaliseRange(area.range)
 
+/**
+ * Creates an insertion area at a cursor position or selection. It receives
+ * speech that begins at or after `fromAudio`, and holds no text until then.
+ */
 const createArea = (targetId: string, range: TextRange, fromAudio: number): InsertionArea => ({
     targetId,
     range: normaliseRange(range),
