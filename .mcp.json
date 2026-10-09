@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "server/startPlaywrightMcp.mjs",
+        "-y",
+        "@playwright/mcp@0.0.83",
+        "--browser",
+        "chrome",
+        "--isolated",
+        "--allowed-origins",
+        "http://127.0.0.1:5183",
+        "--block-service-workers",
+        "--output-dir",
+        ".playwright-mcp"
+      ]
+    }
+  }
+}

@@ -370,11 +370,157 @@ anyone can open the app with any label. Giving someone a link that includes
 | Command | Description |
 | --- | --- |
 | `npm run dev` | Start the Vite development server. |
+| `npm run dev:browser-check` | Start the isolated server that browser checks run against. |
 | `npm run build` | Check TypeScript and create a production build in `dist/`. |
 | `npm run lint` | Check the code with ESLint. |
 | `npm test` | Run the unit tests once. |
 | `npm run test:watch` | Rerun the unit tests as files change. |
 | `npm run preview` | Serve the production build locally; run `npm run build` first. |
+
+## Browser checks with Claude Code
+
+Claude Code can open the app in a real browser, use it, and report what it saw.
+It does this through the
+[Playwright MCP server](https://github.com/microsoft/playwright-mcp), which is
+registered for this project in `.mcp.json`. Nothing is added to `package.json`:
+the server is fetched by `npx` the first time it is used, and `npm install`,
+`npm run dev`, `npm run build`, `npm run lint` and `npm test` work the same
+without it. `AGENTS.md` says when Claude runs browser checks and the rules it
+follows.
+
+### What the setup consists of
+
+- `.mcp.json` starts `@playwright/mcp` at exactly version 0.0.83, through the
+  launcher `server/startPlaywrightMcp.mjs`:
+  - Playwright MCP also takes settings from environment variables, and an
+    option in `.mcp.json` only overrides the setting it names. An inherited
+    variable could otherwise load saved cookies
+    (`PLAYWRIGHT_MCP_STORAGE_STATE`), attach to a browser that is already
+    running (`PLAYWRIGHT_MCP_CDP_ENDPOINT`), or read another configuration or
+    secrets file (`PLAYWRIGHT_MCP_CONFIG`, `PLAYWRIGHT_MCP_SECRETS_FILE`),
+    whatever `--isolated` says.
+  - The launcher refuses to start the server if any variable beginning
+    `PLAYWRIGHT_`, `PW_`, `PWTEST_`, `PWMCP_` or `PWDEBUG` is set, and names
+    the variable without showing its value. This includes harmless ones such
+    as `PLAYWRIGHT_BROWSERS_PATH`. If `/mcp` shows `playwright` as failed,
+    start Claude Code from a shell without those variables.
+- The server drives the Google Chrome installed on this computer, in a visible
+  window, with these options:
+  - `--isolated` keeps the browser profile in memory, so it starts empty, is
+    discarded when the browser closes, and never touches your own profile.
+  - `--allowed-origins http://127.0.0.1:5183` limits the browser's requests to
+    the browser-check server. Playwright MCP documents this as a guardrail and
+    not a security boundary, and it does not apply to redirects.
+  - `--block-service-workers` stops a page from installing a service worker.
+  - `--output-dir .playwright-mcp` is where screenshots and other files go.
+    Git ignores that folder.
+- It is not given the options that would connect to a browser that is already
+  running (`--cdp-endpoint`, `--extension`) or that would allow files outside
+  the project to be read (`--allow-unrestricted-file-access`).
+- `.claude/settings.json` denies the `browser_run_code_unsafe` tool, which
+  Playwright MCP describes as equivalent to running arbitrary code on this
+  computer.
+- `npm run dev:browser-check` starts a separate server for the checks, using
+  `vite.browser-check.config.ts`, at `http://127.0.0.1:5183`:
+  - It loads no `.env` files, so it never reads the Speechmatics key in
+    `.env.local`. Dictation shows as unavailable.
+  - It refuses to start if the shell has a Speechmatics, database or Vercel
+    variable set, and names the variable without showing its value.
+  - It fails if port 5183 is taken, instead of moving to another port.
+  - It has its own address, so its saved tasks are separate from those of
+    `npm run dev`, which can stay running.
+  - It keeps its Vite dependency cache in `node_modules/.vite-browser-check`,
+    separate from the `node_modules/.vite` cache that `npm run dev` uses, so
+    neither server rebuilds a cache the other is serving from.
+  - Like `npm run dev`, it never connects to the database.
+
+The version was checked against the npm registry on 2026-10-08, when 0.0.83 was
+the latest release. Each release depends on a pre-release build of Playwright,
+which is how Microsoft publishes it. There is no stable alternative, so the
+version is fixed here instead of following the newest release.
+
+### Set it up
+
+1. Install [Google Chrome](https://www.google.com/chrome/) if it is not already
+   installed.
+2. Start a new Claude Code conversation in this project. Claude Code reads
+   `.mcp.json` when a conversation starts and asks you to approve the
+   `playwright` server the first time.
+3. Type `/mcp` and check that `playwright` shows as connected. The first start
+   downloads the package, so it can take a little while.
+
+### Check that it is working
+
+Ask Claude to run a browser check of the app. It should start the browser-check
+server, open `http://127.0.0.1:5183` in a new Chrome window that has none of
+your bookmarks or sign-ins, and describe a screenshot of the task list.
+
+While that address is restricted, two things the page normally fetches from
+elsewhere are blocked: the assignee photos and the Vercel Web Analytics debug
+script. Missing photos and console messages about those two requests are
+expected during a browser check.
+
+### Run a browser check
+
+1. Check that the shell has no Speechmatics, database, Vercel or Playwright
+   variable set, by listing names only, and that nothing is listening on port
+   5183.
+2. Start `npm run dev:browser-check` as a process that can be stopped on its
+   own. Confirm that it listens on `127.0.0.1:5183` and that
+   `GET /api/dictation/status` returns `{"configured":false}`.
+3. Open `http://127.0.0.1:5183` in the browser that Playwright MCP provides,
+   and use "Reset to sample tasks" before the first check.
+4. When the checks are done, close the browser with the Playwright MCP close
+   tool, then stop only the browser-check server. Confirm that port 5183 is
+   free and that Git shows no changes.
+
+Things to know while checking:
+
+- **Persistence.** The browser profile is temporary and is discarded when the
+  browser closes. To check that a change is saved, reload the page in the same
+  browser session before closing it.
+- **Drag-and-drop.** Drop on the lower half of the target task when moving a
+  task down, and on the upper half when moving it up. A drop on the exact
+  centre of a task does not reorder, because the app moves a task only once the
+  pointer crosses the middle of the task it is over.
+- **Blocked requests.** `ERR_BLOCKED_BY_CLIENT` console errors for
+  `i.pravatar.cc` and `va.vercel-scripts.com` are expected, and their number
+  varies as tasks are added, reassigned and reloaded. Treat any other console
+  error or failed request as a finding.
+- **Assignee photos.** They are blocked, so their appearance cannot be checked
+  this way. Each shows as a broken image with the assignee's name.
+- **Dictation.** The server has no Speechmatics key, so the dictation buttons
+  are disabled. Checking that they are disabled is in scope. Live dictation
+  stays a manual check.
+- **Dates and sliders.** Enter a due date as `yyyy-mm-dd`, whatever format the
+  page displays. A priority slider can be set directly, or by clicking it and
+  pressing the arrow keys.
+- **Files.** Save screenshots and snapshots under `.playwright-mcp/`, with
+  names that say what they show. Playwright MCP also writes a page snapshot and
+  a console log there on its own. Git ignores the folder.
+
+### Remove it
+
+1. Delete `.mcp.json`, `.claude/settings.json`, `vite.browser-check.config.ts`,
+   `server/browserCheckEnvironment.ts` and its test,
+   `server/startPlaywrightMcp.mjs`, `server/playwrightMcpEnvironment.mjs` and
+   its test, the `dev:browser-check` script in `package.json`, and the
+   `vite.browser-check.config.ts` entry and the `allowJs` and `checkJs` options
+   in `tsconfig.node.json`.
+2. Delete the `.playwright-mcp` folder if it exists. Optionally delete
+   `node_modules/.vite-browser-check`, the browser-check server's dependency
+   cache, which is otherwise removed along with `node_modules`.
+3. To remove the downloaded package, delete its folder from the `npx` cache,
+   which is under `%LOCALAPPDATA%\npm-cache\_npx` on Windows.
+
+To switch it off without removing it, reject the `playwright` server when
+Claude Code asks, or run `claude mcp reset-project-choices` to be asked again.
+
+### Codex
+
+Codex does not read `.mcp.json`. It takes MCP servers from `~/.codex/config.toml`
+or from a project `.codex/config.toml`, so it would need an equivalent entry
+there. That has not been set up.
 
 ## Codex validation permissions
 
