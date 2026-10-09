@@ -1,6 +1,6 @@
 # TM-7 - Confirm that a tester label is recorded from an iPad
 
-Status: Deferred, verification pending
+Status: Agreed
 
 Priority: Low (P3)
 

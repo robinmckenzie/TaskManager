@@ -4,25 +4,33 @@
 
 - Work against a local ticket with a stable ID such as `TM-1`.
 - Changes limited to project process or housekeeping files (such as `AGENTS.md`, `FUTURE_CONSIDERATIONS.md`, or `.gitignore`) do not need a ticket when explicitly requested, provided they do not change application behaviour, setup, dependencies, or tool permissions. Explain the reason in the commit or PR.
-- Store local tickets in the repository as `tickets/<ticket-id>.md`.
-- A ticket may be committed and pushed while still a draft, for example as a checkpoint when stopping work. Show its status below the title as `Status: Draft` or `Status: Agreed`. Only a human can agree a ticket; tickets without a status line predate this rule and count as agreed.
-- Do not begin investigation, planning, or implementation until the ticket is agreed and its agreed status is committed.
+- Store local tickets in the repository under `tickets/`.
+- Tickets progress through STUB -> DRAFT -> Agreed:
+    - STUB records an idea without developing it yet. A stub may contain as little as a title.
+    - DRAFT contains requirements that are being developed but are not yet agreed.
+    - Agreed means explicitly approved by a human. Only a human can agree a ticket.
+- Name ticket files `<ticket-id>-<STATUS>-<Title>.md` while STUB or DRAFT, and `<ticket-id>-<Title>.md` once Agreed. Give every ticket a descriptive title, with spaces replaced by hyphens (for example `TM-12-STUB-Improve-dictation-testing.md`, `TM-12-DRAFT-Improve-dictation-testing.md`, `TM-12-Improve-dictation-testing.md`). Rename the file when its status changes; the ticket ID stays the same.
+- The filename is the authoritative record of a ticket's status. If a status line inside the file disagrees with the filename, the filename takes precedence.
+- A ticket may be committed and pushed while still a stub or draft, for example as a checkpoint when stopping work.
+- Do not begin planning or implementation until the ticket is agreed and its agreed status is committed.
+- Investigation can be carried out on a ticket at any status: STUB, DRAFT or Agreed. Investigation is read-only, except for recording findings in the ticket.
 - If investigation or planning leads to an agreed change in requirements, update the relevant ticket to reflect that decision before implementing it.
 - Scope changes to the ticket. Avoid unrelated refactors, formatting changes, cleanup, or dependency upgrades.
+- Name branches `<ticket-id>-<Title>`, with the first letter of the title capitalised and spaces replaced by hyphens (for example `TM-8-Add-ticket-status-workflow`).
 - Reference the relevant ticket ID in commits.
 - Summarize the resulting behavior, validation performed, and any remaining limitations when handing off changes.
 - Update README when setup, commands, or documented user behavior change.
 
 ## Ticket writing
 
-- Use these sections in order:
+- From DRAFT onwards, use these sections in order:
     1. User problem — why are we doing this?
     2. Requirements — what behaviour do we want?
     3. Acceptance criteria — how will we know we've achieved it?
 - Describe the problem and required behaviour without unnecessarily prescribing implementation details.
 - Distinguish genuine constraints from implementation choices. Include a constraint, such as one imposed by an external API, security, or saved-data compatibility, in Requirements only when it is genuinely required, and leave other implementation choices to investigation and planning.
-- When asked to draft a ticket, write only `tickets/<ticket-id>.md`, marked `Status: Draft`. During ticket drafting, do not modify other files or begin investigation, planning, or implementation until the ticket has been agreed.
-- A draft ticket needs to be coherent enough to investigate, not to settle every implementation detail. Distinguish product decisions needed before investigation, provisional or tunable defaults, questions for investigation, and product questions that investigation exposes, which are brought back for a decision.
+- When asked to stub or draft a ticket, write only that ticket file, named with its `STUB` or `DRAFT` status. During ticket stubbing or drafting, do not modify other files unless explicitly authorised, and do not begin planning or implementation until the ticket has been agreed.
+- A draft ticket needs to be coherent enough to be agreed, not to settle every implementation detail. Distinguish product decisions needed before agreement, provisional or tunable defaults, questions for investigation, and product questions that investigation exposes, which are brought back for a decision.
 - When handing over a drafted or revised ticket for review, separately summarise:
     - what it leaves out of scope, whether stated explicitly or left out by omission;
     - any assumptions made while drafting;
