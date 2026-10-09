@@ -227,12 +227,62 @@ Verified for the fix:
   `npx`, passed its output through and returned its exit status. This checked
   how it starts a command on Windows without starting Playwright MCP.
 
-Not yet verified:
+When this was recorded, it had not yet been verified that Claude Code starts
+Playwright MCP through the launcher and that the browser tools still work,
+because that needs a new Claude Code conversation, which reads `.mcp.json` when
+it starts. The post-fix smoke test below has since verified it.
 
-- That Claude Code starts Playwright MCP through the launcher and that the
-  browser tools still work. This needs a new Claude Code conversation, which
-  reads `.mcp.json` when it starts.
-- The earlier checks did not record whether a Playwright variable was set in
-  the MCP server's environment. The shell used for the checks had none when
-  this was recorded, the browser was seen to be started by the MCP server with
-  a temporary profile, and the first page load showed only the sample tasks.
+Still a limitation of the earlier UI checks:
+
+- They did not record whether a Playwright variable was set in the MCP
+  server's environment. The shell used for the checks had none when this was
+  recorded, the browser was seen to be started by the MCP server with a
+  temporary profile, and the first page load showed only the sample tasks.
+
+### Post-fix smoke test
+
+Recorded on 2026-10-09, at commit `f8fc5b1`, in a new Claude Code conversation.
+This is a short check that the setup still works through the launcher. It is
+not a repeat of the UI checks A to I above, which were run once, at `0f04fd8`,
+before the fix.
+
+- The working tree was clean at `f8fc5b1` before and after, and no file was
+  edited.
+- The shell held no Playwright, Speechmatics, database or Vercel variable,
+  checked by name only.
+- The conversation's Claude Code process had started
+  `node server/startPlaywrightMcp.mjs` with the arguments in `.mcp.json`, and
+  that process had started `@playwright/mcp@0.0.83`. This was read from the
+  process list, not from `/mcp`, which Claude cannot run.
+- The `browser_run_code_unsafe` tool was not available.
+- The dedicated server listened on `127.0.0.1:5183`, and
+  `GET /api/dictation/status` returned `{"configured":false}` before the
+  browser was opened.
+- The browser tools worked: opening the page, a page snapshot, a click, a
+  screenshot, and reading the console and the request list.
+- The Chrome process was started by that MCP server with a temporary profile
+  folder under the user's `Temp` folder. On the first page load it held no
+  cookies, service workers, IndexedDB databases or session storage, and its
+  localStorage held only the app's own two keys. The folder was gone after the
+  browser closed.
+- The five sample tasks loaded, on the first page load and again after "Reset
+  to sample tasks", and the dictation buttons showed as unavailable.
+- The console showed four errors and no warnings, all `ERR_BLOCKED_BY_CLIENT`
+  for `i.pravatar.cc` or `va.vercel-scripts.com`. Every other request went to
+  `127.0.0.1:5183` and succeeded.
+- The browser was closed and the dedicated server stopped. Port 5183 was free
+  afterwards, and the same process held port 5173 before and after.
+
+Not covered by the smoke test: creating, editing, completing, deleting,
+filtering, persistence across a reload, and drag-and-drop.
+
+One other thing was seen: an older Claude Code conversation, started before
+the fix was loaded, still had its own Playwright MCP server running, started
+without the launcher. It belonged to that conversation only. The smoke test
+used the guarded server described above and nothing else, and the older one
+was left alone.
+
+Added after the smoke test: `server/startPlaywrightMcp.test.ts` covers the
+launcher's own control flow with a stand-in for the server process, so no
+`npx` or browser is started. `npm run build`, `npm run lint` and `npm test`
+pass, with 425 tests across 24 files.
