@@ -29,6 +29,17 @@ Keep dictation behaviour independent of task titles and single-line inputs where
 practical, and leave room to route recognised speech to either text insertion or
 command handling.
 
+Dictation into a multi-line notes field is recorded as an idea in TM #25.
+
+Spoken commands have no demonstrated user need yet. If they are taken up, a
+Codex investigation of 8 October 2026 suggested considering:
+
+- an explicitly activated command mode, starting with one small action such as
+  creating a task;
+- how to avoid ordinary dictated text being taken as a command;
+- acting on final results only, not on provisional text;
+- what happens when a command is ambiguous, and when to ask for confirmation.
+
 ## Blank task titles
 
 A task title can be cleared and left blank, and the blank task is saved like any

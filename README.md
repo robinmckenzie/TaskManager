@@ -377,6 +377,19 @@ anyone can open the app with any label. Giving someone a link that includes
 | `npm run test:watch` | Rerun the unit tests as files change. |
 | `npm run preview` | Serve the production build locally; run `npm run build` first. |
 
+## Tickets
+
+Tickets are issues in this project's GitHub repository, and `AGENTS.md` has the
+rules for them. Outside GitHub a ticket is written with the prefix `TM`, such as
+`TM #17`.
+
+- TaskManager's tickets: https://github.com/robinmckenzie/TaskManager/issues
+- All Robin's open tickets, across projects:
+  https://github.com/issues?q=is%3Aissue+is%3Aopen+user%3Arobinmckenzie
+
+Tickets were files under `tickets/` until 2026-10-11. Each of those is now the
+issue numbered ten higher, with its old ID in the title: old TM-1 is `TM #11`.
+
 ## Browser checks with Claude Code
 
 Claude Code can open the app in a real browser, use it, and report what it saw.
