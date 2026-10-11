@@ -61,7 +61,7 @@ In the TM-6 browser checks, at a viewport 390 px wide in desktop Chrome:
   right edge of the task card;
 - longer task titles were cut off.
 
-A screenshot of the deployed app in Chrome on the owner's iPhone shows a
+A screenshot of the deployed app in Chrome on Robin's iPhone shows a
 substantially better layout:
 
 - the heading wraps without overlapping the "Add Task" button;
