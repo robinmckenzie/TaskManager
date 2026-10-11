@@ -301,6 +301,18 @@ select {
   }
 }
 
+/*
+ * When the device asks for reduced motion, overdue tasks do not pulse.
+ * They keep the pink background, and a red border stands in for the pulse.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  .task-overdue {
+    animation-name: none;
+    border-color: #dc2626;
+  }
+}
+
 @media (max-width: 850px) {
   .task-left-drag-surface {
     margin-bottom: 0;
