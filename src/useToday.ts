@@ -8,7 +8,7 @@ import { watchForDayChange } from "./today"
 export const useToday = (): Date => {
     const [today, setToday] = useState<Date>(() => new Date())
 
-    useEffect(() => watchForDayChange(setToday), [])
+    useEffect(() => watchForDayChange(setToday, today), [today])
 
     return today
 }

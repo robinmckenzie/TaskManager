@@ -6,7 +6,8 @@ export const getMillisecondsUntilNextDay = (now: Date): number =>
 
 /**
  * Calls `onDayChange` with the current time once the local calendar date is no
- * longer the one it was when watching began, and again at each later change.
+ * longer that of `lastSeenDay`, and again at each later change. The first check
+ * is made at once, in case the day has changed since `lastSeenDay` was read.
  *
  * It checks at each local midnight. A timer can be late when the page is in
  * the background or the device has been asleep, so it also checks whenever the
@@ -14,8 +15,10 @@ export const getMillisecondsUntilNextDay = (now: Date): number =>
  *
  * Returns a function that stops the watching.
  */
-export const watchForDayChange = (onDayChange: (now: Date) => void): (() => void) => {
-    let lastSeenDay = new Date()
+export const watchForDayChange = (
+    onDayChange: (now: Date) => void,
+    lastSeenDay: Date,
+): (() => void) => {
     let timer: ReturnType<typeof setTimeout> | undefined
 
     const checkDay = (): void => {

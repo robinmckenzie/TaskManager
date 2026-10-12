@@ -18,7 +18,7 @@ describe("watchForDayChange", () => {
 
     const startWatchingAt = (now: Date): void => {
         vi.setSystemTime(now)
-        stopWatching = watchForDayChange((day) => reportedDays.push(day))
+        stopWatching = watchForDayChange((day) => reportedDays.push(day), now)
     }
 
     beforeEach(() => {
@@ -54,11 +54,29 @@ describe("watchForDayChange", () => {
         vi.setSystemTime(today)
         stopWatching = watchForDayChange((day) => {
             today = day
-        })
+        }, today)
         expect(describeTask()).toBe("1 day remaining")
 
         vi.advanceTimersByTime(30_000)
         expect(describeTask()).toBe("Due today")
+    })
+
+    it("reports the new day at once when midnight passed just before watching began", () => {
+        const dayLastSeen = new Date(2026, 9, 8, 23, 59, 59, 999)
+
+        vi.setSystemTime(new Date(2026, 9, 9, 0, 0, 0, 1))
+        stopWatching = watchForDayChange((day) => reportedDays.push(day), dayLastSeen)
+
+        expect(reportedDays).toEqual([new Date(2026, 9, 9, 0, 0, 0, 1)])
+    })
+
+    it("reports the day when the clock is found to have gone back a day", () => {
+        startWatchingAt(new Date(2026, 9, 8, 9))
+
+        vi.setSystemTime(new Date(2026, 9, 7, 9))
+        browserWindow.dispatchEvent(new Event("focus"))
+
+        expect(reportedDays).toEqual([new Date(2026, 9, 7, 9)])
     })
 
     it("goes on reporting each later day", () => {
