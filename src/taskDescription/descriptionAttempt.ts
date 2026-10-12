@@ -168,11 +168,14 @@ const isSamePhrase = (left: DescriptionInstruction, right: DescriptionInstructio
     left.start === right.start &&
     left.end === right.end
 
+const hasSameWording = (left: AcceptedPhrase, right: AcceptedPhrase): boolean =>
+    left.field === right.field && left.wording.toLowerCase() === right.wording.toLowerCase()
+
 const isSameUncertainPhrase = (left: AcceptedPhrase, right: AcceptedPhrase): boolean =>
-    left.field === right.field &&
-    left.wording.toLowerCase() === right.wording.toLowerCase() &&
-    left.start === right.start &&
-    left.end === right.end
+    hasSameWording(left, right) && left.start === right.start && left.end === right.end
+
+const countWording = (uncertainties: readonly DescriptionUncertainty[], phrase: AcceptedPhrase): number =>
+    uncertainties.filter((uncertainty) => hasSameWording(uncertainty, phrase)).length
 
 /** Moves a remembered phrase to follow an edit, or drops it when the edit changes its words. */
 const shiftPhrase = <Phrase extends { start: number; end: number }>(phrase: Phrase, edit: TextEdit): Phrase[] => {
@@ -228,8 +231,14 @@ const applyText = (
         ],
         phraseUncertainties: interpretation.uncertainties,
         // Accepting a phrase lasts only while that phrase is there, so the
-        // same wording supplied again later is put to the user again.
+        // same wording supplied again later is put to the user again. When
+        // the number of phrases with its wording changes, which of them the
+        // edit added or removed cannot be told from the text alone, so the
+        // acceptance ends then too.
         acceptedPhrases: attempt.acceptedPhrases
+            .filter((accepted) =>
+                countWording(attempt.phraseUncertainties, accepted) ===
+                countWording(interpretation.uncertainties, accepted))
             .flatMap((accepted) => shiftPhrase(accepted, edit))
             .filter((accepted) =>
                 interpretation.uncertainties.some((uncertainty) => isSameUncertainPhrase(accepted, uncertainty))),

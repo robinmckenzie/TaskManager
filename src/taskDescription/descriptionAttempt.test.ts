@@ -408,13 +408,25 @@ describe("uncertainty", () => {
         expect(createFromAttempt(attempt, today)).toBeNull()
     })
 
-    it("keeps the acceptance of a later phrase when an earlier one with the same wording goes", () => {
-        let attempt = typeAtEnd(createAttempt(), "Send it, high priority, DUE BLURSDAY, due Blursday")
-        attempt = acceptUncertainty(attempt, viewAttempt(attempt, today).uncertainties[1].key)
-        attempt = replace(attempt, "DUE BLURSDAY, ", "")
+    it("does not pass an acceptance between phrases that are identical", () => {
+        let attempt = typeAtEnd(createAttempt(), "Send it, high priority, due Blursday, due Blursday")
+        attempt = acceptUncertainty(attempt, viewAttempt(attempt, today).uncertainties[0].key)
+        expect(describeIt(attempt)).toHaveLength(1)
+        expect(createFromAttempt(attempt, today)).toBeNull()
 
-        expect(describeIt(attempt)).toEqual([])
-        expect(viewAttempt(attempt, today).canCreate).toBe(true)
+        // Deleting either phrase leaves the same text, so which went is unknown.
+        attempt = typeDescription(attempt, "Send it, high priority, due Blursday")
+
+        expect(describeIt(attempt)).toEqual([`"due Blursday" was not understood as a due date.`])
+        expect(createFromAttempt(attempt, today)).toBeNull()
+    })
+
+    it("ends an acceptance when another phrase with its wording is added", () => {
+        let attempt = typeAtEnd(createAttempt(), "Send it, high priority, due Blursday")
+        attempt = acceptUncertainty(attempt, viewAttempt(attempt, today).uncertainties[0].key)
+        attempt = typeAtEnd(attempt, ", due Blursday")
+
+        expect(describeIt(attempt)).toHaveLength(2)
     })
 
     it("says why a date or a priority was not used", () => {
