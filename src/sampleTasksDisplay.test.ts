@@ -51,10 +51,10 @@ it("says how to dictate, with the button's microphone in place of the word", () 
     const hint = markup.match(/<p class="dictation-hint">([\s\S]*?)<\/p>/)?.[1]
     const buttonIcon = taskMarkup[0].match(/<path[^>]*>/)?.[0]
 
-    expect(hint?.replace(/<svg[^>]*role="img" aria-label="microphone"[^>]*>[\s\S]*?<\/svg>/, "[microphone]").replace("<br/>", " ")).toBe(
+    expect(hint?.replace(/<svg[^>]*role="img" aria-label="microphone"[^>]*>[\s\S]*?<\/svg>/, "[microphone]").replace("<br/>", " ").replace(/<\/?span>/g, "")).toBe(
         "Dictate a task title: click its [microphone] button, or click a title and press Ctrl + Alt. These both toggle the mic on/off.",
     )
-    expect(hint).toContain("press Ctrl + Alt.<br/>These both")
+    expect(hint).toContain("button,</span> <span>or click a title and press Ctrl + Alt.</span><br/>These both")
     expect(buttonIcon).toBeDefined()
     expect(hint).toContain(buttonIcon)
     expect(hint).not.toContain("<button")

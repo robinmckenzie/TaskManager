@@ -401,6 +401,10 @@ select {
   text-align: center;
 }
 
+.dictation-hint span {
+  display: inline-block;
+}
+
 .dictation-hint-icon {
   width: 1.2em;
   height: 1.2em;

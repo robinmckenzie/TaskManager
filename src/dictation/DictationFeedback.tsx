@@ -5,12 +5,18 @@ import type { BarLook, MeterChoice, MeterStyle, NeedleLook } from "./LevelMeter"
 import { MicrophoneIcon } from "./MicrophoneIcon"
 import type { Dictation } from "./useDictation"
 
-/** Says how to dictate. The microphone in it is an illustration, not a control. */
+/**
+ * Says how to dictate. The microphone in it is an illustration, not a control.
+ * Each part stays whole where there is room, so that a first sentence too long
+ * for one line breaks before "or".
+ */
 export const DictationHint: FC = () => (
     <p className="dictation-hint">
-        Dictate a task title: click its{" "}
-        <MicrophoneIcon label="microphone" className="dictation-hint-icon" /> button, or
-        click a title and press Ctrl + Alt.
+        <span>
+            Dictate a task title: click its{" "}
+            <MicrophoneIcon label="microphone" className="dictation-hint-icon" /> button,
+        </span>{" "}
+        <span>or click a title and press Ctrl + Alt.</span>
         <br />
         These both toggle the mic on/off.
     </p>
