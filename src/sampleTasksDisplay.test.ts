@@ -32,6 +32,10 @@ it("shows the completed sample task first, styled as completed and not as overdu
     expect(second).toContain("1 day overdue")
 })
 
+it("gives no task an inline animation, so that an overdue task does not pulse", () => {
+    expect(markup).not.toContain("animation")
+})
+
 it("tells visitors that dictated text may be retained", () => {
     expect(markup).toContain('<p class="dictation-notice">This demo may retain dictated text for diagnostics.</p>')
 })

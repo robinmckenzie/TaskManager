@@ -21,7 +21,7 @@
 - Scope changes to the ticket. Avoid unrelated refactors, formatting changes, cleanup, or dependency upgrades.
 - Name branches `<number>-<Title>`, such as `12-Add-search-filters`, or without the number for housekeeping work that has no ticket, such as `Add-ChatGPT-guidance`.
 - Reference the ticket in commits, as `TM #12`. A pull request says `Closes #12`, so that merging it closes the ticket, and approval of the merge covers that. An abandoned ticket is closed as "not planned".
-- Agreed work, and housekeeping work that was explicitly requested, may be committed without asking. Pushing, merging and deploying each require explicit approval.
+- Agreed work, and housekeeping work that was explicitly requested, may be committed, pushed to its own branch and opened as a pull request without asking. Merging and deploying each require explicit approval.
 - Before asking for approval to merge, bring the pull request description up to date with the handover summary.
 - After Robin merges a pull request, tidy up without asking: fetch with `--prune`, switch to `main`, pull and delete the local branch. Tell Robin if the branch is still on GitHub. If the local branch is not fully merged, leave it and tell Robin.
 - Update README when setup, commands, or documented user behaviour change.
