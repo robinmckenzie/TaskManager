@@ -174,6 +174,36 @@ describe("a manual edit against the description", () => {
         expect(readFields(attempt)).toMatchObject({ priority: 3, dueDate: "2026-10-13" })
     })
 
+    it("stands when ordinary words are typed after its instruction and then deleted again", () => {
+        let attempt = typeAtEnd(createAttempt(), "Send it, high priority")
+        attempt = editField(attempt, "priority", 2)
+        const before = attempt.text
+
+        // The description is back as it was when the edit was made, as it
+        // is after an undo, so the edit still stands.
+        attempt = typeAtEnd(attempt, " policy")
+        expect(priorityOf(attempt)).toBe(2)
+        expect(priorityOf(typeDescription(attempt, before))).toBe(2)
+
+        // A stray character typed and deleted leaves it standing too.
+        attempt = typeDescription(typeDescription(typeDescription(attempt, before), `${before} x`), before)
+        expect(priorityOf(attempt)).toBe(2)
+    })
+
+    it("counts characters as text offsets do, so an emoji does not shift what speech replaces", () => {
+        let attempt = listen(typeAtEnd(createAttempt(), "📝 Send it"))
+        attempt = final(attempt, 0, "high priority")
+        attempt = editField(attempt, "priority", 2, 3)
+        attempt = final(attempt, 4, "due tomorrow")
+        expect(readFields(attempt)).toMatchObject({ priority: 2, dueDate: "2026-10-13" })
+
+        let typed = typeDescription(createAttempt(), "📝📝 Send it, high priority")
+        typed = editField(typed, "priority", 2)
+        typed = typeAtEnd(typed, ", due tomorrow")
+        expect(typed.moments).toHaveLength(typed.text.length)
+        expect(readFields(typed)).toMatchObject({ priority: 2, dueDate: "2026-10-13" })
+    })
+
     it("is replaced by a new instruction typed after it, with no correction word", () => {
         let attempt = typeAtEnd(createAttempt(), "Send proposal, high priority")
         attempt = editField(attempt, "priority", 3)
@@ -336,6 +366,29 @@ describe("uncertainty", () => {
         expect(describeIt(attempt)).toEqual([
             '"due Blursdays" was not understood as a due date. The words are still in the title.',
         ])
+    })
+
+    it("asks again when accepted wording is removed and later supplied again", () => {
+        let attempt = typeAtEnd(createAttempt(), "Send it, high priority, due Blursday")
+        attempt = acceptUncertainty(attempt, viewAttempt(attempt, today).uncertainties[0].key)
+        expect(viewAttempt(attempt, today).canCreate).toBe(true)
+
+        attempt = replace(attempt, "due Blursday", "due tomorrow")
+        attempt = typeAtEnd(attempt, ", due Blursday")
+
+        expect(describeIt(attempt)).toEqual([`"due Blursday" was not understood as a due date.`])
+        expect(viewAttempt(attempt, today)).toMatchObject({ canCreate: false, fields: { dueDate: "2026-10-13" } })
+    })
+
+    it("asks again when wording settled by editing its field is supplied again", () => {
+        let attempt = typeAtEnd(createAttempt(), "Send it, high priority, assigned to Morgan")
+        attempt = editField(attempt, "userId", "2")
+        attempt = replace(attempt, ", assigned to Morgan", "")
+        expect(describeIt(attempt)).toEqual([])
+
+        attempt = typeAtEnd(attempt, ", assigned to Morgan")
+        expect(describeIt(attempt)).toHaveLength(1)
+        expect(readFields(attempt).userId).toBe("2")
     })
 
     it("says why a date or a priority was not used", () => {

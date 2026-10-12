@@ -119,6 +119,13 @@ const compareMoments = (left: Moment, right: Moment): number =>
 const getLater = (left: Moment, right: Moment): Moment =>
     compareMoments(left, right) >= 0 ? left : right
 
+/**
+ * One moment for each character of a text. Characters are counted as text
+ * offsets count them, so a character outside the basic plane takes two.
+ */
+const repeatMoment = (moment: Moment, text: string): Moment[] =>
+    Array.from({ length: text.length }, () => moment)
+
 const formatDay = (day: Date): string => format(day, "yyyy-MM-dd")
 
 export const createDescriptionAttempt = (options: {
@@ -205,6 +212,11 @@ const applyText = (
             ...instructions,
         ],
         phraseUncertainties: interpretation.uncertainties,
+        // Accepting a phrase lasts only while the phrase is there, so the
+        // same wording supplied again later is put to the user again.
+        acceptedKeys: attempt.acceptedKeys.filter((key) =>
+            !attempt.phraseUncertainties.some((uncertainty) => uncertainty.key === key) ||
+            interpretation.uncertainties.some((uncertainty) => uncertainty.key === key)),
     }
 }
 
@@ -220,7 +232,7 @@ export const typeDescription = (attempt: DescriptionAttempt, text: string): Desc
     const moment: Moment = { step: attempt.step + 1, audio: 0 }
     const moments = [
         ...attempt.moments.slice(0, edit.start),
-        ...Array.from(edit.insert, () => moment),
+        ...repeatMoment(moment, edit.insert),
         ...attempt.moments.slice(edit.end),
     ]
 
@@ -291,7 +303,7 @@ const composeCaptureText = (capture: Capture): { text: string; moments: Moment[]
         const moment: Moment = { step: capture.step, audio: token.startTime }
 
         text += piece
-        moments.push(...Array.from(piece, () => moment))
+        moments.push(...repeatMoment(moment, piece))
     })
 
     return { text, moments }
