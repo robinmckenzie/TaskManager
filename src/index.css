@@ -656,7 +656,29 @@ select {
   visibility: visible;
 }
 
-@media (max-width: 850px) {
+/*
+ * Narrower windows keep the controls where they are for as long as they fit.
+ * First the feedback moves from the middle column, which no longer has room
+ * beside the level meter buttons, to a row of its own above the task list.
+ */
+@media (max-width: 1040px) {
+  .task-list-controls {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "notice meter-style"
+      "filter meter-style"
+      "filter reset"
+      "feedback feedback";
+  }
+
+  /* Room for two lines of status text, which is all the full width needs. */
+  .dictation-feedback {
+    min-height: 2.75rem;
+  }
+}
+
+/* Then the hint moves below the heading. */
+@media (max-width: 780px) {
   .app-header {
     display: flex;
     flex-wrap: wrap;
@@ -668,13 +690,20 @@ select {
     flex-basis: 100%;
   }
 
+  .dictation-feedback {
+    min-height: 3.75rem;
+  }
+}
+
+/* Last, the level meter buttons move below the notice. */
+@media (max-width: 640px) {
   .task-list-controls {
     grid-template-columns: max-content minmax(0, 1fr);
     grid-template-areas:
       "notice notice"
-      "feedback feedback"
       "meter-style meter-style"
-      "filter reset";
+      "filter reset"
+      "feedback feedback";
   }
 
   .dictation-feedback {
