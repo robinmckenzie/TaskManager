@@ -74,11 +74,13 @@ select {
 
 /*
  * The dictation feedback sits in the middle column, across both rows. Its
- * height is reserved, so nothing moves when the feedback changes.
+ * height is reserved, so nothing moves when the feedback changes. The side
+ * columns are equal, to centre it, and each is wide enough for the level
+ * meter buttons, so the middle column narrows before they can run into it.
  */
 .task-list-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 22rem) minmax(0, 1fr);
+  grid-template-columns: minmax(18.5rem, 1fr) minmax(15rem, 22rem) minmax(18.5rem, 1fr);
   grid-template-areas:
     "notice feedback meter-style"
     "filter feedback meter-style"
@@ -658,10 +660,10 @@ select {
 
 /*
  * Narrower windows keep the controls where they are for as long as they fit.
- * First the feedback moves from the middle column, which no longer has room
- * beside the level meter buttons, to a row of its own above the task list.
+ * First the feedback moves from the middle column, once that is too narrow
+ * for three lines of status text, to a row of its own above the task list.
  */
-@media (max-width: 1040px) {
+@media (max-width: 945px) {
   .task-list-controls {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
