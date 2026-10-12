@@ -533,7 +533,7 @@ select {
   stroke-width: 1.5;
 }
 
-.level-meter-needle {
+.level-meter-hand {
   stroke: #dc2626;
   stroke-width: 1.5;
   stroke-linecap: round;

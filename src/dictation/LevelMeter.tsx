@@ -64,7 +64,7 @@ export const LevelMeter: FC<LevelMeterProps> = ({ meterStyle, readLevel }) => {
                         className="level-meter-scale"
                         d="M17.6 14.6A24 24 0 0 1 54.4 14.6M17.6 14.6l-2.3-1.9M36 6V3M54.4 14.6l2.3-1.9"
                     />
-                    <line className="level-meter-needle" x1="36" y1="30" x2="36" y2="8" />
+                    <line className="level-meter-hand" x1="36" y1="30" x2="36" y2="8" />
                     <circle className="level-meter-pivot" cx="36" cy="30" r="2" />
                 </svg>
             )}
