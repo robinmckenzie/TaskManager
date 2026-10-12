@@ -10,7 +10,9 @@ export const DictationHint: FC = () => (
     <p className="dictation-hint">
         Dictate a task title: click its{" "}
         <MicrophoneIcon label="microphone" className="dictation-hint-icon" /> button, or
-        click a title and press Ctrl + Alt. These both toggle the mic on/off.
+        click a title and press Ctrl + Alt.
+        <br />
+        These both toggle the mic on/off.
     </p>
 )
 
