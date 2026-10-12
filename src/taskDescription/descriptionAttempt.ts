@@ -51,6 +51,8 @@ interface ManualEdit {
     moment: Moment
 }
 
+type AcceptedPhrase = Pick<DescriptionUncertainty, "field" | "wording" | "start" | "end">
+
 interface Capture {
     state: Exclude<CaptureState, "none">
     step: number
@@ -81,6 +83,12 @@ export interface DescriptionAttempt {
     readonly knownInstructions: readonly TimedInstruction[]
     readonly phraseUncertainties: readonly DescriptionUncertainty[]
     readonly manualEdits: Readonly<Partial<Record<AttemptField, ManualEdit>>>
+    /**
+     * The uncertain phrases accepted so far, by where each is in the text, so
+     * that accepting one does not accept another with the same wording.
+     */
+    readonly acceptedPhrases: readonly AcceptedPhrase[]
+    /** The accepted uncertainties that are not about a phrase. */
     readonly acceptedKeys: readonly string[]
     readonly capture: Capture | null
     /** The capture that ended with words still unconfirmed, until that is dealt with. */
@@ -146,6 +154,7 @@ export const createDescriptionAttempt = (options: {
     knownInstructions: [],
     phraseUncertainties: [],
     manualEdits: {},
+    acceptedPhrases: [],
     acceptedKeys: [],
     capture: null,
     incompleteCaptureStep: null,
@@ -159,19 +168,25 @@ const isSamePhrase = (left: DescriptionInstruction, right: DescriptionInstructio
     left.start === right.start &&
     left.end === right.end
 
-/** Moves a known instruction to follow an edit, or drops it when the edit changes its words. */
-const shiftKnownInstruction = (instruction: TimedInstruction, edit: TextEdit): TimedInstruction[] => {
-    if (edit.start >= instruction.end) {
-        return [instruction]
+const isSameUncertainPhrase = (left: AcceptedPhrase, right: AcceptedPhrase): boolean =>
+    left.field === right.field &&
+    left.wording.toLowerCase() === right.wording.toLowerCase() &&
+    left.start === right.start &&
+    left.end === right.end
+
+/** Moves a remembered phrase to follow an edit, or drops it when the edit changes its words. */
+const shiftPhrase = <Phrase extends { start: number; end: number }>(phrase: Phrase, edit: TextEdit): Phrase[] => {
+    if (edit.start >= phrase.end) {
+        return [phrase]
     }
 
-    if (edit.end > instruction.start) {
+    if (edit.end > phrase.start) {
         return []
     }
 
     const delta = edit.insert.length - (edit.end - edit.start)
 
-    return [{ ...instruction, start: instruction.start + delta, end: instruction.end + delta }]
+    return [{ ...phrase, start: phrase.start + delta, end: phrase.end + delta }]
 }
 
 /**
@@ -187,7 +202,7 @@ const applyText = (
     typedMoment?: Moment,
 ): DescriptionAttempt => {
     const edit = findEdit(attempt.text, text)
-    const known = attempt.knownInstructions.flatMap((instruction) => shiftKnownInstruction(instruction, edit))
+    const known = attempt.knownInstructions.flatMap((instruction) => shiftPhrase(instruction, edit))
     const interpretation = interpretDescription(text, parseISO(attempt.referenceDay), attempt.assignees)
     const instructions = interpretation.instructions.map((instruction): TimedInstruction => {
         const counterpart = known.find((candidate) => isSamePhrase(candidate, instruction))
@@ -212,11 +227,12 @@ const applyText = (
             ...instructions,
         ],
         phraseUncertainties: interpretation.uncertainties,
-        // Accepting a phrase lasts only while the phrase is there, so the
+        // Accepting a phrase lasts only while that phrase is there, so the
         // same wording supplied again later is put to the user again.
-        acceptedKeys: attempt.acceptedKeys.filter((key) =>
-            !attempt.phraseUncertainties.some((uncertainty) => uncertainty.key === key) ||
-            interpretation.uncertainties.some((uncertainty) => uncertainty.key === key)),
+        acceptedPhrases: attempt.acceptedPhrases
+            .flatMap((accepted) => shiftPhrase(accepted, edit))
+            .filter((accepted) =>
+                interpretation.uncertainties.some((uncertainty) => isSameUncertainPhrase(accepted, uncertainty))),
     }
 }
 
@@ -268,10 +284,9 @@ export const editField = (
         step: Math.max(attempt.step, moment.step),
         manualEdits: { ...attempt.manualEdits, [field]: { value, moment } },
         // Editing a field settles what was in question about it.
-        acceptedKeys: [
-            ...attempt.acceptedKeys,
-            ...listUncertainties(attempt).filter((uncertainty) => uncertainty.field === field)
-                .map((uncertainty) => uncertainty.key),
+        acceptedPhrases: [
+            ...attempt.acceptedPhrases,
+            ...attempt.phraseUncertainties.filter((uncertainty) => uncertainty.field === field),
         ],
         // An instruction for this field that is not in effect was not what
         // this edit replaced, so if it comes into effect later it is new.
@@ -283,7 +298,17 @@ export const editField = (
 
 /** Accepts the displayed values despite one uncertainty, for as long as its wording stays. */
 export const acceptUncertainty = (attempt: DescriptionAttempt, key: string): DescriptionAttempt =>
-    attempt.isClosed ? attempt : { ...attempt, acceptedKeys: [...attempt.acceptedKeys, key] }
+{
+    const phrases = attempt.phraseUncertainties.filter((uncertainty) => uncertainty.key === key)
+
+    if (attempt.isClosed) {
+        return attempt
+    }
+
+    return phrases.length > 0
+        ? { ...attempt, acceptedPhrases: [...attempt.acceptedPhrases, ...phrases] }
+        : { ...attempt, acceptedKeys: [...attempt.acceptedKeys, key] }
+}
 
 /** The separator, "" or " ", that recognised text puts between two tokens. */
 const getSeparator = (previous: TranscriptToken, token: TranscriptToken): string =>
@@ -449,7 +474,10 @@ const describePhraseUncertainty = (uncertainty: DescriptionUncertainty): string 
 
 /** Everything in question about the attempt, whether or not it has been accepted. */
 const listUncertainties = (attempt: DescriptionAttempt, today?: Date): AttemptUncertainty[] => {
-    const uncertainties: AttemptUncertainty[] = attempt.phraseUncertainties.map((uncertainty) => ({
+    const uncertainties: AttemptUncertainty[] = attempt.phraseUncertainties
+        .filter((uncertainty) =>
+            !attempt.acceptedPhrases.some((accepted) => isSameUncertainPhrase(accepted, uncertainty)))
+        .map((uncertainty) => ({
         key: uncertainty.key,
         field: uncertainty.field,
         message: describePhraseUncertainty(uncertainty),

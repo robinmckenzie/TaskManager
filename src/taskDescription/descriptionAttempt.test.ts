@@ -391,6 +391,32 @@ describe("uncertainty", () => {
         expect(readFields(attempt).userId).toBe("2")
     })
 
+    it("does not pass an acceptance to another phrase with the same wording", () => {
+        let attempt = typeAtEnd(createAttempt(), "Send it, high priority, due Blursday, DUE BLURSDAY")
+        expect(describeIt(attempt)).toHaveLength(2)
+
+        attempt = acceptUncertainty(attempt, viewAttempt(attempt, today).uncertainties[0].key)
+        expect(describeIt(attempt)).toEqual([`"DUE BLURSDAY" was not understood as a due date.`])
+
+        // Words typed before both phrases move them without unsettling the acceptance.
+        attempt = replace(attempt, "Send it", "Send it now")
+        expect(describeIt(attempt)).toHaveLength(1)
+
+        attempt = replace(attempt, "due Blursday, ", "")
+        expect(attempt.text).toBe("Send it now, high priority, DUE BLURSDAY")
+        expect(describeIt(attempt)).toEqual([`"DUE BLURSDAY" was not understood as a due date.`])
+        expect(createFromAttempt(attempt, today)).toBeNull()
+    })
+
+    it("keeps the acceptance of a later phrase when an earlier one with the same wording goes", () => {
+        let attempt = typeAtEnd(createAttempt(), "Send it, high priority, DUE BLURSDAY, due Blursday")
+        attempt = acceptUncertainty(attempt, viewAttempt(attempt, today).uncertainties[1].key)
+        attempt = replace(attempt, "DUE BLURSDAY, ", "")
+
+        expect(describeIt(attempt)).toEqual([])
+        expect(viewAttempt(attempt, today).canCreate).toBe(true)
+    })
+
     it("says why a date or a priority was not used", () => {
         expect(describeIt(typeAtEnd(createAttempt(), "Send it, high priority, due 31 February"))).toEqual([
             '"due 31 February" is not a date that exists.',
