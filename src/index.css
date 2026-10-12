@@ -659,6 +659,211 @@ select {
 }
 
 /*
+ * Describing a task: a composer above the task cards, with the description
+ * and the task that it proposes.
+ */
+
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  justify-self: end;
+}
+
+.describe-button,
+.describe-task-cancel {
+  border: 1px solid #2563eb;
+  border-radius: 6px;
+  padding: 7px 14px;
+  background: white;
+  color: #2563eb;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.describe-button:hover,
+.describe-task-cancel:hover {
+  background: #eff6ff;
+}
+
+.add-button[aria-disabled="true"] {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.describe-task {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+.describe-task:focus {
+  outline: none;
+}
+
+.describe-task h2,
+.describe-task h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.describe-task h3 {
+  font-size: 14px;
+}
+
+.describe-task-description {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.describe-task-description > label,
+.describe-task-fields label {
+  color: #444;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.describe-task-description-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.describe-task textarea {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 7px 9px;
+  font: inherit;
+  resize: vertical;
+}
+
+.describe-task textarea[readonly] {
+  background: #f4f5f7;
+}
+
+.describe-task-guide p,
+.describe-task-language {
+  margin: 0;
+  color: #666;
+  font-size: 12px;
+}
+
+.describe-task-language {
+  color: #92400e;
+}
+
+.describe-task-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 20px;
+}
+
+.describe-task-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.describe-task-title {
+  flex: 1 1 100%;
+}
+
+.describe-task-fields input[type="text"],
+.describe-task-fields input[type="date"],
+.describe-task-fields select {
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 5px 7px;
+  background: white;
+  font-weight: 400;
+}
+
+.describe-task-due {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.describe-task-due > span {
+  padding-bottom: 6px;
+}
+
+/* A button that reads as a text link. */
+.describe-task-link,
+.task-outside-filter button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #2563eb;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.describe-task-due .describe-task-link {
+  padding-bottom: 6px;
+}
+
+.describe-task-link:disabled {
+  color: #999;
+  cursor: default;
+}
+
+.describe-task-checks:empty {
+  margin-top: -12px;
+}
+
+.task-list > [role="status"]:empty {
+  margin-top: -10px;
+}
+
+.describe-task-checks {
+  font-size: 13px;
+}
+
+.describe-task-checks ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: #92400e;
+}
+
+.describe-task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: #666;
+  font-size: 13px;
+}
+
+.task-outside-filter {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  background: #eff6ff;
+  font-size: 13px;
+}
+
+.describe-button:focus-visible,
+.describe-task button:focus-visible,
+.task-outside-filter button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/*
  * Narrower windows keep the controls where they are for as long as they fit.
  * First the level meter buttons, which are what crowd the feedback, move up
  * to a row they share with the notice. The feedback stays in the middle, now

@@ -9,13 +9,12 @@ import {
     trackShortcutKeyUp,
 } from "./ctrlAltShortcut"
 import type { ShortcutKeyEvent } from "./ctrlAltShortcut"
-import { reportSessionActivity } from "./dictationActivity"
 import { DictationController } from "./dictationController"
 import type { DictationPhase, DictationState } from "./dictationController"
 import { describeDictationError } from "./dictationMessages"
-import { DictationSession } from "./dictationSession"
 import { createDictationTargets, getInputSelection } from "./dictationTargets"
 import type { TextRange } from "./insertionText"
+import { createReportedSession } from "./reportedSession"
 import {
     checkDictationAvailability,
     createBrowserAudioSource,
@@ -23,12 +22,23 @@ import {
     fetchDictationToken,
 } from "./speechmaticsAdapters"
 import type { DictationAvailability } from "./speechmaticsAdapters"
+import { startDescriptionCapture } from "../taskDescription/descriptionCapture"
+import type { AttemptHolder } from "../taskDescription/descriptionCapture"
 
 interface UseDictationOptions {
     vocabulary: readonly string[]
     /** The current text of a target, or undefined when it no longer exists. */
     getText(targetId: string): string | undefined
     setText(targetId: string, text: string): void
+}
+
+/** The task description composer, while it is open. */
+export interface DescriptionComposer {
+    /** The composer's element. Focus anywhere inside it keeps a capture going. */
+    element: HTMLElement
+    attempts: AttemptHolder
+    /** Puts focus in the composer, when the microphone is started from outside it. */
+    focus(): void
 }
 
 export interface Dictation {
@@ -43,6 +53,12 @@ export interface Dictation {
     toggleFromButton(targetId: string): void
     recordEdit(targetId: string, before: string, after: string): void
     removeTarget(targetId: string): void
+    registerDescriptionComposer(composer: DescriptionComposer | null): void
+    /** Starts capturing the open task description, or stops its capture. */
+    toggleDescriptionCapture(): void
+    stopDescriptionCapture(): void
+    /** The audio time of the description capture in progress, if there is one. */
+    readDescriptionAudioTime(): number | undefined
 }
 
 const findTargetId = <T extends Element>(
@@ -85,6 +101,7 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
     const setTextRef = useRef(setText)
     const availabilityRef = useRef(availability)
     const controllerRef = useRef<DictationController | null>(null)
+    const composerRef = useRef<DescriptionComposer | null>(null)
     const [levelMeter] = useState(createAudioLevelMeter)
 
     useEffect(() => {
@@ -112,13 +129,12 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
 
     const getController = useCallback((): DictationController => {
         controllerRef.current ??= new DictationController({
-            createSession: (listener) => new DictationSession({
+            createSession: (listener) => createReportedSession({
                 fetchToken: fetchDictationToken,
                 createConnection: createRealtimeConnection,
                 createAudioSource: createBrowserAudioSource,
                 vocabulary: vocabularyRef.current,
-                listener: reportSessionActivity(listener),
-            }),
+            }, listener),
             getTarget: (targetId) => getTargets().get(targetId),
             onStateChange: setState,
             onAudioLevel: (level) => {
@@ -188,6 +204,32 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         }
     }, [focusInput, startInInput])
 
+    const toggleDescriptionCapture = useCallback((): void => {
+        const controller = controllerRef.current
+        const composer = composerRef.current
+
+        if (controller?.isDescriptionActive) {
+            controller.stop("user")
+        } else if (composer && isReadyToStart()) {
+            if (!composer.element.contains(document.activeElement)) {
+                composer.focus()
+            }
+
+            startDescriptionCapture(getController(), composer.attempts)
+        }
+    }, [getController, isReadyToStart])
+
+    const stopDescriptionCapture = useCallback((): void => {
+        if (controllerRef.current?.isDescriptionActive) {
+            controllerRef.current.stop("user")
+        }
+    }, [])
+
+    const readDescriptionAudioTime = useCallback(
+        (): number | undefined => controllerRef.current?.descriptionAudioTime,
+        [],
+    )
+
     const toggleFromShortcut = useCallback((): void => {
         const controller = controllerRef.current
 
@@ -197,12 +239,18 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         }
 
         const focused = document.activeElement
+
+        if (composerRef.current?.element.contains(focused)) {
+            toggleDescriptionCapture()
+            return
+        }
+
         const targetId = findTargetId(inputs.current, focused) ?? findTargetId(buttons.current, focused)
 
         if (targetId) {
             startInInput(targetId)
         }
-    }, [startInInput])
+    }, [startInInput, toggleDescriptionCapture])
 
     useEffect(() => {
         let isCurrent = true
@@ -244,7 +292,7 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
             const input = document.activeElement as HTMLInputElement | null
             const targetId = findTargetId(inputs.current, input)
 
-            if (controller?.isActive && input && targetId) {
+            if (controller?.isActive && !controller.isDescriptionActive && input && targetId) {
                 controller.moveInsertionPoint(targetId, getInputSelection(input))
             }
         }
@@ -258,6 +306,17 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
             }
 
             const focused = document.activeElement
+
+            // A description is captured while focus is anywhere in its
+            // composer, so that the proposed fields can be corrected meanwhile.
+            if (controller.isDescriptionActive) {
+                if (!composerRef.current?.element.contains(focused) && !isDictationSetting(focused)) {
+                    controller.stop("focus")
+                }
+
+                return
+            }
+
             const inputId = findTargetId(inputs.current, focused)
 
             if (inputId) {
@@ -330,6 +389,10 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         }
     }, [])
 
+    const registerDescriptionComposer = useCallback((composer: DescriptionComposer | null): void => {
+        composerRef.current = composer
+    }, [])
+
     const recordEdit = useCallback((targetId: string, before: string, after: string): void => {
         controllerRef.current?.recordUserEdit(targetId, before, after)
     }, [])
@@ -350,5 +413,9 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         toggleFromButton,
         recordEdit,
         removeTarget,
+        registerDescriptionComposer,
+        toggleDescriptionCapture,
+        stopDescriptionCapture,
+        readDescriptionAudioTime,
     }
 }

@@ -39,6 +39,75 @@ task titles, or when the task being dictated is deleted. Recognised text may
 keep settling for up to four seconds after dictation stops. A line at the top
 of the page says how to start and stop dictating.
 
+## Describe a task
+
+"Describe a task", below "Add Task", opens a composer above the task list for
+describing one new task in a sentence, by typing or by voice. The description
+stays in view while a proposed title, due date, priority and assignee are
+worked out from it as you go. Typing works whether or not dictation is set up.
+
+Nothing is created until you choose "Create task". Typing, speaking and
+stopping the microphone never create a task, and "Cancel" discards the attempt.
+The new task is added to the end of the list, not completed.
+
+Give the title first, then any of these guided phrases. They are understood in
+English only, whatever language dictation is set to, and capitals and
+punctuation do not matter:
+
+| Phrase | Result |
+| --- | --- |
+| `high priority`, `medium priority`, `low priority`, or `priority high` and so on | Priority 1, 3 or 5 |
+| `priority 1` to `priority 5`, as a digit or a word | That priority |
+| `due today`, `due tomorrow` | That day |
+| `due Friday`, `due on Friday` | The next Friday after today |
+| `due 15 October`, `due October 15th`, with or without a year | That date. Without a year, the next such date from today on |
+| `no due date`, `clear due date` | No due date |
+| `assigned to Aaron`, `assign to Aaron` | That existing assignee |
+| `change priority to low`, `change due date to Friday`, `change assignee to Aaron` | As the plain phrase |
+
+- **Priority runs from 1, the highest, to 5, the lowest.** The composer says so
+  beside its slider. Task cards show the number alone.
+- **The title** is everything before the phrases at the end of the
+  description. A phrase that ordinary words follow is part of the title, so
+  "Review the high priority policy" sets no priority. A date needs "due" and an
+  assignee needs "assigned to": "Call Bob tomorrow" is all title.
+- **A later phrase replaces an earlier one** for the same field, with no
+  correction word needed: "high priority, low priority" gives low. "No" or
+  "actually" may come before the correction, as in "due tomorrow, no, due
+  Friday", and is left out of the title. The description always keeps every
+  word.
+- **Defaults.** With nothing said: a blank title, no due date (unlike "Add
+  Task", which uses today), priority 3, and the assignee that "Add Task" would
+  use when the composer opens. A title is required.
+- **Your own corrections.** Each proposed field can be edited by hand, at any
+  time. A phrase you supply after your edit replaces it; your edit stands
+  against anything earlier, including recognition revising words you had
+  already spoken. A title you edit stays as you left it.
+- **Needs checking.** Wording that starts a phrase but is not understood, such
+  as "due next Friday", "priority six" or "assigned to" a name nobody has, is
+  listed under "Needs checking" and leaves the field as it was. Create is
+  unavailable until you correct the field or choose to use the value shown. The
+  same applies to a date such as "due tomorrow" if midnight passes before you
+  create the task, and to words that recognition stopped before confirming. A
+  title that happens to end like a phrase, such as "Prepare due diligence", is
+  listed too and needs accepting once.
+- **By voice.** The composer's microphone button, or Ctrl and Alt while focus
+  is in the composer, starts and stops the microphone. Speech is added to the
+  end of the description, which cannot be typed in until recognition has
+  finished. The fields can still be corrected meanwhile. Create becomes
+  available once the microphone has stopped and recognition has finished. The
+  microphone can be started again to add more. It stops when focus leaves the
+  composer or title dictation starts. Each use of the microphone is a separate
+  session for the time limits and the diagnostic transcript, and cancelling
+  does not remove a transcript already kept.
+- **Filtering.** A task created for an assignee that the Assignee filter is
+  hiding leaves the filter alone. A notice says the task was created and offers
+  "Show task", which switches the filter to that assignee.
+- **Not kept.** An unfinished description is lost if you refresh or close the
+  page.
+
+## Dictation status
+
 A status box above the task list, between the assignee filter and "Reset to
 sample tasks", shows what dictation is doing:
 
@@ -534,6 +603,8 @@ Things to know while checking:
 - **Dictation.** The server has no Speechmatics key, so the dictation buttons
   are disabled. Checking that they are disabled is in scope. Live dictation
   stays a manual check.
+- **Describing a task.** "Describe a task" can be checked by typing the
+  description. That says nothing about microphone capture or recognition.
 - **Dates and sliders.** Enter a due date as `yyyy-mm-dd`, whatever format the
   page displays. A priority slider can be set directly, or by clicking it and
   pressing the arrow keys.

@@ -31,20 +31,30 @@ command handling.
 
 Dictation into a multi-line notes field is recorded as an idea in TM #25.
 
-Spoken commands have no demonstrated user need yet. If they are taken up, a
-Codex investigation of 8 October 2026 suggested considering:
+TM #60 added the first of these: describing one new task by voice or typing,
+with guided English phrases and an explicit Create. Its recognised speech goes
+to a description sink in `DictationController`, not to a text target. General
+spoken commands, and voice editing of existing tasks, still have no
+demonstrated user need. If they are taken up, consider:
 
-- an explicitly activated command mode, starting with one small action such as
-  creating a task;
-- how to avoid ordinary dictated text being taken as a command;
-- acting on final results only, not on provisional text;
+- how to avoid ordinary dictated text being taken as a command, which TM #60
+  answers only for its own composer;
+- whether to act on provisional text, as TM #60 does for display only, or on
+  final results;
 - what happens when a command is ambiguous, and when to ask for confirmation.
+
+Live transcripts may show that Speechmatics writes some guided phrases in ways
+the interpreter does not match, such as "priority to" for "priority two". Tune
+`interpretDescription.ts` from that evidence.
 
 ## Blank task titles
 
 A task title can be cleared and left blank, and the blank task is saved like any
 other. The TM-6 browser checks observed this; it matches the code, which has no
 title validation.
+
+"Describe a task" (TM #60) requires a title before it creates a task. That rule
+is for that flow only: the title can still be cleared afterwards on the card.
 
 Whether blank titles should be prevented is a product decision that has not been
 made. If they are, decide what happens to a title while it is being edited, and

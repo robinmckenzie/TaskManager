@@ -28,6 +28,8 @@ import {
 import type { MeterChoice } from "./dictation/LevelMeter"
 import { useDictation } from "./dictation/useDictation"
 import type { Dictation } from "./dictation/useDictation"
+import { TaskDescriptionComposer } from "./taskDescription/TaskDescriptionComposer"
+import type { AttemptFields } from "./taskDescription/descriptionAttempt"
 
 import "./index.css"
 
@@ -431,6 +433,84 @@ const App: FC = () => {
         needle: "classic",
     })
 
+    const [isDescribing, setIsDescribing] = useState<boolean>(false)
+
+    // A described task that the assignee filter is hiding, until it is shown
+    // or the notice about it is dismissed.
+    const [taskOutsideFilter, setTaskOutsideFilter] = useState<TaskType | null>(null)
+
+    const taskList = useRef<HTMLElement>(null)
+    const describeButton = useRef<HTMLButtonElement>(null)
+    const showTaskButton = useRef<HTMLButtonElement>(null)
+
+    // Where focus goes once the page has been drawn again, after the task
+    // description composer closes.
+    const moveFocusAfterRender = useRef<(() => void) | null>(null)
+
+    useEffect(() => {
+        moveFocusAfterRender.current?.()
+        moveFocusAfterRender.current = null
+    })
+
+    /** Focuses the title of a task by its place among the tasks on show, counted from 0. */
+    const focusTaskTitle = (visiblePosition: number): void => {
+        const titles = taskList.current?.querySelectorAll<HTMLInputElement>(".task .task-title")
+
+        titles?.[visiblePosition]?.focus()
+    }
+
+    const describeTask = (): void => {
+        if (isDescribing) {
+            document.getElementById("describe-task-description")?.focus()
+            return
+        }
+
+        setTaskOutsideFilter(null)
+        setIsDescribing(true)
+    }
+
+    const cancelDescription = (): void => {
+        setIsDescribing(false)
+        moveFocusAfterRender.current = (): void => describeButton.current?.focus()
+    }
+
+    const createDescribedTask = (fields: AttemptFields): void => {
+        const newTask: TaskType = {
+            id: `task-${Date.now()}`,
+            text: fields.title,
+            userId: fields.userId,
+            priority: fields.priority,
+            dueDate: fields.dueDate,
+            completed: false,
+        }
+        const isHidden = assigneeFilter !== "" && newTask.userId !== assigneeFilter
+
+        setTasks((currentTasks: TaskType[]): TaskType[] => [
+            ...currentTasks,
+            newTask,
+        ])
+        setIsDescribing(false)
+        setTaskOutsideFilter(isHidden ? newTask : null)
+        moveFocusAfterRender.current = isHidden
+            ? (): void => showTaskButton.current?.focus()
+            : (): void => focusTaskTitle(visibleTasks.length)
+    }
+
+    const showTaskOutsideFilter = (task: TaskType): void => {
+        const visiblePosition = getVisibleTasks(tasks, task.userId).findIndex(
+            ({ task: visibleTask }): boolean => visibleTask.id === task.id,
+        )
+
+        setAssigneeFilter(task.userId)
+        setTaskOutsideFilter(null)
+        moveFocusAfterRender.current = (): void => focusTaskTitle(visiblePosition)
+    }
+
+    const dismissTaskOutsideFilter = (): void => {
+        setTaskOutsideFilter(null)
+        moveFocusAfterRender.current = (): void => describeButton.current?.focus()
+    }
+
     const deleteTask = (id: string): void => {
         dictation.removeTarget(id)
         setTasks((currentTasks: TaskType[]): TaskType[] =>
@@ -441,6 +521,7 @@ const App: FC = () => {
     const resetToSampleTasks = (): void => {
         // Stop dictating into, and revising, the titles being replaced.
         tasks.forEach((task: TaskType): void => dictation.removeTarget(task.id))
+        setTaskOutsideFilter(null)
         setTasks(createSampleTasks())
     }
 
@@ -464,16 +545,27 @@ const App: FC = () => {
 
                     <DictationHint />
 
-                    <button
-                        type="button"
-                        onClick={addTask}
-                        className="add-button"
-                    >
-                        + Add Task
-                    </button>
+                    <div className="header-actions">
+                        <button
+                            type="button"
+                            onClick={addTask}
+                            className="add-button"
+                        >
+                            + Add Task
+                        </button>
+                        <button
+                            type="button"
+                            ref={describeButton}
+                            onClick={describeTask}
+                            className="describe-button"
+                            aria-expanded={isDescribing}
+                        >
+                            Describe a task
+                        </button>
+                    </div>
                 </header>
 
-                <section className="task-list">
+                <section className="task-list" ref={taskList}>
                     <div className="task-list-controls">
                         <p className="dictation-notice">
                             This demo may retain dictated text for diagnostics.
@@ -484,7 +576,10 @@ const App: FC = () => {
                                 value={assigneeFilter}
                                 onChange={(
                                     event: React.ChangeEvent<HTMLSelectElement>,
-                                ): void => setAssigneeFilter(event.target.value)}
+                                ): void => {
+                                    setTaskOutsideFilter(null)
+                                    setAssigneeFilter(event.target.value)
+                                }}
                             >
                                 <option value="">All assignees</option>
                                 {alphabeticalUsers.map((user: User) => (
@@ -503,6 +598,36 @@ const App: FC = () => {
                         >
                             Reset to sample tasks
                         </button>
+                    </div>
+                    {isDescribing && (
+                        <TaskDescriptionComposer
+                            users={alphabeticalUsers}
+                            defaultUserId={getNewTaskAssignee(assigneeFilter, users)}
+                            today={today}
+                            dictation={dictation}
+                            onCreate={createDescribedTask}
+                            onCancel={cancelDescription}
+                        />
+                    )}
+                    {/* Always present, so that the notice is announced when it appears. */}
+                    <div role="status">
+                        {taskOutsideFilter && (
+                            <p className="task-outside-filter">
+                                Task created for{" "}
+                                {users.find((user: User): boolean => user.id === taskOutsideFilter.userId)?.name},
+                                outside the current filter.{" "}
+                                <button
+                                    type="button"
+                                    ref={showTaskButton}
+                                    onClick={(): void => showTaskOutsideFilter(taskOutsideFilter)}
+                                >
+                                    Show task
+                                </button>{" "}
+                                <button type="button" onClick={dismissTaskOutsideFilter}>
+                                    Dismiss
+                                </button>
+                            </p>
+                        )}
                     </div>
                     {visibleTasks.map(({ task, index }) => (
                         <Task

@@ -28,6 +28,8 @@ export interface DictationTextTarget {
 export interface DictationSessionHandle {
     readonly audioTime: number
     readonly timings?: StopMessageTimings
+    /** The recognition language, known once the session has its token. */
+    readonly language?: string
     start(): Promise<void>
     stop(reason: DictationStopReason, errorKind?: DictationErrorKind): void
 }
@@ -53,6 +55,22 @@ export interface DictationControllerOptions {
     onAudioLevel(level: number | null): void
 }
 
+/**
+ * Receives the speech of a task description, which is interpreted as it
+ * arrives and not inserted into a text target.
+ */
+export interface DescriptionSink {
+    onListening(language?: string): void
+    onTranscript(isFinal: boolean, tokens: TranscriptToken[]): void
+    /** Called once, as soon as recording stops for any reason. */
+    onStopped(): void
+    /** Called once no more recognised text will arrive after stopping. */
+    onSettled(): void
+}
+
+/** The target id that the dictation state reports while a description is being captured. */
+export const DESCRIPTION_TARGET_ID = "task-description"
+
 /** Where speech that began at or after `fromAudio` is inserted. */
 interface InsertionArea {
     targetId: string
@@ -69,11 +87,12 @@ interface InsertionArea {
  * One dictation, from starting until its recognised text has settled: its
  * session and the insertion areas its speech goes to. The last area is the
  * current one. A stopped run is kept until settled so that late revisions
- * still reach their areas.
+ * still reach their areas. A description run has a sink and no areas.
  */
 interface DictationRun {
     session: DictationSessionHandle
     areas: InsertionArea[]
+    sink?: DescriptionSink
 }
 
 const isSameRange = (left: TextRange, right: TextRange): boolean => {
@@ -118,7 +137,17 @@ export class DictationController {
     }
 
     get activeTargetId(): string | null {
-        return this.activeRun ? this.getCurrentArea(this.activeRun).targetId : null
+        return this.activeRun ? this.getRunTargetId(this.activeRun) : null
+    }
+
+    /** Whether a task description is being captured, as opposed to a title dictated. */
+    get isDescriptionActive(): boolean {
+        return this.activeRun?.sink !== undefined
+    }
+
+    /** The audio time of the description capture in progress, on the clock of its results. */
+    get descriptionAudioTime(): number | undefined {
+        return this.activeRun?.sink ? this.activeRun.session.audioTime : undefined
     }
 
     get isActive(): boolean {
@@ -126,13 +155,23 @@ export class DictationController {
     }
 
     start(targetId: string, selection: TextRange): void {
+        this.startRun([createArea(targetId, selection, 0)])
+    }
+
+    /** Starts capturing a task description, whose speech goes to `sink`. */
+    startDescription(sink: DescriptionSink): void {
+        this.startRun([], sink)
+    }
+
+    private startRun(areas: InsertionArea[], sink?: DescriptionSink): void {
         this.activeRun?.session.stop("user")
 
-        const areas = [createArea(targetId, selection, 0)]
         const run: DictationRun = {
             areas,
+            sink,
             session: this.options.createSession(this.createListener(() => run)),
         }
+        const targetId = this.getRunTargetId(run)
         this.runs.add(run)
         this.activeRun = run
         // Feedback now belongs to this run, not to one that is still finishing.
@@ -150,7 +189,7 @@ export class DictationController {
     moveInsertionPoint(targetId: string, selection: TextRange): void {
         const run = this.activeRun
 
-        if (!run) {
+        if (!run || run.sink) {
             return
         }
 
@@ -203,17 +242,28 @@ export class DictationController {
                 const run = getRun()
 
                 if (run === this.activeRun) {
-                    this.emitState("listening", this.getCurrentArea(run).targetId, "")
+                    this.emitState("listening", this.getRunTargetId(run), "")
                 }
+
+                run.sink?.onListening(run.session.language)
             },
             onAudioLevel: (level) => {
                 if (getRun() === this.activeRun) {
                     this.options.onAudioLevel(level)
                 }
             },
-            onTranscript: (isFinal, tokens) => this.applyTranscript(getRun(), isFinal, tokens),
+            onTranscript: (isFinal, tokens) => {
+                const run = getRun()
+
+                if (run.sink) {
+                    run.sink.onTranscript(isFinal, tokens)
+                } else {
+                    this.applyTranscript(run, isFinal, tokens)
+                }
+            },
             onStopped: (reason, errorKind) => {
                 const run = getRun()
+                run.sink?.onStopped()
 
                 if (run !== this.activeRun) {
                     return
@@ -227,12 +277,13 @@ export class DictationController {
                     null,
                     reason === "error"
                         ? describeDictationError(errorKind ?? "service_unavailable")
-                        : describeDictationStop(reason, run.session.timings),
+                        : describeDictationStop(reason, run.session.timings, run.sink !== undefined),
                 )
             },
             onSettled: () => {
                 const run = getRun()
                 this.runs.delete(run)
+                run.sink?.onSettled()
 
                 if (run === this.finishingRun) {
                     this.finishingRun = undefined
@@ -338,6 +389,10 @@ export class DictationController {
 
     private getCurrentArea(run: DictationRun): InsertionArea {
         return run.areas[run.areas.length - 1]
+    }
+
+    private getRunTargetId(run: DictationRun): string {
+        return run.sink ? DESCRIPTION_TARGET_ID : this.getCurrentArea(run).targetId
     }
 
     private emitState(phase: DictationPhase, targetId: string | null, message: string): void {

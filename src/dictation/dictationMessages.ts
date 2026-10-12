@@ -77,6 +77,7 @@ export const describeDictationError = (kind: DictationErrorKind): string => {
 export const describeDictationStop = (
     reason: Exclude<DictationStopReason, "error">,
     timings?: StopMessageTimings,
+    isDescription = false,
 ): string => {
     switch (reason) {
         case "user":
@@ -90,7 +91,9 @@ export const describeDictationStop = (
                 ? `Dictation stopped after reaching its ${timings.maxSessionSeconds}-second limit.`
                 : "Dictation stopped after reaching its time limit."
         case "focus":
-            return "Dictation stopped because focus left the task title."
+            return isDescription
+                ? "Dictation stopped because focus left the task description."
+                : "Dictation stopped because focus left the task title."
         case "task_deleted":
             return "Dictation stopped because its task was deleted."
     }

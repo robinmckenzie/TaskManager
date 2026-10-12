@@ -136,6 +136,7 @@ export class DictationSession {
     private maxDurationTimer?: ReturnType<typeof setTimeout>
     private settleTimer?: ReturnType<typeof setTimeout>
     private sessionTimings?: DictationTimings
+    private sessionLanguage?: string
 
     constructor(dependencies: DictationSessionDependencies) {
         this.dependencies = dependencies
@@ -144,6 +145,11 @@ export class DictationSession {
     /** The configured timings, known once the session has its token. */
     get timings(): DictationTimings | undefined {
         return this.sessionTimings
+    }
+
+    /** The configured recognition language, known once the session has its token. */
+    get language(): string | undefined {
+        return this.sessionLanguage
     }
 
     get isStopped(): boolean {
@@ -193,6 +199,7 @@ export class DictationSession {
             }
 
             this.sessionTimings = token.timings
+            this.sessionLanguage = token.language
             this.maxDurationTimer = setTimeout(
                 () => this.stop("max_duration"),
                 toMilliseconds(token.timings.maxSessionSeconds) - (Date.now() - this.recordingStartedAt),
