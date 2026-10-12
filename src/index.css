@@ -567,8 +567,10 @@ select {
    of the part of the bar that the peak reached. */
 .level-meter-bar-gradient .level-meter-peak {
   background: linear-gradient(to right, #16a34a 55%, #eab308 78%, #dc2626) no-repeat;
-  background-position-x: calc(1px - var(--peak) * 70px);
-  background-size: 70px 100%;
+  /* The colours span the whole meter and shift left as far as the marker has
+     moved right, so they cover the marker at both ends. */
+  background-position-x: calc(var(--peak) * -70px);
+  background-size: 72px 100%;
 }
 
 /* The looks of the needle. */
