@@ -55,11 +55,15 @@ const createFakeAudioSource = () => {
         stop: vi.fn(),
     } satisfies AudioSource
 
-    return { source, speak: (samples: number) => onAudio(new Float32Array(samples)) }
+    return {
+        source,
+        speak: (samples: number, amplitude = 0) => onAudio(new Float32Array(samples).fill(amplitude)),
+    }
 }
 
 const createListener = () => ({
     onListening: vi.fn(),
+    onAudioLevel: vi.fn(),
     onTranscript: vi.fn(),
     onStopped: vi.fn(),
     onSettled: vi.fn(),
@@ -125,6 +129,29 @@ describe("DictationSession", () => {
         expect(listener.onTranscript).toHaveBeenCalledWith(false, [
             { content: "Fix", startTime: 0, attachesTo: undefined },
         ])
+    })
+
+    it("reports the level of audio captured while listening", async () => {
+        const { audio, listener } = await startSession()
+
+        audio.speak(160)
+        audio.speak(160, 0.01)
+        audio.speak(160, 1)
+
+        expect(listener.onAudioLevel.mock.calls.map(([level]) => level)).toEqual([
+            0,
+            expect.closeTo(0.4),
+            1,
+        ])
+    })
+
+    it("reports no level for audio that arrives after stopping", async () => {
+        const { session, audio, listener } = await startSession()
+
+        session.stop("user")
+        audio.speak(160, 1)
+
+        expect(listener.onAudioLevel).not.toHaveBeenCalled()
     })
 
     it("stops after the inactivity timeout and recognised speech resets it", async () => {
@@ -594,6 +621,7 @@ describe("DictationSession", () => {
     it("buffers audio captured before recognition starts", async () => {
         const fake = createFakeConnection()
         const audio = createFakeAudioSource()
+        const listener = createListener()
         let finishStarting: () => void = () => undefined
         fake.connection.start.mockImplementation(() => new Promise<undefined>((resolve) => {
             finishStarting = () => resolve(undefined)
@@ -603,13 +631,16 @@ describe("DictationSession", () => {
             createConnection: async () => fake.connection,
             createAudioSource: () => audio.source,
             vocabulary: [],
-            listener: createListener(),
+            listener,
         })
 
         const starting = session.start()
         await vi.waitFor(() => expect(fake.connection.start).toHaveBeenCalled())
-        audio.speak(1_600)
+        audio.speak(1_600, 1)
         expect(fake.connection.sendAudio).not.toHaveBeenCalled()
+
+        // No level is shown until recognition is ready.
+        expect(listener.onAudioLevel).not.toHaveBeenCalled()
 
         // Audio queued while starting already counts towards the audio clock.
         expect(session.audioTime).toBeCloseTo(0.1)
@@ -646,6 +677,7 @@ describe("DictationSession", () => {
                 },
             }),
             onStateChange: () => undefined,
+            onAudioLevel: () => undefined,
         })
 
         controller.start("a", { start: 0, end: 0 })

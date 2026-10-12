@@ -31,7 +31,12 @@ select {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
   margin-bottom: 24px;
+}
+
+.app-header .add-button {
+  flex-shrink: 0;
 }
 
 .app-header h1 {
@@ -64,15 +69,23 @@ select {
   gap: 10px;
 }
 
+/*
+ * The dictation feedback sits in the middle column, across both rows. Its
+ * height is reserved, so nothing moves when the feedback changes.
+ */
 .task-list-controls {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 22rem) minmax(0, 1fr);
+  grid-template-areas:
+    "notice feedback meter-style"
+    "filter feedback reset";
   align-items: center;
-  gap: 16px;
+  gap: 10px 16px;
   margin-bottom: 6px;
 }
 
 .assignee-filter {
+  grid-area: filter;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -80,6 +93,8 @@ select {
 
 /* A button that reads as a quiet text link. */
 .reset-tasks-button {
+  grid-area: reset;
+  justify-self: end;
   border: 0;
   padding: 0;
   background: transparent;
@@ -386,16 +401,228 @@ select {
 }
 
 .dictation-notice {
-  margin: 0 0 10px;
+  grid-area: notice;
+  margin: 0;
   color: #777;
   font-size: 12px;
 }
 
-/* Sits inside the header's bottom margin so messages do not move the list. */
+.app-header .dictation-hint {
+  max-width: 30rem;
+  margin: 0 auto;
+  color: #555;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.dictation-hint-icon {
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.25em;
+}
+
+/* Room for three lines of status text, whether or not there is any. */
+.dictation-feedback {
+  grid-area: feedback;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.75rem;
+}
+
+.dictation-status-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 3px 10px;
+  border: 1px solid #999;
+  border-radius: 3px;
+  background: white;
+}
+
+.dictation-status-box-empty {
+  border-color: transparent;
+  background: transparent;
+}
+
 .dictation-status {
-  min-height: 18px;
-  margin: -20px 0 2px;
+  margin: 0;
   color: #444;
   font-size: 13px;
-  line-height: 18px;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.dictation-state {
+  color: #202124;
+  white-space: nowrap;
+}
+
+/* A different shape for each state, so they do not differ by colour alone. */
+.dictation-state::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border: 2px solid #777;
+}
+
+.dictation-state-starting::before {
+  border-radius: 50%;
+}
+
+.dictation-state-listening::before {
+  border-color: #dc2626;
+  border-radius: 50%;
+  background: #dc2626;
+}
+
+.dictation-state-finishing::before {
+  background: #777;
+}
+
+/* Both meter styles are drawn in the same space from --level and --peak. */
+.level-meter {
+  --level: 0;
+  --peak: 0;
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 72px;
+  height: 32px;
+}
+
+.level-meter-track {
+  position: absolute;
+  top: 11px;
+  right: 0;
+  left: 0;
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid #999;
+  border-radius: 2px;
+}
+
+.level-meter-fill {
+  position: absolute;
+  inset: 0;
+  background: #16a34a;
+  transform: scaleX(var(--level));
+  transform-origin: left;
+}
+
+.level-meter-peak {
+  position: absolute;
+  top: 7px;
+  left: calc(var(--peak) * (100% - 2px));
+  width: 2px;
+  height: 18px;
+  background: #202124;
+}
+
+.level-meter svg {
+  display: block;
+}
+
+.level-meter-scale {
+  fill: none;
+  stroke: #777;
+  stroke-width: 1.5;
+}
+
+.level-meter-needle {
+  stroke: #dc2626;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  transform: rotate(calc((var(--level) - 0.5) * 100deg));
+  transform-box: view-box;
+  transform-origin: 36px 30px;
+}
+
+.level-meter-pivot {
+  fill: #202124;
+}
+
+.meter-style {
+  grid-area: meter-style;
+  justify-self: end;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px 6px;
+  color: #555;
+  font-size: 12px;
+}
+
+.meter-style button {
+  padding: 1px 7px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: white;
+  color: #555;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.meter-style button:hover {
+  border-color: #2563eb;
+}
+
+.meter-style button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/*
+ * The chosen style is marked with a tick as well as by colour. Each button
+ * keeps room for the tick, so that choosing a style moves nothing.
+ */
+.meter-style button[aria-pressed="true"] {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #202124;
+}
+
+.meter-style button::before {
+  /* The empty alternative text keeps the tick out of the button's name. */
+  content: "\2713\00a0" / "";
+  visibility: hidden;
+}
+
+.meter-style button[aria-pressed="true"]::before {
+  visibility: visible;
+}
+
+@media (max-width: 850px) {
+  .app-header {
+    flex-wrap: wrap;
+  }
+
+  .app-header .dictation-hint {
+    order: 1;
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .task-list-controls {
+    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-areas:
+      "notice notice"
+      "feedback feedback"
+      "meter-style meter-style"
+      "filter reset";
+  }
+
+  .dictation-feedback {
+    min-height: 5rem;
+  }
+
+  .meter-style {
+    justify-self: start;
+    justify-content: flex-start;
+  }
 }

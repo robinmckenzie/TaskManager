@@ -1,3 +1,4 @@
+import { measureAudioLevel } from "./audioLevel"
 import {
     DictationError,
     getMicrophoneErrorKind,
@@ -51,6 +52,8 @@ export interface AudioSource {
 
 export interface DictationSessionListener {
     onListening(): void
+    /** The microphone input level, from 0 to 1, of audio captured while listening. */
+    onAudioLevel(level: number): void
     onTranscript(isFinal: boolean, tokens: TranscriptToken[]): void
     /** Called once, as soon as dictation stops for any reason. */
     onStopped(reason: DictationStopReason, errorKind?: DictationErrorKind): void
@@ -253,6 +256,7 @@ export class DictationSession {
         if (this.phase === "listening") {
             this.samplesCaptured += data.length
             this.connection?.sendAudio(data)
+            this.dependencies.listener.onAudioLevel(measureAudioLevel(data))
         } else if (this.phase === "starting") {
             this.samplesCaptured += data.length
             this.pendingAudio.push(data)
