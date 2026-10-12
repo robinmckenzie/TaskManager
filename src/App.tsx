@@ -69,17 +69,6 @@ const initialUsers: User[] = [
     { id: "4", name: "Aaron", photo: "https://i.pravatar.cc/100?img=4" },
 ]
 
-/**
- * Calculate how quickly an overdue task should pulse.
- *
- * The further overdue it is, the faster it pulses.
- */
-const getPulseDuration = (daysOverdue: number): string => {
-    const duration: number = Math.max(0.4, 2.5 - daysOverdue * 0.3)
-
-    return `${duration}s`
-}
-
 const useTaskDrag = (id: string, index: number) =>
     useDrag<DragItem, void, { isDragging: boolean }>({
         type: TASK_DRAG_TYPE,
@@ -107,12 +96,8 @@ const Task: FC<TaskProps> = ({
 
     const daysUntilDue: number | null = getDaysUntilDue(task.dueDate, today)
 
-    const daysOverdue: number =
+    const overdue: boolean =
         !task.completed && daysUntilDue !== null && daysUntilDue < 0
-            ? -daysUntilDue
-            : 0
-
-    const overdue: boolean = daysOverdue > 0
 
     /*
      * react-dnd drop target.
@@ -261,10 +246,6 @@ const Task: FC<TaskProps> = ({
         return "task-normal"
     }
 
-    const pulseDuration: string = overdue
-        ? getPulseDuration(daysOverdue)
-        : "0s"
-
     return (
         <div
             ref={(element: HTMLDivElement | null): void => {
@@ -277,7 +258,6 @@ const Task: FC<TaskProps> = ({
             className={`task ${getBackgroundClass()}`}
             style={{
                 opacity: isDragging ? 0.5 : 1,
-                animationDuration: pulseDuration,
             }}
         >
             <div

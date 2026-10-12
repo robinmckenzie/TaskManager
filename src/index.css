@@ -277,38 +277,20 @@ select {
 }
 
 /*
- * Overdue tasks pulse gently between pastel pink and white.
- *
- * The animationDuration is supplied inline by React,
- * based on how far overdue the task is.
+ * Overdue tasks have a static pastel pink background.
  */
 
 .task-overdue {
   background: #fecaca;
-  animation-name: overdue-pulse;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-}
-
-@keyframes overdue-pulse {
-  0%,
-  100% {
-    background-color: #fecaca;
-  }
-
-  50% {
-    background-color: #ffffff;
-  }
 }
 
 /*
- * When the device asks for reduced motion, overdue tasks do not pulse.
- * They keep the pink background, and a red border stands in for the pulse.
+ * When the device asks for reduced motion, overdue tasks are also
+ * marked with a red border.
  */
 
 @media (prefers-reduced-motion: reduce) {
   .task-overdue {
-    animation-name: none;
     border-color: #dc2626;
   }
 }
