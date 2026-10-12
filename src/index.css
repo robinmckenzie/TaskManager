@@ -27,9 +27,11 @@ select {
   padding: 32px;
 }
 
+/* Equal side columns, each wide enough for the heading, put the dictation hint
+   at the centre of the page, in line with the dictation feedback below it. */
 .app-header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(13.5rem, 1fr) minmax(0, 30rem) minmax(13.5rem, 1fr);
   align-items: center;
   gap: 16px;
   margin-bottom: 24px;
@@ -37,6 +39,7 @@ select {
 
 .app-header .add-button {
   flex-shrink: 0;
+  justify-self: end;
 }
 
 .app-header h1 {
@@ -409,8 +412,7 @@ select {
 }
 
 .app-header .dictation-hint {
-  max-width: 30rem;
-  margin: 0 auto;
+  margin: 0;
   color: #555;
   font-size: 13px;
   line-height: 1.4;
@@ -670,13 +672,14 @@ select {
 
 @media (max-width: 850px) {
   .app-header {
+    display: flex;
     flex-wrap: wrap;
+    justify-content: space-between;
   }
 
   .app-header .dictation-hint {
     order: 1;
     flex-basis: 100%;
-    max-width: none;
   }
 
   .task-list-controls {
