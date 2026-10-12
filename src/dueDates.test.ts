@@ -41,6 +41,20 @@ describe("getDaysUntilDue", () => {
         expect(getDaysUntilDue(toDueDate(addDays(new Date(), 3)))).toBe(3)
     })
 
+    it("counts no days for a task with no due date", () => {
+        expect(getDaysUntilDue("", new Date(2026, 9, 8, 15, 30))).toBeNull()
+        expect(getDaysUntilDue("")).toBeNull()
+    })
+
+    it("counts no days for a due date that is not a date", () => {
+        expect(getDaysUntilDue("not a date", new Date(2026, 9, 8, 15, 30))).toBeNull()
+    })
+
+    it("counts a day fewer once the day changes", () => {
+        expect(getDaysUntilDue("2026-10-09", new Date(2026, 9, 8, 23, 59, 59))).toBe(1)
+        expect(getDaysUntilDue("2026-10-09", new Date(2026, 9, 9, 0, 0, 0))).toBe(0)
+    })
+
     it("counts the sample tasks as due 2 days ago, yesterday and in 2, 10 and 21 days", () => {
         const now = new Date(2026, 9, 8, 15, 30)
 
@@ -62,7 +76,12 @@ describe("describeDueStatus", () => {
         expect(describeDueStatus(daysUntilDue, false)).toBe(expected)
     })
 
+    it("describes an incomplete task with no due date as having none", () => {
+        expect(describeDueStatus(null, false)).toBe("No due date")
+    })
+
     it("describes a completed task as completed whenever it was due", () => {
+        expect(describeDueStatus(null, true)).toBe("Completed")
         expect(describeDueStatus(-5, true)).toBe("Completed")
         expect(describeDueStatus(0, true)).toBe("Completed")
         expect(describeDueStatus(4, true)).toBe("Completed")

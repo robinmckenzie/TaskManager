@@ -18,6 +18,7 @@ import {
 } from "./assigneeFilter"
 import { describeDueStatus, getDaysUntilDue } from "./dueDates"
 import { getNewTaskAssignee, sortAssigneesByName } from "./users"
+import { useToday } from "./useToday"
 import { DictationButton } from "./dictation/DictationButton"
 import { useDictation } from "./dictation/useDictation"
 import type { Dictation } from "./dictation/useDictation"
@@ -42,6 +43,7 @@ interface TaskProps {
     task: TaskType
     index: number
     users: User[]
+    today: Date
     moveTask: (fromIndex: number, toIndex: number) => void
     updateTask: (id: string, changes: Partial<TaskType>) => void
     deleteTask: (id: string) => void
@@ -91,6 +93,7 @@ const Task: FC<TaskProps> = ({
     task,
     index,
     users,
+    today,
     moveTask,
     updateTask,
     deleteTask,
@@ -102,9 +105,14 @@ const Task: FC<TaskProps> = ({
         (currentUser: User) => currentUser.id === task.userId,
     )
 
-    const daysUntilDue: number = getDaysUntilDue(task.dueDate)
+    const daysUntilDue: number | null = getDaysUntilDue(task.dueDate, today)
 
-    const overdue: boolean = !task.completed && daysUntilDue < 0
+    const daysOverdue: number =
+        !task.completed && daysUntilDue !== null && daysUntilDue < 0
+            ? -daysUntilDue
+            : 0
+
+    const overdue: boolean = daysOverdue > 0
 
     /*
      * react-dnd drop target.
@@ -234,6 +242,10 @@ const Task: FC<TaskProps> = ({
             return "task-completed"
         }
 
+        if (daysUntilDue === null) {
+            return "task-normal"
+        }
+
         if (overdue) {
             return "task-overdue"
         }
@@ -250,7 +262,7 @@ const Task: FC<TaskProps> = ({
     }
 
     const pulseDuration: string = overdue
-        ? getPulseDuration(Math.abs(daysUntilDue))
+        ? getPulseDuration(daysOverdue)
         : "0s"
 
     return (
@@ -365,6 +377,8 @@ const App: FC = () => {
     const [tasks, setTasks] = useState<TaskType[]>(loadTasks)
 
     const [users] = useState<User[]>(initialUsers)
+
+    const today = useToday()
 
     const [assigneeFilter, setAssigneeFilter] = useState<string>(() =>
         loadAssigneeFilter(users),
@@ -505,6 +519,7 @@ const App: FC = () => {
                             task={task}
                             index={index}
                             users={alphabeticalUsers}
+                            today={today}
                             moveTask={moveTask}
                             updateTask={updateTask}
                             deleteTask={deleteTask}
