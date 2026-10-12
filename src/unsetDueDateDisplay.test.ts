@@ -34,7 +34,7 @@ it("shows an incomplete task with no due date as having none, in the neutral col
 
     expect(incomplete.startsWith('task-normal"')).toBe(true)
     expect(incomplete).toContain("<span>No due date</span>")
-    expect(incomplete).toContain("animation-duration:0s")
+    expect(incomplete).not.toContain("animation")
     expect(incomplete).not.toContain("NaN")
 })
 
