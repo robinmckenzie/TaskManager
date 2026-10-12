@@ -3,6 +3,8 @@ import type { Dictation } from "./useDictation"
 
 interface DictationButtonProps {
     targetId: string
+    /** What the button's accessible name says it dictates into. */
+    targetName: string
     dictation: Dictation
 }
 
@@ -24,7 +26,7 @@ const getButtonTitle = (dictation: Dictation, isActive: boolean): string => {
 }
 
 /** Microphone control that starts or stops dictation into its text input. */
-export const DictationButton: FC<DictationButtonProps> = ({ targetId, dictation }) => {
+export const DictationButton: FC<DictationButtonProps> = ({ targetId, targetName, dictation }) => {
     const isActive = dictation.phase !== "idle" && dictation.activeTargetId === targetId
     const isAvailable = dictation.availability === "available"
 
@@ -35,7 +37,7 @@ export const DictationButton: FC<DictationButtonProps> = ({ targetId, dictation 
             className={`dictation-button${dictation.phase === "starting" && isActive ? " dictation-button-starting" : ""}`}
             aria-pressed={isActive}
             aria-disabled={isAvailable ? undefined : true}
-            aria-label={isActive ? "Stop dictation" : "Start dictation"}
+            aria-label={`${isActive ? "Stop" : "Start"} dictation into ${targetName}`}
             title={getButtonTitle(dictation, isActive)}
             // Keep focus, and the cursor position or selection, in the text input.
             onMouseDown={(event): void => event.preventDefault()}

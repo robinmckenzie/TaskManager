@@ -17,6 +17,8 @@ import {
     saveAssigneeFilter,
 } from "./assigneeFilter"
 import { describeDueStatus, getDaysUntilDue } from "./dueDates"
+import { findTaskToFocusAfterDelete } from "./focusAfterDelete"
+import { getTaskControlNames } from "./taskControlNames"
 import { getNewTaskAssignee, sortAssigneesByName } from "./users"
 import { useToday } from "./useToday"
 import { DictationButton } from "./dictation/DictationButton"
@@ -42,11 +44,15 @@ interface DragItem {
 interface TaskProps {
     task: TaskType
     index: number
+    /** The task's place among the tasks on show, counted from 1. */
+    visiblePosition: number
     users: User[]
     today: Date
     moveTask: (fromIndex: number, toIndex: number) => void
     updateTask: (id: string, changes: Partial<TaskType>) => void
     deleteTask: (id: string) => void
+    registerTitleInput: (id: string, input: HTMLInputElement | null) => void
+    registerDeleteButton: (id: string, button: HTMLButtonElement | null) => void
     dictation: Dictation
 }
 
@@ -92,11 +98,14 @@ const useTaskDrag = (id: string, index: number) =>
 const Task: FC<TaskProps> = ({
     task,
     index,
+    visiblePosition,
     users,
     today,
     moveTask,
     updateTask,
     deleteTask,
+    registerTitleInput,
+    registerDeleteButton,
     dictation,
 }) => {
     const ref = useRef<HTMLDivElement>(null)
@@ -104,6 +113,8 @@ const Task: FC<TaskProps> = ({
     const user: User | undefined = users.find(
         (currentUser: User) => currentUser.id === task.userId,
     )
+
+    const controlNames = getTaskControlNames(task.text, visiblePosition)
 
     const daysUntilDue: number | null = getDaysUntilDue(task.dueDate, today)
 
@@ -299,12 +310,20 @@ const Task: FC<TaskProps> = ({
                 <div className="task-title-row">
                     <input
                         type="text"
-                        ref={(input): void => dictation.registerInput(task.id, input)}
+                        ref={(input): void => {
+                            dictation.registerInput(task.id, input)
+                            registerTitleInput(task.id, input)
+                        }}
                         value={task.text}
                         onChange={handleTextChange}
                         className="task-title"
+                        aria-label={controlNames.title}
                     />
-                    <DictationButton targetId={task.id} dictation={dictation} />
+                    <DictationButton
+                        targetId={task.id}
+                        targetName={controlNames.dictationTarget}
+                        dictation={dictation}
+                    />
                 </div>
 
                 <div className="task-details">
@@ -321,6 +340,7 @@ const Task: FC<TaskProps> = ({
                             type="date"
                             value={task.dueDate}
                             onChange={handleDueDateChange}
+                            aria-label={controlNames.dueDate}
                         />
                     </label>
 
@@ -341,10 +361,16 @@ const Task: FC<TaskProps> = ({
                         step="1"
                         value={task.priority}
                         onChange={handlePriorityChange}
+                        aria-label={controlNames.priority}
+                        aria-valuetext={`${task.priority} of 5`}
                     />
                 </label>
 
-                <select value={task.userId} onChange={handleUserChange}>
+                <select
+                    value={task.userId}
+                    onChange={handleUserChange}
+                    aria-label={controlNames.assignee}
+                >
                     {users.map((currentUser: User) => (
                         <option key={currentUser.id} value={currentUser.id}>
                             {currentUser.name}
@@ -357,14 +383,17 @@ const Task: FC<TaskProps> = ({
                         type="checkbox"
                         checked={task.completed}
                         onChange={handleCompletedChange}
+                        aria-label={controlNames.completed}
                     />
                     Complete
                 </label>
 
                 <button
                     type="button"
+                    ref={(button): void => registerDeleteButton(task.id, button)}
                     onClick={(): void => deleteTask(task.id)}
                     className="delete-button"
+                    aria-label={controlNames.deleteButton}
                 >
                     Delete
                 </button>
@@ -402,6 +431,35 @@ const App: FC = () => {
         }
     }, [tasks])
 
+    const titleInputs = useRef(new Map<string, HTMLInputElement>())
+    const deleteButtons = useRef(new Map<string, HTMLButtonElement>())
+    const addButton = useRef<HTMLButtonElement>(null)
+
+    const registerTitleInput = (id: string, input: HTMLInputElement | null): void => {
+        if (input) {
+            titleInputs.current.set(id, input)
+        } else {
+            titleInputs.current.delete(id)
+        }
+    }
+
+    const registerDeleteButton = (id: string, button: HTMLButtonElement | null): void => {
+        if (button) {
+            deleteButtons.current.set(id, button)
+        } else {
+            deleteButtons.current.delete(id)
+        }
+    }
+
+    // Where focus goes once the task list has been drawn again, after a task
+    // is added or deleted.
+    const moveFocusAfterRender = useRef<(() => void) | null>(null)
+
+    useEffect(() => {
+        moveFocusAfterRender.current?.()
+        moveFocusAfterRender.current = null
+    }, [tasks])
+
     const addTask = (): void => {
         const newTask: TaskType = {
             id: `task-${Date.now()}`,
@@ -416,6 +474,14 @@ const App: FC = () => {
             ...currentTasks,
             newTask,
         ])
+
+        moveFocusAfterRender.current = (): void => {
+            const input = titleInputs.current.get(newTask.id)
+
+            // Select the placeholder title, so that typing replaces it.
+            input?.focus()
+            input?.select()
+        }
     }
 
     const updateTask = (id: string, changes: Partial<TaskType>): void => {
@@ -440,6 +506,19 @@ const App: FC = () => {
     })
 
     const deleteTask = (id: string): void => {
+        const nextTaskId = findTaskToFocusAfterDelete(
+            visibleTasks.map(({ task }): string => task.id),
+            id,
+        )
+
+        moveFocusAfterRender.current = (): void => {
+            const destination = nextTaskId
+                ? deleteButtons.current.get(nextTaskId)
+                : addButton.current
+
+            destination?.focus()
+        }
+
         dictation.removeTarget(id)
         setTasks((currentTasks: TaskType[]): TaskType[] =>
             currentTasks.filter((task: TaskType): boolean => task.id !== id),
@@ -472,6 +551,7 @@ const App: FC = () => {
 
                     <button
                         type="button"
+                        ref={addButton}
                         onClick={addTask}
                         className="add-button"
                     >
@@ -513,16 +593,19 @@ const App: FC = () => {
                             Reset to sample tasks
                         </button>
                     </div>
-                    {visibleTasks.map(({ task, index }) => (
+                    {visibleTasks.map(({ task, index }, visibleIndex) => (
                         <Task
                             key={task.id}
                             task={task}
                             index={index}
+                            visiblePosition={visibleIndex + 1}
                             users={alphabeticalUsers}
                             today={today}
                             moveTask={moveTask}
                             updateTask={updateTask}
                             deleteTask={deleteTask}
+                            registerTitleInput={registerTitleInput}
+                            registerDeleteButton={registerDeleteButton}
                             dictation={dictation}
                         />
                     ))}
