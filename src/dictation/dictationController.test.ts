@@ -41,6 +41,7 @@ const setUp = (targets: Record<string, FakeTarget>) => {
         stop: ReturnType<typeof vi.fn>
     }[] = []
     const states: DictationState[] = []
+    const levels: (number | null)[] = []
     const controller = new DictationController({
         createSession: (listener) => {
             const session = {
@@ -55,6 +56,7 @@ const setUp = (targets: Record<string, FakeTarget>) => {
         },
         getTarget: (id) => targets[id],
         onStateChange: (state) => states.push(state),
+        onAudioLevel: (level) => levels.push(level),
     })
 
     const words = (startTime: number, ...contents: string[]): TranscriptToken[] =>
@@ -65,7 +67,7 @@ const setUp = (targets: Record<string, FakeTarget>) => {
     const final = (startTime: number, ...contents: string[]) =>
         latest().listener.onTranscript(true, words(startTime, ...contents))
 
-    return { controller, sessions, states, latest, partial, final }
+    return { controller, sessions, states, levels, latest, partial, final }
 }
 
 describe("DictationController", () => {
@@ -255,13 +257,90 @@ describe("DictationController", () => {
         controller.start("a", title.selection)
         latest().listener.onListening()
         latest().listener.onStopped("inactivity")
-
-        expect(states.map(({ phase, message }) => [phase, message])).toEqual([
-            ["starting", "Starting dictation."],
-            ["listening", "Dictation started."],
-            ["idle", "Dictation stopped after 10 seconds without recognised speech."],
-        ])
         expect(controller.isActive).toBe(false)
+        latest().listener.onSettled()
+
+        expect(states.map(({ phase, targetId, message }) => [phase, targetId, message])).toEqual([
+            ["starting", "a", ""],
+            ["listening", "a", ""],
+            ["finishing", null, "Dictation stopped after 10 seconds without recognised speech."],
+            ["idle", null, "Dictation stopped after 10 seconds without recognised speech."],
+        ])
+    })
+
+    it("is finishing, not listening, until late results have settled", () => {
+        const title = createTarget("Fix")
+        const { controller, latest, states, final } = setUp({ a: title })
+
+        controller.start("a", title.selection)
+        latest().listener.onListening()
+        controller.stop("user")
+        final(0, "bug")
+
+        expect(title.value).toBe("Fix bug")
+        expect(states.at(-1)).toEqual({ phase: "finishing", targetId: null, message: "Dictation stopped." })
+
+        latest().listener.onSettled()
+        expect(states.at(-1)).toEqual({ phase: "idle", targetId: null, message: "Dictation stopped." })
+    })
+
+    it("never shows listening for a session stopped while it was starting", () => {
+        const title = createTarget("Fix")
+        const { controller, latest, states } = setUp({ a: title })
+
+        controller.start("a", title.selection)
+        controller.stop("user")
+        latest().listener.onSettled()
+        latest().listener.onListening()
+
+        expect(states.map(({ phase }) => phase)).toEqual(["starting", "finishing", "idle"])
+    })
+
+    it("keeps a new session's state when an earlier one finishes", () => {
+        const first = createTarget("First")
+        const second = createTarget("Second")
+        const { controller, sessions, states } = setUp({ a: first, b: second })
+
+        controller.start("a", first.selection)
+        sessions[0].listener.onListening()
+        controller.start("b", second.selection)
+        sessions[1].listener.onListening()
+        const current = { phase: "listening", targetId: "b", message: "" }
+        expect(states.at(-1)).toEqual(current)
+
+        sessions[0].listener.onTranscript(true, [{ content: "late", startTime: 0 }])
+        sessions[0].listener.onSettled()
+
+        expect(first.value).toBe("First late")
+        expect(states.at(-1)).toEqual(current)
+
+        // The earlier session also leaves the state alone once the new one has stopped.
+        const statesBefore = states.length
+        controller.stop("user")
+        sessions[0].listener.onSettled()
+        expect(states.slice(statesBefore).map(({ phase }) => phase)).toEqual(["finishing"])
+    })
+
+    it("passes on the microphone level of the listening session only", () => {
+        const first = createTarget("First")
+        const second = createTarget("Second")
+        const { controller, sessions, levels } = setUp({ a: first, b: second })
+
+        controller.start("a", first.selection)
+        sessions[0].listener.onListening()
+        sessions[0].listener.onAudioLevel(0.5)
+        expect(levels).toEqual([null, 0.5])
+
+        // Starting another session clears the level, and the earlier one's is ignored.
+        controller.start("b", second.selection)
+        sessions[0].listener.onAudioLevel(0.9)
+        sessions[1].listener.onListening()
+        sessions[1].listener.onAudioLevel(0.2)
+        expect(levels).toEqual([null, 0.5, null, null, 0.2])
+
+        controller.stop("user")
+        sessions[1].listener.onAudioLevel(0.7)
+        expect(levels).toEqual([null, 0.5, null, null, 0.2, null])
     })
 
     it("reports errors with their message", () => {
@@ -270,7 +349,9 @@ describe("DictationController", () => {
 
         controller.start("a", title.selection)
         latest().listener.onStopped("error", "microphone_denied")
+        latest().listener.onSettled()
 
+        expect(states.at(-1)?.phase).toBe("idle")
         expect(states.at(-1)?.message).toMatch(/microphone access/)
     })
 })

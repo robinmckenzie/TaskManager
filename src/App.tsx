@@ -20,6 +20,12 @@ import { describeDueStatus, getDaysUntilDue } from "./dueDates"
 import { getNewTaskAssignee, sortAssigneesByName } from "./users"
 import { useToday } from "./useToday"
 import { DictationButton } from "./dictation/DictationButton"
+import {
+    DictationHint,
+    DictationStatus,
+    MeterStyleSelector,
+} from "./dictation/DictationFeedback"
+import type { MeterChoice } from "./dictation/LevelMeter"
 import { useDictation } from "./dictation/useDictation"
 import type { Dictation } from "./dictation/useDictation"
 
@@ -419,6 +425,12 @@ const App: FC = () => {
         setText: (id: string, text: string): void => updateTask(id, { text }),
     })
 
+    const [meter, setMeter] = useState<MeterChoice>({
+        style: "bar",
+        bar: "solid",
+        needle: "classic",
+    })
+
     const deleteTask = (id: string): void => {
         dictation.removeTarget(id)
         setTasks((currentTasks: TaskType[]): TaskType[] =>
@@ -450,6 +462,8 @@ const App: FC = () => {
                         </p>
                     </div>
 
+                    <DictationHint />
+
                     <button
                         type="button"
                         onClick={addTask}
@@ -459,16 +473,11 @@ const App: FC = () => {
                     </button>
                 </header>
 
-                <p className="dictation-status" role="status">
-                    {dictation.message}
-                </p>
-
-                <p className="dictation-notice">
-                    This demo may retain dictated text for diagnostics.
-                </p>
-
                 <section className="task-list">
                     <div className="task-list-controls">
+                        <p className="dictation-notice">
+                            This demo may retain dictated text for diagnostics.
+                        </p>
                         <label className="assignee-filter">
                             Assignee
                             <select
@@ -485,6 +494,8 @@ const App: FC = () => {
                                 ))}
                             </select>
                         </label>
+                        <DictationStatus dictation={dictation} meter={meter} />
+                        <MeterStyleSelector meter={meter} onChange={setMeter} />
                         <button
                             type="button"
                             onClick={resetToSampleTasks}

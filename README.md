@@ -36,8 +36,33 @@ stops automatically after a period without recognised speech (15 seconds by
 default), after a maximum time (60 seconds by default, counted from when the
 microphone starts recording), when focus leaves the
 task titles, or when the task being dictated is deleted. Recognised text may
-keep settling for up to four seconds after dictation stops. A status line above the task list reports these changes and any
-problems, such as a blocked microphone. A line above the task list says "This
+keep settling for up to four seconds after dictation stops. A line at the top
+of the page says how to start and stop dictating.
+
+A status box above the task list, between the assignee filter and "Reset to
+sample tasks", shows what dictation is doing:
+
+- "Connecting" from when you start until recognition is ready.
+- "Listening" while speech is accepted, with a level meter beside it.
+- "Finishing" once recording has stopped, while recognised text may still
+  arrive. The microphone is no longer recording.
+- Afterwards, why dictation stopped, or what went wrong, such as a blocked
+  microphone.
+
+The level meter shows how loud the sound reaching the microphone is. It does
+not show whether speech was recognised, and a quiet meter is not an error.
+"Level meter" above "Reset to sample tasks" chooses its style, and can be
+changed while dictating: "Horizontal bar" grows from the left, with a marker
+that holds the recent peak for about a second, and "Analogue needle" sweeps a
+needle across an arc. "Look", on the line below, offers three looks for the
+style that is selected: Solid, Segments and Gradient for the bar, and Classic,
+Zones and Ticks for the needle. Each style keeps its own look. The choices last
+until the page is reloaded. The level is
+worked out in the browser from the audio already being captured, and is not
+stored or sent anywhere. With reduced motion set on the device, the meter moves
+in a few steps a second.
+
+A line above the task list says "This
 demo may retain dictated text for diagnostics.", because the deployed app keeps
 the final recognised text; see [Stored transcripts](#stored-transcripts).
 Dictation needs setting up first; see

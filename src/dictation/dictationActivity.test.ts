@@ -313,6 +313,7 @@ describe("reportSessionActivity", () => {
     ) => {
         const inner = {
             onListening: vi.fn(),
+            onAudioLevel: vi.fn(),
             onTranscript: vi.fn(),
             onStopped: vi.fn(),
             onSettled: vi.fn(),
@@ -328,6 +329,18 @@ describe("reportSessionActivity", () => {
 
     const words = (...contents: string[]): TranscriptToken[] =>
         contents.map((content, index) => ({ content, startTime: index }))
+
+    it("passes the microphone level on without reporting it", () => {
+        const { listener, inner, report, reportTranscript } = setUp()
+
+        listener.onListening()
+        report.mockClear()
+        listener.onAudioLevel(0.5)
+
+        expect(inner.onAudioLevel).toHaveBeenCalledWith(0.5)
+        expect(report).not.toHaveBeenCalled()
+        expect(reportTranscript).not.toHaveBeenCalled()
+    })
 
     it("reports one transcript for the session, assembled from its final results, once it has settled", () => {
         const { listener, reportTranscript } = setUp()
