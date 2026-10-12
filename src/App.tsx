@@ -429,6 +429,7 @@ const App: FC = () => {
         style: "bar",
         bar: "solid",
         needle: "classic",
+        waveform: "pill",
     })
 
     const deleteTask = (id: string): void => {

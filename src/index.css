@@ -80,7 +80,7 @@ select {
  */
 .task-list-controls {
   display: grid;
-  grid-template-columns: minmax(18.5rem, 1fr) minmax(15rem, 22rem) minmax(18.5rem, 1fr);
+  grid-template-columns: minmax(24.5rem, 1fr) minmax(15rem, 22rem) minmax(24.5rem, 1fr);
   grid-template-areas:
     "notice feedback meter-style"
     "filter feedback meter-style"
@@ -475,7 +475,7 @@ select {
   background: #777;
 }
 
-/* Both meter styles are drawn in the same space from --level and --peak. */
+/* Every meter style is drawn in the same space from --level and --peak. */
 .level-meter {
   --level: 0;
   --peak: 0;
@@ -597,6 +597,50 @@ select {
   stroke: none;
 }
 
+/* The waveform is a row of bars, each as tall as it gets and cut off at its
+   own level, --bar, so that its round ends and colours keep their shape. A
+   silent bar stays as a dot. */
+.level-meter-wave {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.level-meter-wave-bar {
+  /* --past is this bar's place in the recent levels, newest on the right. */
+  --bar: var(--past, 0);
+  width: 2px;
+  height: 26px;
+  background: #202124;
+  clip-path: inset(calc((1 - var(--bar)) * (50% - 1px)) 0 round 1px);
+}
+
+/* The looks of the waveform. */
+.level-meter-waveform-pill .level-meter-wave {
+  inset: 4px 0;
+  border-radius: 12px;
+  background: black;
+}
+
+.level-meter-waveform-pill .level-meter-wave-bar {
+  height: 14px;
+  background: white;
+}
+
+/* The bars keep their places and swell together with the level. */
+.level-meter-waveform-pulse .level-meter-wave-bar {
+  --bar: calc(var(--level) * var(--shape));
+  background: #2563eb;
+}
+
+.level-meter-waveform-columns .level-meter-wave-bar {
+  background: linear-gradient(to top, #16a34a 55%, #eab308 78%, #dc2626);
+  clip-path: inset(calc((1 - var(--bar)) * (100% - 2px)) 0 0 round 1px);
+}
+
 .meter-style {
   grid-area: meter-style;
   justify-self: end;
@@ -664,7 +708,7 @@ select {
  * to a row they share with the notice. The feedback stays in the middle, now
  * between the filter and the reset link, which need less room at its sides.
  */
-@media (max-width: 945px) {
+@media (max-width: 1137px) {
   .task-list-controls {
     grid-template-columns: minmax(13rem, 1fr) minmax(15rem, 22rem) minmax(13rem, 1fr);
     grid-template-areas: none;
@@ -757,5 +801,10 @@ select {
   .meter-style {
     justify-self: start;
     align-items: flex-start;
+  }
+
+  /* The three styles do not fit on one line of a narrow phone. */
+  .meter-style > div {
+    flex-wrap: wrap;
   }
 }
