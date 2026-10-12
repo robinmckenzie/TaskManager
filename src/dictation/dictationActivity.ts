@@ -197,6 +197,7 @@ export const reportSessionActivity = (
             reportSafely("dictation_started")
             listener.onListening()
         },
+        onAudioLevel: (level) => listener.onAudioLevel(level),
         onTranscript: (isFinal, tokens) => {
             if (!hasReportedFirstWords && tokens.length > 0) {
                 hasReportedFirstWords = true

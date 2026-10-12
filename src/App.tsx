@@ -22,6 +22,12 @@ import { getTaskControlNames } from "./taskControlNames"
 import { getNewTaskAssignee, sortAssigneesByName } from "./users"
 import { useToday } from "./useToday"
 import { DictationButton } from "./dictation/DictationButton"
+import {
+    DictationHint,
+    DictationStatus,
+    MeterStyleSelector,
+} from "./dictation/DictationFeedback"
+import type { MeterChoice } from "./dictation/LevelMeter"
 import { useDictation } from "./dictation/useDictation"
 import type { Dictation } from "./dictation/useDictation"
 
@@ -75,17 +81,6 @@ const initialUsers: User[] = [
     { id: "4", name: "Aaron", photo: "https://i.pravatar.cc/100?img=4" },
 ]
 
-/**
- * Calculate how quickly an overdue task should pulse.
- *
- * The further overdue it is, the faster it pulses.
- */
-const getPulseDuration = (daysOverdue: number): string => {
-    const duration: number = Math.max(0.4, 2.5 - daysOverdue * 0.3)
-
-    return `${duration}s`
-}
-
 const useTaskDrag = (id: string, index: number) =>
     useDrag<DragItem, void, { isDragging: boolean }>({
         type: TASK_DRAG_TYPE,
@@ -118,12 +113,8 @@ const Task: FC<TaskProps> = ({
 
     const daysUntilDue: number | null = getDaysUntilDue(task.dueDate, today)
 
-    const daysOverdue: number =
+    const overdue: boolean =
         !task.completed && daysUntilDue !== null && daysUntilDue < 0
-            ? -daysUntilDue
-            : 0
-
-    const overdue: boolean = daysOverdue > 0
 
     /*
      * react-dnd drop target.
@@ -272,10 +263,6 @@ const Task: FC<TaskProps> = ({
         return "task-normal"
     }
 
-    const pulseDuration: string = overdue
-        ? getPulseDuration(daysOverdue)
-        : "0s"
-
     return (
         <div
             ref={(element: HTMLDivElement | null): void => {
@@ -288,7 +275,6 @@ const Task: FC<TaskProps> = ({
             className={`task ${getBackgroundClass()}`}
             style={{
                 opacity: isDragging ? 0.5 : 1,
-                animationDuration: pulseDuration,
             }}
         >
             <div
@@ -505,6 +491,12 @@ const App: FC = () => {
         setText: (id: string, text: string): void => updateTask(id, { text }),
     })
 
+    const [meter, setMeter] = useState<MeterChoice>({
+        style: "bar",
+        bar: "solid",
+        needle: "classic",
+    })
+
     const deleteTask = (id: string): void => {
         const nextTaskId = findTaskToFocusAfterDelete(
             visibleTasks.map(({ task }): string => task.id),
@@ -549,6 +541,8 @@ const App: FC = () => {
                         </p>
                     </div>
 
+                    <DictationHint />
+
                     <button
                         type="button"
                         ref={addButton}
@@ -559,16 +553,11 @@ const App: FC = () => {
                     </button>
                 </header>
 
-                <p className="dictation-status" role="status">
-                    {dictation.message}
-                </p>
-
-                <p className="dictation-notice">
-                    This demo may retain dictated text for diagnostics.
-                </p>
-
                 <section className="task-list">
                     <div className="task-list-controls">
+                        <p className="dictation-notice">
+                            This demo may retain dictated text for diagnostics.
+                        </p>
                         <label className="assignee-filter">
                             Assignee
                             <select
@@ -585,6 +574,8 @@ const App: FC = () => {
                                 ))}
                             </select>
                         </label>
+                        <DictationStatus dictation={dictation} meter={meter} />
+                        <MeterStyleSelector meter={meter} onChange={setMeter} />
                         <button
                             type="button"
                             onClick={resetToSampleTasks}

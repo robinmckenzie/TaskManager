@@ -1,4 +1,5 @@
 import type { ErrorTypeEnum } from "@speechmatics/real-time-client"
+import type { DictationPhase } from "./dictationController"
 
 export type DictationErrorKind =
     | "not_configured"
@@ -34,6 +35,20 @@ const formatSeconds = (seconds: number): string => `${seconds} second${seconds =
 export interface StopMessageTimings {
     inactivityTimeoutSeconds: number
     maxSessionSeconds: number
+}
+
+/** The short text that names a dictation state. Idle has none. */
+export const describeDictationPhase = (phase: DictationPhase): string => {
+    switch (phase) {
+        case "idle":
+            return ""
+        case "starting":
+            return "Connecting"
+        case "listening":
+            return "Listening"
+        case "finishing":
+            return "Finishing"
+    }
 }
 
 export const describeDictationError = (kind: DictationErrorKind): string => {

@@ -21,7 +21,7 @@
 - Scope changes to the ticket. Avoid unrelated refactors, formatting changes, cleanup, or dependency upgrades.
 - Name branches `<number>-<Title>`, such as `12-Add-search-filters`, or without the number for housekeeping work that has no ticket, such as `Add-ChatGPT-guidance`.
 - Reference the ticket in commits, as `TM #12`. A pull request says `Closes #12`, so that merging it closes the ticket, and approval of the merge covers that. An abandoned ticket is closed as "not planned".
-- Agreed work, and housekeeping work that was explicitly requested, may be committed without asking. Pushing, merging and deploying each require explicit approval.
+- Agreed work, and housekeeping work that was explicitly requested, may be committed, pushed to its own branch and opened as a pull request without asking. Merging and deploying each require explicit approval.
 - Before asking for approval to merge, bring the pull request description up to date with the handover summary.
 - After Robin merges a pull request, tidy up without asking: fetch with `--prune`, switch to `main`, pull and delete the local branch. Tell Robin if the branch is still on GitHub. If the local branch is not fully merged, leave it and tell Robin.
 - Update README when setup, commands, or documented user behaviour change.
@@ -33,6 +33,7 @@
 - Describe the problem and the behaviour wanted, not how to build it. Put a constraint in Requirements only when it is genuinely required, such as one imposed by an external API, security or saved-data compatibility.
 - When asked to stub or draft a ticket, write only that ticket. Do not modify files or other tickets unless explicitly authorised.
 - A draft ticket needs to be coherent enough to be agreed, not to settle every implementation detail. Distinguish product decisions needed before agreement, provisional or tunable defaults, questions for investigation, and product questions that investigation exposes, which are brought back for a decision.
+- When Claude Code turns a STUB into a DRAFT, it has Codex review the draft with `codex exec`. Codex posts each review as a ticket comment and changes nothing else. Claude Code revises the ticket and replies in a comment. They repeat until Codex has no "must fix" finding, for at most three rounds, and Claude Code then tells Robin what is left to decide.
 - When handing over a drafted or revised ticket for review, separately summarise:
     - what it leaves out of scope, whether stated explicitly or left out by omission;
     - any assumptions made while drafting;

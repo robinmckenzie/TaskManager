@@ -92,6 +92,7 @@ const setUp = (initial: Record<string, string>) => {
         },
         getTarget: app.targets.get,
         onStateChange: () => undefined,
+        onAudioLevel: () => undefined,
     })
     const words = (...contents: string[]): TranscriptToken[] =>
         contents.map((content, index) => ({ content, startTime: index * 0.1 }))

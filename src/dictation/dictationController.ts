@@ -32,7 +32,12 @@ export interface DictationSessionHandle {
     stop(reason: DictationStopReason, errorKind?: DictationErrorKind): void
 }
 
-export type DictationPhase = "idle" | "starting" | "listening"
+/**
+ * "starting" lasts until recognition is ready, and "listening" while speech is
+ * accepted. "finishing" means recording has stopped but the session may still
+ * deliver recognised text.
+ */
+export type DictationPhase = "idle" | "starting" | "listening" | "finishing"
 
 export interface DictationState {
     phase: DictationPhase
@@ -44,6 +49,8 @@ export interface DictationControllerOptions {
     createSession(listener: DictationSessionListener): DictationSessionHandle
     getTarget(targetId: string): DictationTextTarget | undefined
     onStateChange(state: DictationState): void
+    /** The listening session's microphone level, or null when it has none to show. */
+    onAudioLevel(level: number | null): void
 }
 
 /** Where speech that began at or after `fromAudio` is inserted. */
@@ -102,6 +109,8 @@ export class DictationController {
     private readonly options: DictationControllerOptions
     private readonly runs = new Set<DictationRun>()
     private activeRun?: DictationRun
+    /** The run that stopped last, until it settles or another run starts. */
+    private finishingRun?: DictationRun
     private state: DictationState = { phase: "idle", targetId: null, message: "" }
 
     constructor(options: DictationControllerOptions) {
@@ -126,7 +135,10 @@ export class DictationController {
         }
         this.runs.add(run)
         this.activeRun = run
-        this.emitState("starting", targetId, "Starting dictation.")
+        // Feedback now belongs to this run, not to one that is still finishing.
+        this.finishingRun = undefined
+        this.options.onAudioLevel(null)
+        this.emitState("starting", targetId, "")
         void run.session.start()
     }
 
@@ -182,6 +194,7 @@ export class DictationController {
 
         this.runs.clear()
         this.activeRun = undefined
+        this.finishingRun = undefined
     }
 
     private createListener(getRun: () => DictationRun): DictationSessionListener {
@@ -190,26 +203,41 @@ export class DictationController {
                 const run = getRun()
 
                 if (run === this.activeRun) {
-                    this.emitState("listening", this.getCurrentArea(run).targetId, "Dictation started.")
+                    this.emitState("listening", this.getCurrentArea(run).targetId, "")
+                }
+            },
+            onAudioLevel: (level) => {
+                if (getRun() === this.activeRun) {
+                    this.options.onAudioLevel(level)
                 }
             },
             onTranscript: (isFinal, tokens) => this.applyTranscript(getRun(), isFinal, tokens),
             onStopped: (reason, errorKind) => {
-                if (getRun() !== this.activeRun) {
+                const run = getRun()
+
+                if (run !== this.activeRun) {
                     return
                 }
 
                 this.activeRun = undefined
+                this.finishingRun = run
+                this.options.onAudioLevel(null)
                 this.emitState(
-                    "idle",
+                    "finishing",
                     null,
                     reason === "error"
                         ? describeDictationError(errorKind ?? "service_unavailable")
-                        : describeDictationStop(reason, getRun().session.timings),
+                        : describeDictationStop(reason, run.session.timings),
                 )
             },
             onSettled: () => {
-                this.runs.delete(getRun())
+                const run = getRun()
+                this.runs.delete(run)
+
+                if (run === this.finishingRun) {
+                    this.finishingRun = undefined
+                    this.emitState("idle", null, this.state.message)
+                }
             },
         }
     }

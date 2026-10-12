@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { flushSync } from "react-dom"
+import { createAudioLevelMeter } from "./audioLevel"
+import type { AudioLevelReading } from "./audioLevel"
 import { scrollCaretIntoView } from "./caretScroll"
 import {
     initialCtrlAltShortcutState,
@@ -34,6 +36,8 @@ export interface Dictation {
     phase: DictationPhase
     activeTargetId: string | null
     message: string
+    /** The microphone input level and its recent peak, to show while listening. */
+    readAudioLevel(): AudioLevelReading
     registerInput(targetId: string, input: HTMLInputElement | null): void
     registerButton(targetId: string, button: HTMLButtonElement | null): void
     toggleFromButton(targetId: string): void
@@ -46,6 +50,14 @@ const findTargetId = <T extends Element>(
     element: Element | null,
 ): string | undefined =>
     [...elements].find(([, candidate]) => candidate === element)?.[0]
+
+/**
+ * Whether an element is a dictation setting, marked with
+ * `data-dictation-setting`. Moving focus to one does not stop dictation, so
+ * that a setting can be changed by keyboard while dictating.
+ */
+const isDictationSetting = (element: Element | null): boolean =>
+    element?.closest("[data-dictation-setting]") != null
 
 const toShortcutKeyEvent = (event: KeyboardEvent): ShortcutKeyEvent => ({
     key: event.key,
@@ -73,6 +85,7 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
     const setTextRef = useRef(setText)
     const availabilityRef = useRef(availability)
     const controllerRef = useRef<DictationController | null>(null)
+    const [levelMeter] = useState(createAudioLevelMeter)
 
     useEffect(() => {
         vocabularyRef.current = vocabulary
@@ -108,10 +121,22 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
             }),
             getTarget: (targetId) => getTargets().get(targetId),
             onStateChange: setState,
+            onAudioLevel: (level) => {
+                if (level === null) {
+                    levelMeter.reset()
+                } else {
+                    levelMeter.receive(level, performance.now())
+                }
+            },
         })
 
         return controllerRef.current
-    }, [getTargets])
+    }, [getTargets, levelMeter])
+
+    const readAudioLevel = useCallback(
+        (): AudioLevelReading => levelMeter.read(performance.now()),
+        [levelMeter],
+    )
 
     const isReadyToStart = useCallback((): boolean => {
         if (availabilityRef.current === "available") {
@@ -237,7 +262,10 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
 
             if (inputId) {
                 controller.moveInsertionPoint(inputId, getInputSelection(focused as HTMLInputElement))
-            } else if (findTargetId(buttons.current, focused) !== controller.activeTargetId) {
+            } else if (
+                findTargetId(buttons.current, focused) !== controller.activeTargetId &&
+                !isDictationSetting(focused)
+            ) {
                 controller.stop("focus")
             }
         }
@@ -316,6 +344,7 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         phase: state.phase,
         activeTargetId: state.targetId,
         message: state.message,
+        readAudioLevel,
         registerInput,
         registerButton,
         toggleFromButton,
