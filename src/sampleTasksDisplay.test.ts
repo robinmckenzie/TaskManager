@@ -61,3 +61,15 @@ it("starts with an empty dictation status and the horizontal bar selected", () =
     expect(markup).toContain('<button type="button" aria-pressed="true">Horizontal bar</button>')
     expect(markup).toContain('<button type="button" aria-pressed="false">Analogue needle</button>')
 })
+
+it("offers only the looks of the selected meter style", () => {
+    const looks = markup.match(/<div class="meter-looks"[\s\S]*?<\/div>/)?.[0]
+
+    expect(looks).toContain('aria-label="Horizontal bar look"')
+    expect(looks?.match(/<button[^>]*>[^<]*/g)).toEqual([
+        '<button type="button" aria-pressed="true">Solid',
+        '<button type="button" aria-pressed="false">Segments',
+        '<button type="button" aria-pressed="false">Gradient',
+    ])
+    expect(markup).not.toContain("Classic")
+})

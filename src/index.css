@@ -78,9 +78,10 @@ select {
   grid-template-columns: minmax(0, 1fr) minmax(0, 22rem) minmax(0, 1fr);
   grid-template-areas:
     "notice feedback meter-style"
+    "filter feedback meter-style"
     "filter feedback reset";
   align-items: center;
-  gap: 10px 16px;
+  gap: 6px 16px;
   margin-bottom: 6px;
 }
 
@@ -546,16 +547,76 @@ select {
   fill: #202124;
 }
 
+/* The looks of the bar. The fill is drawn across the whole track and cut off
+   at the level, so that segments and colours stay where they are. */
+.level-meter-bar-segments .level-meter-fill,
+.level-meter-bar-gradient .level-meter-fill {
+  transform: none;
+  clip-path: inset(0 calc((1 - var(--level)) * 100%) 0 0);
+}
+
+.level-meter-bar-segments .level-meter-fill {
+  background: repeating-linear-gradient(to right, #16a34a 0 5px, transparent 5px 7px);
+}
+
+.level-meter-bar-gradient .level-meter-fill {
+  background: linear-gradient(to right, #16a34a 55%, #eab308 78%, #dc2626);
+}
+
+/* The looks of the needle. */
+.level-meter-zone-low,
+.level-meter-zone-mid,
+.level-meter-zone-high {
+  fill: none;
+  stroke-width: 4;
+}
+
+.level-meter-zone-low {
+  stroke: #16a34a;
+}
+
+.level-meter-zone-mid {
+  stroke: #eab308;
+}
+
+.level-meter-zone-high {
+  stroke: #dc2626;
+}
+
+.level-meter-needle-zones .level-meter-hand {
+  stroke: #202124;
+  stroke-width: 2;
+}
+
+.level-meter-needle-ticks .level-meter-scale {
+  stroke-width: 1;
+}
+
+.level-meter-needle-ticks .level-meter-hand {
+  fill: #dc2626;
+  stroke: none;
+}
+
 .meter-style {
   grid-area: meter-style;
   justify-self: end;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 2px 6px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
   color: #555;
   font-size: 12px;
+}
+
+.meter-style > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The same width for every look, so that either style's looks fill one space. */
+.meter-looks button {
+  min-width: 6.5em;
 }
 
 .meter-style button {
@@ -623,6 +684,6 @@ select {
 
   .meter-style {
     justify-self: start;
-    justify-content: flex-start;
+    align-items: flex-start;
   }
 }

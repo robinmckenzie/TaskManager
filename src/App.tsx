@@ -25,7 +25,7 @@ import {
     DictationStatus,
     MeterStyleSelector,
 } from "./dictation/DictationFeedback"
-import type { MeterStyle } from "./dictation/LevelMeter"
+import type { MeterChoice } from "./dictation/LevelMeter"
 import { useDictation } from "./dictation/useDictation"
 import type { Dictation } from "./dictation/useDictation"
 
@@ -445,7 +445,11 @@ const App: FC = () => {
         setText: (id: string, text: string): void => updateTask(id, { text }),
     })
 
-    const [meterStyle, setMeterStyle] = useState<MeterStyle>("bar")
+    const [meter, setMeter] = useState<MeterChoice>({
+        style: "bar",
+        bar: "solid",
+        needle: "classic",
+    })
 
     const deleteTask = (id: string): void => {
         dictation.removeTarget(id)
@@ -510,8 +514,8 @@ const App: FC = () => {
                                 ))}
                             </select>
                         </label>
-                        <DictationStatus dictation={dictation} meterStyle={meterStyle} />
-                        <MeterStyleSelector meterStyle={meterStyle} onChange={setMeterStyle} />
+                        <DictationStatus dictation={dictation} meter={meter} />
+                        <MeterStyleSelector meter={meter} onChange={setMeter} />
                         <button
                             type="button"
                             onClick={resetToSampleTasks}

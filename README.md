@@ -53,7 +53,10 @@ not show whether speech was recognised, and a quiet meter is not an error.
 "Level meter" above "Reset to sample tasks" chooses its style, and can be
 changed while dictating: "Horizontal bar" grows from the left, with a marker
 that holds the recent peak for about a second, and "Analogue needle" sweeps a
-needle across an arc. The choice lasts until the page is reloaded. The level is
+needle across an arc. "Look", on the line below, offers three looks for the
+style that is selected: Solid, Segments and Gradient for the bar, and Classic,
+Zones and Ticks for the needle. Each style keeps its own look. The choices last
+until the page is reloaded. The level is
 worked out in the browser from the audio already being captured, and is not
 stored or sent anywhere. With reduced motion set on the device, the meter moves
 in a few steps a second.
