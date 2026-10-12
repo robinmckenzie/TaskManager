@@ -660,31 +660,52 @@ select {
 
 /*
  * Narrower windows keep the controls where they are for as long as they fit.
- * First the feedback moves from the middle column, once that is too narrow
- * for three lines of status text, to a row of its own above the task list.
+ * First the level meter buttons, which are what crowd the feedback, move up
+ * to a row they share with the notice. The feedback stays in the middle, now
+ * between the filter and the reset link, which need less room at its sides.
  */
 @media (max-width: 945px) {
   .task-list-controls {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "notice meter-style"
-      "filter meter-style"
-      "filter reset"
-      "feedback feedback";
+    grid-template-columns: minmax(13rem, 1fr) minmax(15rem, 22rem) minmax(13rem, 1fr);
+    grid-template-areas: none;
   }
 
-  /* Room for two lines of status text, which is all the full width needs. */
+  .dictation-notice {
+    grid-area: 1 / 1 / 2 / 3;
+  }
+
+  .meter-style {
+    grid-area: 1 / 2 / 2 / 4;
+  }
+
+  /* The filter and the reset link stay next to the task list. */
+  .assignee-filter {
+    grid-area: 2 / 1;
+    align-self: end;
+  }
+
   .dictation-feedback {
-    min-height: 2.75rem;
+    grid-area: 2 / 2;
+  }
+
+  .reset-tasks-button {
+    grid-area: 2 / 3;
+    align-self: end;
   }
 }
 
-/* Then the hint moves below the heading. */
+/*
+ * Then the hint moves below the heading, and the feedback, with no room left
+ * in the middle, to a row of its own directly below the hint. The other
+ * controls stay together next to the task list.
+ */
 @media (max-width: 780px) {
   .app-header {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
+    /* The space held for the feedback below already separates the two. */
+    margin-bottom: 8px;
   }
 
   .app-header .dictation-hint {
@@ -692,8 +713,33 @@ select {
     flex-basis: 100%;
   }
 
+  .task-list-controls {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "feedback feedback"
+      "notice meter-style"
+      "filter meter-style"
+      "filter reset";
+  }
+
+  .dictation-notice {
+    grid-area: notice;
+  }
+
+  .meter-style {
+    grid-area: meter-style;
+  }
+
+  .assignee-filter {
+    grid-area: filter;
+  }
+
   .dictation-feedback {
-    min-height: 3.75rem;
+    grid-area: feedback;
+  }
+
+  .reset-tasks-button {
+    grid-area: reset;
   }
 }
 
@@ -702,14 +748,10 @@ select {
   .task-list-controls {
     grid-template-columns: max-content minmax(0, 1fr);
     grid-template-areas:
+      "feedback feedback"
       "notice notice"
       "meter-style meter-style"
-      "filter reset"
-      "feedback feedback";
-  }
-
-  .dictation-feedback {
-    min-height: 5rem;
+      "filter reset";
   }
 
   .meter-style {
