@@ -47,6 +47,25 @@ it("offers resetting to the sample tasks as a button beside the assignee filter"
     expect(controls).toMatch(/<button type="button" class="reset-tasks-button">Reset to sample tasks<\/button>/)
 })
 
+it("names each control on a task card after what it does and its task", () => {
+    const [first, second] = taskMarkup
+
+    for (const name of [
+        "Task title",
+        "Start dictation into Deploy initial build",
+        "Due date for Deploy initial build",
+        "Priority for Deploy initial build",
+        "Assignee for Deploy initial build",
+        "Complete Deploy initial build",
+        "Delete Deploy initial build",
+    ]) {
+        expect(first).toContain(`aria-label="${name}"`)
+    }
+
+    expect(first).toContain('aria-valuetext="5 of 5"')
+    expect(second).toContain('aria-label="Delete Design UI"')
+})
+
 it("says how to dictate, with the button's microphone in place of the word", () => {
     const hint = markup.match(/<p class="dictation-hint">([\s\S]*?)<\/p>/)?.[1]
     const buttonIcon = taskMarkup[0].match(/<path[^>]*>/)?.[0]
