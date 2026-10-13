@@ -1,7 +1,7 @@
 import type { FC } from "react"
 import { describeDictationPhase } from "./dictationMessages"
 import { LevelMeter } from "./LevelMeter"
-import type { BarLook, MeterChoice, MeterStyle, NeedleLook } from "./LevelMeter"
+import type { BarLook, MeterChoice, MeterStyle, NeedleLook, WaveformLook } from "./LevelMeter"
 import { MicrophoneIcon } from "./MicrophoneIcon"
 import type { Dictation } from "./useDictation"
 
@@ -65,6 +65,7 @@ interface Option<T> {
 const METER_STYLES: Option<MeterStyle>[] = [
     { value: "bar", label: "Horizontal bar" },
     { value: "needle", label: "Analogue needle" },
+    { value: "waveform", label: "Waveform" },
 ]
 
 const BAR_LOOKS: Option<BarLook>[] = [
@@ -77,6 +78,12 @@ const NEEDLE_LOOKS: Option<NeedleLook>[] = [
     { value: "classic", label: "Classic" },
     { value: "zones", label: "Zones" },
     { value: "ticks", label: "Ticks" },
+]
+
+const WAVEFORM_LOOKS: Option<WaveformLook>[] = [
+    { value: "pill", label: "Pill" },
+    { value: "pulse", label: "Pulse" },
+    { value: "columns", label: "Columns" },
 ]
 
 interface OptionButtonsProps<T> {
@@ -128,6 +135,15 @@ export const MeterStyleSelector: FC<MeterStyleSelectorProps> = ({ meter, onChang
                     options={BAR_LOOKS}
                     selected={meter.bar}
                     onSelect={(bar): void => onChange({ ...meter, bar })}
+                />
+            </div>
+        ) : meter.style === "waveform" ? (
+            <div className="meter-looks" role="group" aria-label="Waveform look">
+                <span aria-hidden="true">Look</span>
+                <OptionButtons
+                    options={WAVEFORM_LOOKS}
+                    selected={meter.waveform}
+                    onSelect={(waveform): void => onChange({ ...meter, waveform })}
                 />
             </div>
         ) : (

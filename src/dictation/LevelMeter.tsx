@@ -1,16 +1,19 @@
 import { useEffect, useRef } from "react"
-import type { FC } from "react"
+import type { CSSProperties, FC } from "react"
 import type { AudioLevelReading } from "./audioLevel"
+import { createLevelHistory } from "./levelHistory"
 
-export type MeterStyle = "bar" | "needle"
+export type MeterStyle = "bar" | "needle" | "waveform"
 export type BarLook = "solid" | "segments" | "gradient"
 export type NeedleLook = "classic" | "zones" | "ticks"
+export type WaveformLook = "pill" | "pulse" | "columns"
 
 /** The meter style in use, and the look last chosen for each style. */
 export interface MeterChoice {
     style: MeterStyle
     bar: BarLook
     needle: NeedleLook
+    waveform: WaveformLook
 }
 
 // With reduced motion the meter moves in a few steps a second, not continuously.
@@ -76,25 +79,37 @@ const NeedleDial: FC<{ look: NeedleLook }> = ({ look }) => {
     }
 }
 
+// How far each bar of the "pulse" look rises at full level. There is one entry
+// for each bar of the waveform, in every look.
+const PULSE_SHAPE = [0.3, 0.5, 0.4, 0.7, 0.55, 0.85, 0.7, 1, 0.7, 0.85, 0.55, 0.7, 0.4, 0.5, 0.3]
+
+// The scrolling looks move on by one bar this often.
+const WAVEFORM_STEP_MS = 80
+
 interface LevelMeterProps {
     choice: MeterChoice
     readLevel(): AudioLevelReading
 }
 
 /**
- * Shows the microphone input level, as a bar with a peak marker or as a
- * needle, in the look chosen for that style. Every style and look fills the
- * same space and is drawn from the same level, which is written straight to
- * the element so that it does not re-render the page many times a second.
+ * Shows the microphone input level, as a bar with a peak marker, as a needle
+ * or as a waveform, in the look chosen for that style. Every style and look
+ * fills the same space and is drawn from the same level, which is written
+ * straight to the elements so that it does not re-render the page many times
+ * a second.
  */
 export const LevelMeter: FC<LevelMeterProps> = ({ choice, readLevel }) => {
     const meter = useRef<HTMLSpanElement>(null)
+    const waveform = useRef<HTMLSpanElement>(null)
     const { style } = choice
 
     useEffect(() => {
         const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
         let frame = 0
         let lastDrawnAt = -Infinity
+        // Kept whichever style is shown, so that a waveform chosen part-way
+        // through starts with the levels that came before it.
+        const history = createLevelHistory(PULSE_SHAPE.length, WAVEFORM_STEP_MS)
 
         const draw = (time: number): void => {
             frame = requestAnimationFrame(draw)
@@ -107,6 +122,13 @@ export const LevelMeter: FC<LevelMeterProps> = ({ choice, readLevel }) => {
             const { level, peak } = readLevel()
             meter.current?.style.setProperty("--level", level.toFixed(3))
             meter.current?.style.setProperty("--peak", peak.toFixed(3))
+
+            history.record(level, time)
+            const bars = waveform.current?.children ?? []
+            history.read().forEach((past, index) => {
+                const bar = bars[index] as HTMLElement | undefined
+                bar?.style.setProperty("--past", past.toFixed(3))
+            })
         }
 
         frame = requestAnimationFrame(draw)
@@ -128,6 +150,16 @@ export const LevelMeter: FC<LevelMeterProps> = ({ choice, readLevel }) => {
                     </span>
                     <span className="level-meter-peak" />
                 </>
+            ) : style === "waveform" ? (
+                <span ref={waveform} className="level-meter-wave">
+                    {PULSE_SHAPE.map((shape, index) => (
+                        <span
+                            key={index}
+                            className="level-meter-wave-bar"
+                            style={{ "--shape": shape } as CSSProperties}
+                        />
+                    ))}
+                </span>
             ) : (
                 <svg aria-hidden="true" viewBox="0 0 72 32" width="72" height="32">
                     <NeedleDial look={choice.needle} />

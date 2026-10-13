@@ -65,6 +65,7 @@ it("starts with an empty dictation status and the horizontal bar selected", () =
     expect(markup).not.toContain("level-meter")
     expect(markup).toContain('<button type="button" aria-pressed="true">Horizontal bar</button>')
     expect(markup).toContain('<button type="button" aria-pressed="false">Analogue needle</button>')
+    expect(markup).toContain('<button type="button" aria-pressed="false">Waveform</button>')
 })
 
 it("offers only the looks of the selected meter style", () => {
@@ -77,4 +78,5 @@ it("offers only the looks of the selected meter style", () => {
         '<button type="button" aria-pressed="false">Gradient',
     ])
     expect(markup).not.toContain("Classic")
+    expect(markup).not.toContain("Pill")
 })
