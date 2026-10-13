@@ -83,8 +83,7 @@ select {
   grid-template-columns: minmax(18.5rem, 1fr) minmax(15rem, 22rem) minmax(18.5rem, 1fr);
   grid-template-areas:
     "notice feedback meter-style"
-    "filter feedback meter-style"
-    "filter feedback reset";
+    "filter feedback meter-style";
   align-items: center;
   gap: 6px 16px;
   margin-bottom: 6px;
@@ -97,10 +96,10 @@ select {
   gap: 10px;
 }
 
-/* A button that reads as a quiet text link. */
+/* A button that reads as a quiet text link, below the last task. */
 .reset-tasks-button {
-  grid-area: reset;
-  justify-self: end;
+  align-self: flex-end;
+  margin-top: 6px;
   border: 0;
   padding: 0;
   background: transparent;
@@ -662,7 +661,7 @@ select {
  * Narrower windows keep the controls where they are for as long as they fit.
  * First the level meter buttons, which are what crowd the feedback, move up
  * to a row they share with the notice. The feedback stays in the middle, now
- * between the filter and the reset link, which need less room at its sides.
+ * beside the filter, which needs less room at its side.
  */
 @media (max-width: 945px) {
   .task-list-controls {
@@ -678,7 +677,7 @@ select {
     grid-area: 1 / 2 / 2 / 4;
   }
 
-  /* The filter and the reset link stay next to the task list. */
+  /* The filter stays next to the task list. */
   .assignee-filter {
     grid-area: 2 / 1;
     align-self: end;
@@ -686,11 +685,6 @@ select {
 
   .dictation-feedback {
     grid-area: 2 / 2;
-  }
-
-  .reset-tasks-button {
-    grid-area: 2 / 3;
-    align-self: end;
   }
 }
 
@@ -718,8 +712,7 @@ select {
     grid-template-areas:
       "feedback feedback"
       "notice meter-style"
-      "filter meter-style"
-      "filter reset";
+      "filter meter-style";
   }
 
   .dictation-notice {
@@ -737,10 +730,6 @@ select {
   .dictation-feedback {
     grid-area: feedback;
   }
-
-  .reset-tasks-button {
-    grid-area: reset;
-  }
 }
 
 /* Last, the level meter buttons move below the notice. */
@@ -751,7 +740,7 @@ select {
       "feedback feedback"
       "notice notice"
       "meter-style meter-style"
-      "filter reset";
+      "filter filter";
   }
 
   .meter-style {
