@@ -2,6 +2,7 @@ import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import App from "./App"
+import { ASSIGNEE_FILTER_STORAGE_KEY } from "./assigneeFilter"
 import { TASKS_STORAGE_KEY } from "./tasks"
 
 let taskMarkup: string[]
@@ -52,14 +53,17 @@ it("offers resetting to the sample tasks as a button below the last task, with t
     expect(taskMarkup[4].endsWith(`${resetButton}</section></main>`)).toBe(true)
 })
 
-it("still offers resetting to the sample tasks, below the controls, when no task is shown", () => {
+it.each([
+    ["the list is empty", TASKS_STORAGE_KEY, "[]", "0 tasks"],
+    ["the assignee filter matches no task", ASSIGNEE_FILTER_STORAGE_KEY, "4", "5 tasks"],
+])("still offers resetting to the sample tasks, below the controls, when %s", (_view, savedKey, savedValue, taskCount) => {
     vi.stubGlobal("localStorage", {
-        getItem: (key: string): string | null => (key === TASKS_STORAGE_KEY ? "[]" : null),
+        getItem: (key: string): string | null => (key === savedKey ? savedValue : null),
     })
     const emptyMarkup = renderToStaticMarkup(createElement(App))
 
     expect(emptyMarkup).not.toContain('<div class="task ')
-    expect(emptyMarkup).toContain("0 tasks")
+    expect(emptyMarkup).toContain(taskCount)
     expect(emptyMarkup.split(resetButton)).toHaveLength(2)
     expect(emptyMarkup.endsWith(`</div>${resetButton}</section></main>`)).toBe(true)
 })
