@@ -35,7 +35,7 @@
 - A draft ticket needs to be coherent enough to be agreed, not to settle every implementation detail. Distinguish product decisions needed before agreement, provisional or tunable defaults, questions for investigation, and product questions that investigation exposes, which are brought back for a decision.
 - When Claude Code turns a STUB into a DRAFT, it has Codex review the draft with `codex exec`. Codex posts each review as a ticket comment and changes nothing else. Claude Code revises the ticket and replies in a comment. They repeat until Codex has no "must fix" finding, for at most three rounds, and Claude Code then tells Robin what is left to decide.
 - When handing over a drafted or revised ticket for review, separately summarise:
-    - what it leaves out of scope, whether stated explicitly or left out by omission;
+    - what it leaves out of scope, marking each item as stated or by omission;
     - any assumptions made while drafting;
     - any conflicts or tensions with `AGENTS.md`, existing behaviour, or previous tickets.
 
