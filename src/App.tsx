@@ -21,6 +21,7 @@ import { findTaskToFocusAfterDelete } from "./focusAfterDelete"
 import { getTaskControlNames } from "./taskControlNames"
 import { getNewTaskAssignee, sortAssigneesByName } from "./users"
 import { useToday } from "./useToday"
+import { AccountControl } from "./account/AccountControl"
 import { DictationButton } from "./dictation/DictationButton"
 import {
     DictationHint,
@@ -533,6 +534,8 @@ const App: FC = () => {
     return (
         <DndProvider backend={HTML5Backend}>
             <main className="app">
+                <AccountControl />
+
                 <header className="app-header">
                     <div>
                         <h1>Task Manager</h1>

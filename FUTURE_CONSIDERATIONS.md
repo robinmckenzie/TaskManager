@@ -78,3 +78,14 @@ So this is not a confirmed general mobile defect, and it was not a TM-6
 acceptance failure. No change is needed now. If narrow-screen layout becomes a
 goal, start from a real phone, where truncated long titles are the one issue
 seen so far.
+
+## Sign-in
+
+TM #45 added Google sign-in with Better Auth. If its code is reused elsewhere:
+
+- Rate limits on sign-in are counted in memory by each function instance, so
+  they are approximate and reset when an instance stops. A shared store, such
+  as a database table, would make them exact.
+- Signing in reloads the page. Where browser storage is blocked, anything held
+  only in memory is lost without a warning, which was accepted for this demo.
+  A real product might warn first, or sign in through a popup.
