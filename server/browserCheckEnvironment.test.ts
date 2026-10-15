@@ -17,6 +17,28 @@ describe("findCredentialVariableNames", () => {
         ).toEqual(["SPEECHMATICS_API_KEY", "SPEECHMATICS_LANGUAGE", "SPEECHMATICS_MODEL", "SPEECHMATICS_RT_URL"])
     })
 
+    it("finds every sign-in setting", () => {
+        expect(
+            findCredentialVariableNames({
+                BETTER_AUTH_SECRET: "secret",
+                BETTER_AUTH_URL: "https://example.test",
+                GOOGLE_CLIENT_ID: "id",
+                GOOGLE_CLIENT_SECRET: "secret",
+                OAUTH_PROXY_SECRET: "secret",
+                AUTH_DATABASE_URL: "postgres://example.test",
+                AUTH_POSTGRES_URL: "postgres://example.test",
+            }),
+        ).toEqual([
+            "AUTH_DATABASE_URL",
+            "AUTH_POSTGRES_URL",
+            "BETTER_AUTH_SECRET",
+            "BETTER_AUTH_URL",
+            "GOOGLE_CLIENT_ID",
+            "GOOGLE_CLIENT_SECRET",
+            "OAUTH_PROXY_SECRET",
+        ])
+    })
+
     it("finds database and Vercel variables", () => {
         expect(
             findCredentialVariableNames({

@@ -85,7 +85,7 @@ export const createActivityStoreFromEnvironment = (
 }
 
 /** A database error code such as 42P01. Unlike an error message, it cannot hold details. */
-const readErrorCode = (error: unknown): string | undefined => {
+export const readErrorCode = (error: unknown): string | undefined => {
     const code = typeof error === "object" && error !== null && "code" in error ? error.code : undefined
 
     return typeof code === "string" && /^[0-9A-Z]{5}$/.test(code) ? code : undefined
