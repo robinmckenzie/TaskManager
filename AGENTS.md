@@ -82,6 +82,7 @@ See README for supported Node.js versions.
 - For code changes, run `npm run build`, `npm run lint`, and `npm test`. Report failures or checks that could not run.
 - Add or update regression tests for changed logic where useful.
 - For UI changes, verify affected behavior in a browser. Check drag-and-drop and refresh persistence when those features are affected.
+- Implementing a ticket includes a Codex review. After committing, run Codex yourself, non-interactively and read-only, on the commit and the ticket's text. Fix findings that fall within the ticket and run the review again, up to three rounds in all. Report the outcome, and any other findings, in the handover. If Codex cannot be run, say so and give Robin the prompt instead.
 - When handing over, summarise the resulting behaviour and any remaining limitations, and state what was verified, what was not, and why. Do not report something as verified if it could not be checked reliably.
 
 ## Browser verification
