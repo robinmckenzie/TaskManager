@@ -199,7 +199,7 @@ host only issues temporary keys.
 - Sign-in runs as three more functions, `api/auth/[...all].ts`,
   `api/account/status.ts` and `api/account/profile.ts`, all through
   `server/accountFunction.ts`. See [Sign-in with Google](#sign-in-with-google)
-  for their variables and the second database that previews use.
+  for their variables. Previews have no sign-in.
 
 To update the deployed app, push to the branch that Vercel deploys as
 production. Vercel builds and deploys it automatically. After changing an
@@ -472,27 +472,22 @@ stored changes.
 
 ### Where it runs
 
-There are three separate sign-in stores, so that development and previews
-never read or change production's accounts:
+There are two separate sign-in stores, so that development never reads or
+changes production's accounts:
 
 | Where | Store | Address |
 | --- | --- | --- |
 | Production | the existing Neon database, `DATABASE_URL` | `BETTER_AUTH_URL` |
-| Vercel previews | `main` branch of the Neon project `taskmanager-nonprod`, `AUTH_DATABASE_URL` | the preview's own address |
-| `npm run dev` | `local` branch of `taskmanager-nonprod`, `AUTH_DATABASE_URL` in `.env.local` | `http://localhost:5173` |
+| `npm run dev` | the Neon project `taskmanager-nonprod`, `AUTH_DATABASE_URL` in `.env.local` | `http://localhost:5173` |
 
-Sign-in uses `DATABASE_URL` only when `VERCEL_ENV` is `production`. Anywhere
-else it needs `AUTH_DATABASE_URL` and, without it, reports sign-in as
-unavailable rather than falling back. Locally the Vite plugin loads only the
-sign-in variables from `.env.local`, never `DATABASE_URL`.
+Sign-in uses `DATABASE_URL` only when `VERCEL_ENV` is `production`. Locally
+it needs `AUTH_DATABASE_URL` and, without it, reports sign-in as unavailable
+rather than falling back. The Vite plugin loads only the sign-in variables from
+`.env.local`, never `DATABASE_URL`.
 
-Google allows only listed return addresses, and a preview's address changes
-with every deployment. A preview therefore signs in through production, using
-Better Auth's OAuth proxy: Google returns to production, which hands the result
-to the preview, encrypted with `OAUTH_PROXY_SECRET` and valid for 60 seconds,
-and writes nothing to its own database. The preview creates the account and
-session in its own store and discards Google's tokens. As a result, a preview
-can sign in only while production runs the same version of Better Auth.
+Vercel previews have no sign-in and always report it as unavailable, whatever
+variables they have. Signing in on a preview was dropped because each
+preview's address changes, and Google allows only listed return addresses.
 
 ### Set it up from scratch
 
@@ -511,8 +506,8 @@ console into `.env.local` or Vercel.
       users can ever be added, and removing one does not free a place.
    5. Clients: create an OAuth client of type Web application, with the
       authorised redirect URIs `https://<production>/api/auth/callback/google`
-      and `http://localhost:5173/api/auth/callback/google`. Previews need no
-      entry. Copy the client secret when it is shown.
+      and `http://localhost:5173/api/auth/callback/google`. Copy the client
+      secret when it is shown.
    6. Once the privacy page is deployed, fill in Branding's home page
       (`https://<production>/`), privacy policy link
       (`https://<production>/privacy.html`) and authorised domain (the
@@ -520,14 +515,14 @@ console into `.env.local` or Vercel.
       choose Publish app on the Audience page. With only these scopes and no
       logo, Google requires no verification.
 2. **Second Neon database.** In Vercel, under Storage, create a Neon database
-   `taskmanager-nonprod` and connect it to the project for Preview only, with
-   the environment variable prefix `AUTH` and the database branch per
-   deployment option off. In Neon, add a branch called `local` to it. Do not
-   use branches of the production database instead: a branch starts as a copy
-   of its parent, accounts included.
+   `taskmanager-nonprod`. No deployment uses it, so connect it to no
+   environment, or to Development only if Vercel requires one. Open it in Neon
+   and copy its connection string. Do not use a branch of the production
+   database instead: a branch starts as a copy of its parent, accounts
+   included.
 3. **Tables.** Run `server/accountTables.sql` in the Neon SQL Editor for the
-   production database and for both branches of `taskmanager-nonprod`. It is
-   safe to run again. The app never creates tables.
+   production database and for `taskmanager-nonprod`. It is safe to run
+   again. The app never creates tables.
 4. **Variables.** Make each random secret with a command that does not show
    it. In PowerShell this copies a new one to the clipboard:
 
@@ -535,25 +530,20 @@ console into `.env.local` or Vercel.
    $b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); -join ($b | ForEach-Object { $_.ToString('x2') }) | Set-Clipboard; Remove-Variable b
    ```
 
-   | Variable | Production | Preview | `.env.local` |
-   | --- | --- | --- | --- |
-   | `GOOGLE_CLIENT_ID` | yes | yes | yes |
-   | `GOOGLE_CLIENT_SECRET` | yes | yes, see below | yes |
-   | `BETTER_AUTH_SECRET` | its own random value | its own random value | its own random value |
-   | `BETTER_AUTH_URL` | `https://<production>` | not set | `http://localhost:5173` |
-   | `OAUTH_PROXY_SECRET` | the same random value as Preview | the same random value as Production | not set |
-   | `AUTH_DATABASE_URL` | not set | set by Vercel through the `AUTH` prefix | the `local` branch's connection string |
+   | Variable | Production | `.env.local` |
+   | --- | --- | --- |
+   | `GOOGLE_CLIENT_ID` | yes | yes |
+   | `GOOGLE_CLIENT_SECRET` | yes | yes |
+   | `BETTER_AUTH_SECRET` | its own random value | its own random value |
+   | `BETTER_AUTH_URL` | `https://<production>` | `http://localhost:5173` |
+   | `AUTH_DATABASE_URL` | not set | `taskmanager-nonprod`'s connection string |
 
-   Previews never use `GOOGLE_CLIENT_SECRET`, because production exchanges
-   Google's code for them, but Better Auth 1.7.7 refuses to start a Google
-   sign-in without one, so it must be set. Previews also read `VERCEL_ENV`,
-   `VERCEL_URL`, `VERCEL_BRANCH_URL` and `VERCEL_PROJECT_PRODUCTION_URL`,
-   which Vercel sets itself. Node.js must be 22 or later, because the Neon
-   connection needs a built-in WebSocket.
+   Set the production variables for the Production environment only. Node.js
+   must be 22 or later, because the Neon connection needs a built-in
+   WebSocket.
 5. Redeploy, or restart `npm run dev`, after changing a variable.
 
-Changing `BETTER_AUTH_SECRET` signs everyone out. Change `OAUTH_PROXY_SECRET`
-in Production and Preview together.
+Changing `BETTER_AUTH_SECRET` signs everyone out.
 
 ### Inspect and remove accounts
 
@@ -582,8 +572,7 @@ The next sign-in with that Google account creates a new account.
 
 - Google sign-in is free, with no limit on the number of accounts once the app
   is published. While in Testing, only listed test users can sign in.
-- Neon's free plan includes the second project, `taskmanager-nonprod`, and its
-  `local` branch.
+- Neon's free plan includes the second project, `taskmanager-nonprod`.
 - Sign-in adds three Vercel Functions, making seven, within the Hobby plan's
   limit.
 - Rate limits are counted in memory by each function instance, so they are
@@ -591,10 +580,9 @@ The next sign-in with that Google account creates a new account.
 
 ### Upgrading Better Auth
 
-`better-auth` is pinned to an exact version. Production and every preview must
-run the same version, because a preview's sign-in passes through production.
-Upgrade it on its own, check the release notes for changes to the tables or
-the OAuth proxy, and deploy it to production before relying on previews.
+`better-auth` is pinned to an exact version. Upgrade it on its own, check the
+release notes for changes to the tables, and run any new table changes in both
+stores before deploying.
 
 ## Available npm commands
 

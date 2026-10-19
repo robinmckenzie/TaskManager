@@ -71,7 +71,6 @@ describe("isEnabledAuthPath", () => {
         for (const path of [
             "/api/auth/sign-in/social",
             "/api/auth/callback/google",
-            "/api/auth/callback/google/oauth-proxy",
             "/api/auth/get-session",
             "/api/auth/sign-out",
         ]) {
@@ -83,6 +82,8 @@ describe("isEnabledAuthPath", () => {
         for (const path of [
             ...DISABLED_PATHS.map((path) => `/api/auth${path}`),
             "/api/auth/reset-password/some-token",
+            "/api/auth/oauth-proxy-callback",
+            "/api/auth/callback/google/oauth-proxy",
             "/api/auth/callback/github",
             "/api/auth",
             "/api/auth/",

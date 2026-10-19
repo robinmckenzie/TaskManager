@@ -89,3 +89,7 @@ TM #45 added Google sign-in with Better Auth. If its code is reused elsewhere:
 - Signing in reloads the page. Where browser storage is blocked, anything held
   only in memory is lost without a warning, which was accepted for this demo.
   A real product might warn first, or sign in through a popup.
+- Vercel previews have no sign-in, which was dropped from TM #45 because the
+  app is a personal demo. Better Auth's OAuth proxy, which signs a preview in
+  through production with its own store, was built and then removed in that
+  pull request. The sign-in guide in Robin's project starters describes it.

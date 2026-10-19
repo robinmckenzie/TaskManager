@@ -9,17 +9,6 @@ const production = {
     VERCEL_ENV: "production",
     DATABASE_URL: "postgres://production",
     BETTER_AUTH_URL: "https://taskmanager.example",
-    OAUTH_PROXY_SECRET: "proxy-secret",
-}
-
-const preview = {
-    ...common,
-    VERCEL_ENV: "preview",
-    AUTH_DATABASE_URL: "postgres://nonprod",
-    OAUTH_PROXY_SECRET: "proxy-secret",
-    VERCEL_URL: "taskmanager-abc123.vercel.app",
-    VERCEL_BRANCH_URL: "taskmanager-git-branch.vercel.app",
-    VERCEL_PROJECT_PRODUCTION_URL: "taskmanager.example",
 }
 
 const local = {
@@ -49,27 +38,14 @@ describe("readAccountConfig", () => {
             secret: "auth-secret",
             google: { clientId: "client-id", clientSecret: "client-secret" },
             baseUrl: "https://taskmanager.example",
-            proxy: { secret: "proxy-secret", productionUrl: "https://taskmanager.example" },
         })
     })
 
-    it("signs people in on production without the proxy secret", () => {
-        expect(readAccountConfig(without(production, "OAUTH_PROXY_SECRET"))).toEqual(expect.objectContaining({ proxy: undefined }))
+    it("has no sign-in on a Vercel preview, whatever is set", () => {
+        expect(readAccountConfig({ ...production, ...local, VERCEL_ENV: "preview" })).toBeUndefined()
     })
 
-    it("uses AUTH_DATABASE_URL on a preview, its own hosts and the proxy to production", () => {
-        expect(readAccountConfig(preview)).toEqual({
-            deployment: "preview",
-            databaseUrl: "postgres://nonprod",
-            secret: "auth-secret",
-            google: { clientId: "client-id", clientSecret: "client-secret" },
-            allowedHosts: ["taskmanager-abc123.vercel.app", "taskmanager-git-branch.vercel.app"],
-            proxy: { secret: "proxy-secret", productionUrl: "https://taskmanager.example" },
-        })
-    })
-
-    it("never lets a preview or local development fall back to DATABASE_URL", () => {
-        expect(readAccountConfig({ ...without(preview, "AUTH_DATABASE_URL"), DATABASE_URL: "postgres://production" })).toBeUndefined()
+    it("never lets local development fall back to DATABASE_URL", () => {
         expect(readAccountConfig({ ...without(local, "AUTH_DATABASE_URL"), DATABASE_URL: "postgres://production" })).toBeUndefined()
     })
 
@@ -77,12 +53,7 @@ describe("readAccountConfig", () => {
         expect(readAccountConfig({ ...without(production, "DATABASE_URL"), AUTH_DATABASE_URL: "postgres://nonprod" })).toBeUndefined()
     })
 
-    it("needs the proxy secret and production address on a preview", () => {
-        expect(readAccountConfig(without(preview, "OAUTH_PROXY_SECRET"))).toBeUndefined()
-        expect(readAccountConfig(without(preview, "VERCEL_PROJECT_PRODUCTION_URL"))).toBeUndefined()
-    })
-
-    it("uses the development server's address locally, and no proxy", () => {
+    it("uses the development server's address locally", () => {
         expect(readAccountConfig(local)).toEqual({
             deployment: "local",
             databaseUrl: "postgres://local",

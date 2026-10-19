@@ -1,9 +1,9 @@
 /*
  * Decides whether sign-in can run here, and with which user store. Production
- * uses DATABASE_URL. Everywhere else, previews and local development, uses
- * AUTH_DATABASE_URL, which points to the separate taskmanager-nonprod
- * database, and never falls back to DATABASE_URL, so that users created
- * outside production can never reach production's store.
+ * uses DATABASE_URL. Local development uses AUTH_DATABASE_URL, which points to
+ * the separate taskmanager-nonprod database, and never falls back to
+ * DATABASE_URL, so that users created locally can never reach production's
+ * store. Vercel previews have no sign-in.
  */
 
 type Environment = Record<string, string | undefined>
@@ -20,15 +20,7 @@ export interface AccountConfig {
      * Production's address, such as https://taskmanager.example. Locally this
      * is the development server's address instead.
      */
-    baseUrl?: string
-    /** On a preview: the host names this deployment may be reached at. */
-    allowedHosts?: string[]
-    /**
-     * Shared by production and previews, so that production can hand a
-     * preview's sign-in back to it. Absent locally, where Google returns to
-     * the development server directly.
-     */
-    proxy?: { secret: string; productionUrl: string }
+    baseUrl: string
 }
 
 const read = (env: Environment, name: string): string | undefined => env[name]?.trim() || undefined
@@ -56,11 +48,16 @@ export const readAccountDeployment = (env: Environment): AccountDeployment => {
 
 /**
  * Reads the sign-in settings, or returns undefined when sign-in is not fully
- * configured for this deployment. Missing settings are never named in an
- * error, and no value is ever included in one.
+ * configured for this deployment, and always on a Vercel preview. Missing
+ * settings are never named in an error, and no value is ever included in one.
  */
 export const readAccountConfig = (env: Environment): AccountConfig | undefined => {
     const deployment = readAccountDeployment(env)
+
+    if (deployment === "preview") {
+        return undefined
+    }
+
     const databaseUrl = read(env, deployment === "production" ? "DATABASE_URL" : "AUTH_DATABASE_URL")
     const secret = read(env, "BETTER_AUTH_SECRET")
     const clientId = read(env, "GOOGLE_CLIENT_ID")
@@ -71,28 +68,6 @@ export const readAccountConfig = (env: Environment): AccountConfig | undefined =
     }
 
     const google = { clientId, clientSecret }
-    const proxySecret = read(env, "OAUTH_PROXY_SECRET")
-
-    if (deployment === "preview") {
-        const productionUrl = toHttpsOrigin(read(env, "VERCEL_PROJECT_PRODUCTION_URL") ?? "")
-        const allowedHosts = ["VERCEL_URL", "VERCEL_BRANCH_URL"]
-            .map((name) => read(env, name))
-            .filter((host): host is string => host !== undefined)
-
-        if (!proxySecret || !productionUrl || allowedHosts.length === 0) {
-            return undefined
-        }
-
-        return {
-            deployment,
-            databaseUrl,
-            secret,
-            google,
-            allowedHosts,
-            proxy: { secret: proxySecret, productionUrl },
-        }
-    }
-
     const configuredUrl = read(env, "BETTER_AUTH_URL") ?? ""
 
     if (deployment === "production") {
@@ -102,16 +77,7 @@ export const readAccountConfig = (env: Environment): AccountConfig | undefined =
             return undefined
         }
 
-        // Without the proxy secret production still signs people in; only
-        // previews cannot.
-        return {
-            deployment,
-            databaseUrl,
-            secret,
-            google,
-            baseUrl,
-            proxy: proxySecret ? { secret: proxySecret, productionUrl: baseUrl } : undefined,
-        }
+        return { deployment, databaseUrl, secret, google, baseUrl }
     }
 
     // Locally the address is http://localhost:5173, so its scheme is kept.

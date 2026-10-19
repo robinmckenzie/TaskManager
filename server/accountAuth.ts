@@ -1,6 +1,5 @@
 import { betterAuth } from "better-auth"
 import type { BetterAuthOptions } from "better-auth"
-import { oAuthProxy } from "better-auth/plugins/oauth-proxy"
 import { AUTH_BASE_PATH } from "../shared/accountApi.ts"
 import type { AccountConfig } from "./accountConfig.ts"
 
@@ -19,7 +18,6 @@ import type { AccountConfig } from "./accountConfig.ts"
 const ENABLED_PATHS: readonly string[] = [
     "/sign-in/social",
     "/callback/google",
-    "/callback/google/oauth-proxy",
     "/get-session",
     "/sign-out",
     "/error",
@@ -48,7 +46,6 @@ export const DISABLED_PATHS = [
     "/link-social",
     "/list-accounts",
     "/list-sessions",
-    "/oauth-proxy-callback",
     "/refresh-token",
     "/request-password-reset",
     "/reset-password",
@@ -181,9 +178,7 @@ export const buildAccountAuthOptions = (config: AccountConfig, database: Account
     ({
         appName: "TaskManager",
         basePath: AUTH_BASE_PATH,
-        baseURL: config.allowedHosts
-            ? { allowedHosts: config.allowedHosts, protocol: "https" }
-            : config.baseUrl,
+        baseURL: config.baseUrl,
         secret: config.secret,
         database,
         telemetry: { enabled: false },
@@ -212,9 +207,6 @@ export const buildAccountAuthOptions = (config: AccountConfig, database: Account
         databaseHooks: accountDatabaseHooks,
         rateLimit: { enabled: true, customStorage: rateLimitStorage },
         onAPIError: { errorURL: "/" },
-        plugins: config.proxy
-            ? [oAuthProxy({ secret: config.proxy.secret, productionURL: config.proxy.productionUrl })]
-            : [],
     }) satisfies BetterAuthOptions
 
 export const createAccountAuth = (config: AccountConfig, database: AccountDatabase) =>
