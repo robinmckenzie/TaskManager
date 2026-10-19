@@ -10,11 +10,15 @@ type Environment = Record<string, string | undefined>
 /**
  * Names that could carry a production credential, or point the server at a
  * production service: the Speechmatics settings the dictation endpoints read,
- * database connection settings, and anything set by or for Vercel. A variable
- * counts whatever its value, so a value is never read.
+ * the sign-in settings, database connection settings, and anything set by or
+ * for Vercel. A variable counts whatever its value, so a value is never read.
  */
 const CREDENTIAL_NAME_PATTERNS: readonly RegExp[] = [
     /^SPEECHMATICS_/i,
+    /^BETTER_AUTH_/i,
+    /^GOOGLE_/i,
+    /^OAUTH_PROXY_/i,
+    /^AUTH_/i,
     /^DATABASE_/i,
     /^POSTGRES/i,
     /^PG(HOST|HOSTADDR|PORT|DATABASE|USER|PASSWORD|PASSFILE|SERVICE|SERVICEFILE|OPTIONS|SSLMODE|SSLCERT|SSLKEY)$/i,

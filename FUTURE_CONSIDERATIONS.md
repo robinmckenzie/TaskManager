@@ -78,3 +78,22 @@ So this is not a confirmed general mobile defect, and it was not a TM-6
 acceptance failure. No change is needed now. If narrow-screen layout becomes a
 goal, start from a real phone, where truncated long titles are the one issue
 seen so far.
+
+## Sign-in
+
+TM #45 added Google sign-in with Better Auth. If its code is reused elsewhere:
+
+- Rate limits on sign-in are counted in memory by each function instance, so
+  they are approximate and reset when an instance stops. A shared store, such
+  as a database table, would make them exact.
+- Signing in reloads the page. Where browser storage is blocked, anything held
+  only in memory is lost without a warning, which was accepted for this demo.
+  A real product might warn first, or sign in through a popup.
+- Vercel previews have no sign-in, which was dropped from TM #45 because the
+  app is a personal demo. Better Auth's OAuth proxy, which signs a preview in
+  through production with its own store, was built and then removed in that
+  pull request. The sign-in guide in Robin's project starters describes it.
+- No automated test renders the app while sign-in is failing or slow, to show
+  that tasks stay usable. Unit tests cover the account code, and a browser
+  check covered sign-in being unavailable. The project has no component test
+  library; adding one would allow such a test.
