@@ -237,7 +237,7 @@ log shows recent activity only. The database is the lasting record.
 #### Stored activity
 
 The deployed app saves each event to a [Neon](https://neon.com/) Postgres
-database, added to the Vercel project through Vercel's Storage tab. Vercel
+database, added to the Vercel project through Vercel's Storage page. Vercel
 gives the functions its connection string as the `DATABASE_URL` environment
 variable. That string is a secret: it stays on the server, and must never be
 committed or used in browser code.
@@ -248,7 +248,8 @@ message is stored anywhere.
 
 One-time setup, after creating the database and connecting it to the project:
 
-1. In Vercel, open the Storage tab, select the database, and open it in Neon.
+1. In Vercel, open Infrastructure, then Storage, select the database, and open
+   it in Neon.
 2. In Neon's SQL Editor, paste the contents of `server/dictationActivity.sql`
    and run it. It creates the `dictation_activity` table, and is safe to run
    again. The app never creates the table itself.
@@ -478,7 +479,7 @@ changes production's accounts:
 | Where | Store | Address |
 | --- | --- | --- |
 | Production | the existing Neon database, `DATABASE_URL` | `BETTER_AUTH_URL` |
-| `npm run dev` | the Neon project `taskmanager-nonprod`, `AUTH_DATABASE_URL` in `.env.local` | `http://localhost:5173` |
+| `npm run dev` | the Neon project `taskmanager-local`, `AUTH_DATABASE_URL` in `.env.local` | `http://localhost:5173` |
 
 Sign-in uses `DATABASE_URL` only when `VERCEL_ENV` is `production`. Locally
 it needs `AUTH_DATABASE_URL` and, without it, reports sign-in as unavailable
@@ -514,14 +515,14 @@ console into `.env.local` or Vercel.
       production host in full, because `vercel.app` is a public suffix). Then
       choose Publish app on the Audience page. With only these scopes and no
       logo, Google requires no verification.
-2. **Second Neon database.** In Vercel, under Storage, create a Neon database
-   `taskmanager-nonprod`. No deployment uses it, so connect it to no
-   environment, or to Development only if Vercel requires one. Open it in Neon
-   and copy its connection string. Do not use a branch of the production
-   database instead: a branch starts as a copy of its parent, accounts
-   included.
+2. **Second Neon database.** In Vercel, under Infrastructure, then Storage,
+   create a Neon database `taskmanager-local`. No deployment uses it, so
+   connect it to no environment, or to Development only if Vercel requires
+   one. Open it in Neon and copy its connection string. Do not use a branch
+   of the production database instead: a branch starts as a copy of its
+   parent, accounts included.
 3. **Tables.** Run `server/accountTables.sql` in the Neon SQL Editor for the
-   production database and for `taskmanager-nonprod`. It is safe to run
+   production database and for `taskmanager-local`. It is safe to run
    again. The app never creates tables.
 4. **Variables.** Make each random secret with a command that does not show
    it. In PowerShell this copies a new one to the clipboard:
@@ -536,7 +537,7 @@ console into `.env.local` or Vercel.
    | `GOOGLE_CLIENT_SECRET` | yes | yes |
    | `BETTER_AUTH_SECRET` | its own random value | its own random value |
    | `BETTER_AUTH_URL` | `https://<production>` | `http://localhost:5173` |
-   | `AUTH_DATABASE_URL` | not set | `taskmanager-nonprod`'s connection string |
+   | `AUTH_DATABASE_URL` | not set | `taskmanager-local`'s connection string |
 
    Set the production variables for the Production environment only. Node.js
    must be 22 or later, because the Neon connection needs a built-in
@@ -572,7 +573,7 @@ The next sign-in with that Google account creates a new account.
 
 - Google sign-in is free, with no limit on the number of accounts once the app
   is published. While in Testing, only listed test users can sign in.
-- Neon's free plan includes the second project, `taskmanager-nonprod`.
+- Neon's free plan includes the second project, `taskmanager-local`.
 - Sign-in adds three Vercel Functions, making seven, within the Hobby plan's
   limit.
 - Rate limits are counted in memory by each function instance, so they are

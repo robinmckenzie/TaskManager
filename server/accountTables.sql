@@ -1,9 +1,8 @@
 -- Sign-in accounts and profiles for TaskManager.
 --
 -- Run this once in the Neon SQL editor for each sign-in store: production
--- (the database DATABASE_URL points to) and both branches of
--- taskmanager-nonprod (main, used by previews, and local). It is safe to run
--- again. The app never creates these tables.
+-- (the database DATABASE_URL points to) and taskmanager-local, used by
+-- npm run dev. It is safe to run again. The app never creates these tables.
 --
 -- The auth_ tables are Better Auth's user, session, account and verification
 -- tables, renamed and with snake_case columns. user_profile is TaskManager's

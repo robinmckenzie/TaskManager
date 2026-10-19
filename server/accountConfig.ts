@@ -1,7 +1,7 @@
 /*
  * Decides whether sign-in can run here, and with which user store. Production
  * uses DATABASE_URL. Local development uses AUTH_DATABASE_URL, which points to
- * the separate taskmanager-nonprod database, and never falls back to
+ * the separate taskmanager-local database, and never falls back to
  * DATABASE_URL, so that users created locally can never reach production's
  * store. Vercel previews have no sign-in.
  */
