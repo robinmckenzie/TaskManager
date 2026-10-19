@@ -4,5 +4,11 @@
     "api/dictation/*.ts": {
       "includeFiles": "dictation.config.toml"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/auth/:path*",
+      "destination": "/api/auth"
+    }
+  ]
 }

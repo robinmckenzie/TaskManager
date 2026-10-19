@@ -196,7 +196,7 @@ host only issues temporary keys.
   [Stored transcripts](#stored-transcripts).
 - The dictation endpoints are public and have no access control. Usage is
   limited by the Speechmatics account's credit.
-- Sign-in runs as three more functions, `api/auth/[...all].ts`,
+- Sign-in runs as three more functions, `api/auth.ts`,
   `api/account/status.ts` and `api/account/profile.ts`, all through
   `server/accountFunction.ts`. See [Sign-in with Google](#sign-in-with-google)
   for their variables. Previews have no sign-in.

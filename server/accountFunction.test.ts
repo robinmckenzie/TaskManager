@@ -1,5 +1,6 @@
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { describe, expect, it, vi } from "vitest"
-import authFunction from "../api/auth/[...all].ts"
+import authFunction from "../api/auth.ts"
 import profileFunction from "../api/account/profile.ts"
 import statusFunction from "../api/account/status.ts"
 import {
@@ -121,5 +122,15 @@ describe("hosted functions", () => {
         expect(typeof authFunction.fetch).toBe("function")
         expect(profileFunction.fetch).toBe(authFunction.fetch)
         expect(statusFunction.fetch).toBe(authFunction.fetch)
+    })
+
+    // Configuration only: that Vercel keeps the path and query is checked on a deployment.
+    it("are configured to receive every sign-in path through the rewrite", () => {
+        const { rewrites } = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8"))
+
+        expect(rewrites).toContainEqual({ source: "/api/auth/:path*", destination: "/api/auth" })
+        // A file under api/auth/ would take precedence over the rewrite for the paths it matches.
+        const authFolder = new URL("../api/auth", import.meta.url)
+        expect(existsSync(authFolder) ? readdirSync(authFolder) : []).toEqual([])
     })
 })
