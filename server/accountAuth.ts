@@ -170,6 +170,14 @@ export const createMemoryRateLimitStorage = (now: () => number = Date.now): Rate
 
 const rateLimitStorage = createMemoryRateLimitStorage()
 
+/**
+ * Logs only the level of Better Auth's own warnings and errors. Their
+ * messages and arguments can carry database or provider error details.
+ */
+export const logAccountAuthMessage = (level: string): void => {
+    console.error(JSON.stringify({ type: "account_auth_log", level }))
+}
+
 /** What Better Auth reads and writes through: a Postgres pool, or a test adapter. */
 export type AccountDatabase = BetterAuthOptions["database"]
 
@@ -182,6 +190,7 @@ export const buildAccountAuthOptions = (config: AccountConfig, database: Account
         secret: config.secret,
         database,
         telemetry: { enabled: false },
+        logger: { log: logAccountAuthMessage },
         disabledPaths: DISABLED_PATHS,
         socialProviders: {
             google: {

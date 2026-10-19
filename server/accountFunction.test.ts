@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest"
 import authFunction from "../api/auth/[...all].ts"
 import profileFunction from "../api/account/profile.ts"
 import statusFunction from "../api/account/status.ts"
-import { createAccountFetchHandler, createAccountFetchHandlerFromEnvironment } from "./accountFunction.ts"
+import {
+    ACCOUNT_CLOSE_TIMEOUT_MS,
+    createAccountFetchHandler,
+    createAccountFetchHandlerFromEnvironment,
+} from "./accountFunction.ts"
 import type { AccountRuntime } from "./accountFunction.ts"
 
 const request = (path: string, init?: RequestInit): Request =>
@@ -77,6 +81,23 @@ describe("createAccountFetchHandler", () => {
         expect(response.status).toBe(503)
         expect(reportFailure).toHaveBeenCalledWith("08001")
         expect(runtime.close).toHaveBeenCalledOnce()
+    })
+
+    it("answers without waiting more than the close timeout for connections to close", async () => {
+        vi.useFakeTimers()
+
+        try {
+            const runtime = createRuntime()
+            runtime.close.mockReturnValue(new Promise<void>(() => undefined))
+            const handler = createAccountFetchHandler(() => runtime, () => true)
+
+            const pending = handler(request("/api/account/profile"))
+            await vi.advanceTimersByTimeAsync(ACCOUNT_CLOSE_TIMEOUT_MS)
+
+            expect(await (await pending).json()).toEqual({ preferredName: "Ada" })
+        } finally {
+            vi.useRealTimers()
+        }
     })
 
     it("answers 404 for paths outside the account routes", async () => {

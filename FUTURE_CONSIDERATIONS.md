@@ -93,3 +93,7 @@ TM #45 added Google sign-in with Better Auth. If its code is reused elsewhere:
   app is a personal demo. Better Auth's OAuth proxy, which signs a preview in
   through production with its own store, was built and then removed in that
   pull request. The sign-in guide in Robin's project starters describes it.
+- No automated test renders the app while sign-in is failing or slow, to show
+  that tasks stay usable. Unit tests cover the account code, and a browser
+  check covered sign-in being unavailable. The project has no component test
+  library; adding one would allow such a test.

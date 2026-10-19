@@ -4,7 +4,12 @@ import type { AccountErrorResponse, AccountStatusResponse } from "../shared/acco
 import { createAccountAuth, isEnabledAuthPath } from "./accountAuth.ts"
 import { readAccountConfig } from "./accountConfig.ts"
 import type { AccountConfig } from "./accountConfig.ts"
-import { ACCOUNT_RESPONSE_HEADERS, createProfileStore, handleAccountProfileRequest } from "./accountProfile.ts"
+import {
+    ACCOUNT_RESPONSE_HEADERS,
+    createProfileStore,
+    handleAccountProfileRequest,
+    withTimeout,
+} from "./accountProfile.ts"
 import type { ProfileStore, ReadSessionUserId } from "./accountProfile.ts"
 import { readErrorCode } from "./dictationActivityStore.ts"
 
@@ -39,6 +44,9 @@ export const openNeonAccountRuntime = (config: AccountConfig): AccountRuntime =>
         close: () => pool.end(),
     }
 }
+
+/** How long a response waits for the database connections to close. */
+export const ACCOUNT_CLOSE_TIMEOUT_MS = 1000
 
 const json = (status: number, body: AccountStatusResponse | AccountErrorResponse): Response =>
     new Response(JSON.stringify(body), { status, headers: ACCOUNT_RESPONSE_HEADERS })
@@ -88,7 +96,8 @@ export const createAccountFetchHandler = (
         reportFailure(readErrorCode(error))
         return json(503, { error: "unavailable" })
     } finally {
-        await runtime.close().catch(() => undefined)
+        // Closing waits for running queries, so a stalled query must not hold the request open.
+        await withTimeout(runtime.close(), ACCOUNT_CLOSE_TIMEOUT_MS).catch(() => undefined)
     }
 }
 

@@ -1,7 +1,9 @@
+import type { BetterAuthOptions } from "better-auth"
 import { memoryAdapter } from "better-auth/adapters/memory"
 import { makeSignature } from "better-auth/crypto"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
+    buildAccountAuthOptions,
     createAccountAuth,
     createMemoryRateLimitStorage,
     DISABLED_PATHS,
@@ -168,6 +170,22 @@ describe("createAccountAuth", () => {
 
         expect(response.status).toBe(404)
         expect(rows.auth_user[0]).toEqual(expect.objectContaining({ name: "Ada Lovelace" }))
+    })
+})
+
+describe("logAccountAuthMessage", () => {
+    it("is Better Auth's logger, and logs only the level", () => {
+        // Typed as Better Auth calls it, with the message and arguments.
+        const { logger }: BetterAuthOptions = buildAccountAuthOptions(localConfig, memoryAdapter({}))
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+        try {
+            logger?.log?.("error", "postgres://user:password@host refused", new Error("detail"))
+
+            expect(consoleError).toHaveBeenCalledExactlyOnceWith('{"type":"account_auth_log","level":"error"}')
+        } finally {
+            consoleError.mockRestore()
+        }
     })
 })
 
