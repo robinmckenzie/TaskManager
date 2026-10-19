@@ -124,7 +124,8 @@ describe("hosted functions", () => {
         expect(statusFunction.fetch).toBe(authFunction.fetch)
     })
 
-    it("send every sign-in path, however deep, to the auth function", () => {
+    // Configuration only: that Vercel keeps the path and query is checked on a deployment.
+    it("are configured to receive every sign-in path through the rewrite", () => {
         const { rewrites } = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8"))
 
         expect(rewrites).toContainEqual({ source: "/api/auth/:path*", destination: "/api/auth" })
