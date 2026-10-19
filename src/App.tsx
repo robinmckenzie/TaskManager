@@ -580,13 +580,6 @@ const App: FC = () => {
                         </label>
                         <DictationStatus dictation={dictation} meter={meter} />
                         <MeterStyleSelector meter={meter} onChange={setMeter} />
-                        <button
-                            type="button"
-                            onClick={resetToSampleTasks}
-                            className="reset-tasks-button"
-                        >
-                            Reset to sample tasks
-                        </button>
                     </div>
                     {visibleTasks.map(({ task, index }, visibleIndex) => (
                         <Task
@@ -604,6 +597,13 @@ const App: FC = () => {
                             dictation={dictation}
                         />
                     ))}
+                    <button
+                        type="button"
+                        onClick={resetToSampleTasks}
+                        className="reset-tasks-button"
+                    >
+                        Reset to sample tasks
+                    </button>
                 </section>
             </main>
         </DndProvider>

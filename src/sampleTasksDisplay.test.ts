@@ -2,6 +2,8 @@ import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import App from "./App"
+import { ASSIGNEE_FILTER_STORAGE_KEY } from "./assigneeFilter"
+import { TASKS_STORAGE_KEY } from "./tasks"
 
 let taskMarkup: string[]
 let markup: string
@@ -40,11 +42,30 @@ it("tells visitors that dictated text may be retained", () => {
     expect(markup).toContain('<p class="dictation-notice">This demo may retain dictated text for diagnostics.</p>')
 })
 
-it("offers resetting to the sample tasks as a button beside the assignee filter", () => {
+const resetButton = '<button type="button" class="reset-tasks-button">Reset to sample tasks</button>'
+
+it("offers resetting to the sample tasks as a button below the last task, with the assignee filter above the tasks", () => {
     const controls = markup.match(/<div class="task-list-controls">[\s\S]*?<div class="task /)?.[0]
 
     expect(controls).toContain('<label class="assignee-filter">')
-    expect(controls).toMatch(/<button type="button" class="reset-tasks-button">Reset to sample tasks<\/button>/)
+    expect(controls).not.toContain("Reset to sample tasks")
+    expect(markup.split(resetButton)).toHaveLength(2)
+    expect(taskMarkup[4].endsWith(`${resetButton}</section></main>`)).toBe(true)
+})
+
+it.each([
+    ["the list is empty", TASKS_STORAGE_KEY, "[]", "0 tasks"],
+    ["the assignee filter matches no task", ASSIGNEE_FILTER_STORAGE_KEY, "4", "5 tasks"],
+])("still offers resetting to the sample tasks, below the controls, when %s", (_view, savedKey, savedValue, taskCount) => {
+    vi.stubGlobal("localStorage", {
+        getItem: (key: string): string | null => (key === savedKey ? savedValue : null),
+    })
+    const emptyMarkup = renderToStaticMarkup(createElement(App))
+
+    expect(emptyMarkup).not.toContain('<div class="task ')
+    expect(emptyMarkup).toContain(taskCount)
+    expect(emptyMarkup.split(resetButton)).toHaveLength(2)
+    expect(emptyMarkup.endsWith(`</div>${resetButton}</section></main>`)).toBe(true)
 })
 
 it("names each control on a task card after what it does and its task", () => {

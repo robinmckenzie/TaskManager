@@ -11,7 +11,7 @@ follow the current date while the page stays open, with no need to reload.
 
 Tasks are saved in this browser using localStorage and restored on refresh.
 The sample tasks appear on your first visit, with due dates relative to that
-day. "Reset to sample tasks", beside the Assignee dropdown, replaces the current
+day. "Reset to sample tasks", below the task list, replaces the current
 tasks with a fresh sample set at once, without asking for confirmation. If
 browser storage is unavailable, tasks remain usable in memory, but changes will
 not persist.
@@ -39,8 +39,7 @@ task titles, or when the task being dictated is deleted. Recognised text may
 keep settling for up to four seconds after dictation stops. A line at the top
 of the page says how to start and stop dictating.
 
-A status box above the task list, between the assignee filter and "Reset to
-sample tasks", shows what dictation is doing:
+A status box above the task list shows what dictation is doing:
 
 - "Connecting" from when you start until recognition is ready.
 - "Listening" while speech is accepted, with a level meter beside it.
@@ -51,7 +50,7 @@ sample tasks", shows what dictation is doing:
 
 The level meter shows how loud the sound reaching the microphone is. It does
 not show whether speech was recognised, and a quiet meter is not an error.
-"Level meter" above "Reset to sample tasks" chooses its style, and can be
+"Level meter", above the task list, chooses its style, and can be
 changed while dictating: "Horizontal bar" grows from the left, with a marker
 that holds the recent peak for about a second, "Analogue needle" sweeps a
 needle across an arc, and "Waveform" draws a row of thin vertical bars. "Look",
