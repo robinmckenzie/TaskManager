@@ -5,7 +5,7 @@ Interactive concepts for TM #56, "Improve TaskManager styling and look and feel"
 | Concept | Status | Page | Write-up |
 | --- | --- | --- | --- |
 | Refined | Built, awaiting Robin's feedback | `/prototypes/refined/` | [refined/README.md](refined/README.md) |
-| Modern | Not started | - | - |
+| Modern | Built, awaiting Robin's feedback | `/prototypes/modern/` | [modern/README.md](modern/README.md) |
 | Distinctive | Not started | - | - |
 
 ## Quick start
@@ -15,13 +15,15 @@ npm install
 npm run dev
 ```
 
-Then open <http://localhost:5173/prototypes/> for the list, or <http://localhost:5173/prototypes/refined/> directly. Any desktop browser works. The dark bar at the top of each prototype holds reviewer controls, which are not part of the design.
+Then open <http://localhost:5173/prototypes/> for the list, or <http://localhost:5173/prototypes/refined/> or <http://localhost:5173/prototypes/modern/> directly. If 5173 is already in use, Vite takes the next free port (for example 5174) and prints it; use that instead. Any desktop browser works. The dark bar at the top of each prototype holds reviewer controls, which are not part of the design.
 
-For an agent's browser check, use `npm run dev:browser-check` and open <http://127.0.0.1:5183/prototypes/refined/>, following the browser rules in `AGENTS.md`.
+The prototypes live on the unmerged branch `claude/relaxed-archimedes-6f4ts7`, which holds Refined and Modern (Refined alone is also on `claude/cool-keller-x3xkeq`). Robin has decided to keep every prototype permanently on an unmerged branch as a design archive, so do not delete these branches after a design is chosen or implemented.
+
+For an agent's browser check, use `npm run dev:browser-check` and open <http://127.0.0.1:5183/prototypes/refined/> or <http://127.0.0.1:5183/prototypes/modern/>, following the browser rules in `AGENTS.md`.
 
 ## How the prototypes are isolated
 
-- **Not in the production build.** Vite builds only the root `index.html` unless `build.rollupOptions.input` names more entries, and `vite.config.ts` names none. The prototype pages under `prototypes/` are served only by the development servers. After `npm run build`, `dist/` holds only `index.html` and `privacy.html`, and no built file contains prototype code. This was checked on 2026-11-05. Vercel previews of this branch run the same build, so they do not include the prototypes either.
+- **Not in the production build.** Vite builds only the root `index.html` unless `build.rollupOptions.input` names more entries, and `vite.config.ts` names none. The prototype pages under `prototypes/` are served only by the development servers. After `npm run build`, `dist/` holds only `index.html` and `privacy.html`, and no built file contains prototype code. This was checked on 2026-11-05 for Refined, and again after Modern was added, when every file in `dist/` was byte-for-byte identical to a build of `main`. Vercel previews of this branch run the same build, so they do not include the prototypes either.
 - **No saved data.** Prototypes keep tasks in React state. Nothing in `src/prototypes/` reads or writes `localStorage`, `sessionStorage` or `taskmanager.tasks`. Reloading a prototype starts again from the sample tasks.
 - **No requests.** Prototypes do not call `/api/*`, use the microphone, load analytics or reach Speechmatics. Dictation is simulated (see below). The only external requests are the assignee photos from `i.pravatar.cc`, the same addresses the app uses. When they are blocked, as in a browser check, initials are shown instead.
 - **App code untouched.** No file outside `prototypes/` and `src/prototypes/` was changed. Prototypes import a few pure functions and two small components from the app (listed below) but change none of them.
@@ -35,6 +37,9 @@ prototypes/
   refined/
     index.html             Entry page; loads /src/prototypes/refined/main.tsx
     README.md              Refined write-up: approach, trade-offs, behaviour questions
+  modern/
+    index.html             Entry page; loads /src/prototypes/modern/main.tsx
+    README.md              Modern write-up and handover: rationale, files, behaviour questions, pitfalls
 src/prototypes/
   sampleTasks.ts           Shared sample tasks and users, and getTaskState()
   sampleTasks.test.ts      Checks the samples cover every state, priority and assignee
@@ -43,7 +48,13 @@ src/prototypes/
     main.tsx               Mounts RefinedApp with refined.css; no app CSS, no analytics
     RefinedApp.tsx         The whole Refined page, in one file
     refined.css            All Refined styling: tokens, components, level meter rules
+  modern/
+    main.tsx               Mounts ModernApp with modern.css; no app CSS, no analytics
+    ModernApp.tsx          The whole Modern page, in one file
+    modern.css             All Modern styling: tokens, layout, components, level meter rules
 ```
+
+Refined and Modern share nothing but `sampleTasks.ts` and `simulatedDictation.ts`. Neither imports the other's components or styles, and neither loads `src/index.css`. Keep it that way for Distinctive, so that each concept is free to differ.
 
 The HTML entry pages live under `prototypes/` and the TypeScript under `src/prototypes/` for a reason. `tsconfig.app.json` type-checks only `src` and `shared`, so code placed under `prototypes/` would escape `npm run build`'s type check. ESLint covers both.
 
@@ -93,7 +104,7 @@ From reading `src/index.css` and `src/App.tsx` (see also the first comment on TM
 
 - One global stylesheet, `src/index.css`, about 920 lines, with plain class names such as `.task`, `.app-header` and `.delete-button`, and global rules for `body`, `button`, `input` and `select`. Colours are hard-coded hex values. The only custom properties drive the level meter. `src/App.css` is unused.
 - The Inter font is named but never loaded, so the system font is what users see.
-- **The level meter's class names are fixed.** `LevelMeter` renders `.level-meter`, `.level-meter-bar-solid`, `.level-meter-wave-bar` and so on, and draws by setting `--level`, `--peak` and `--past` on those elements. A prototype that uses `LevelMeter` must style those classes itself, because the app's rules are in `index.css`. `refined.css` ends with a copy of them that takes its colours from Refined's tokens. Copy that block as a starting point; the meter designs themselves are out of scope.
+- **The level meter's class names are fixed.** `LevelMeter` renders `.level-meter`, `.level-meter-bar-solid`, `.level-meter-wave-bar` and so on, and draws by setting `--level`, `--peak` and `--past` on those elements. A prototype that uses `LevelMeter` must style those classes itself, because the app's rules are in `index.css`. `refined.css` and `modern.css` each end with a copy of them that takes its colours from that prototype's tokens. Copy either block as a starting point; the meter designs themselves are out of scope.
 - **Dictation settings must keep focus.** In the app, dictation stops when focus leaves the task titles, except for elements inside `[data-dictation-setting]`. The meter selector carries that attribute and calls `preventDefault()` on `mousedown`, so clicking it leaves the cursor in the title. Any new home for a dictation setting (a dialog, a popover, a menu button) needs the same attribute, or opening it would stop dictation. Refined puts it on the Settings button and on the `<dialog>`.
 - The app's task card has two drag surfaces: the handle and photo on the left, and the empty space in the details line. react-dnd moves a task while dragging, once the pointer crosses the middle of the task it is over.
 
@@ -119,6 +130,7 @@ The completed card's `opacity: 0.75` lowers every ratio on it further. That was 
 - **Native controls.** A `<select>` can be fully restyled with `appearance: none` and a background-image arrow. Range inputs, checkboxes and radios take `accent-color` reliably, but more styling than that needs per-browser pseudo-elements. Refined stops at `accent-color`. Date inputs differ between browsers and are only bordered.
 - **Contrast of non-text edges.** WCAG 1.4.11 asks for 3:1 on control boundaries. The app's `#ccc` borders give about 1.6:1. Refined's first choice, `#8c95a1`, passed on white but not on the page background (2.78:1), so it became `#7d8794`. The first "this week" edge colour `#ca8a04` was 2.94:1 and became `#a16207`.
 - **Focus ring on the blue button.** The ring colour `#1d4ed8` against the button's `#2563eb` is only 1.3:1. The ring is offset by 2 px, so it is seen against the page (6.1:1) instead. Keep the offset if the ring colour stays close to the accent.
+- **Modern's own discoveries** are in [modern/README.md](modern/README.md#technical-discoveries-and-pitfalls). The ones most likely to matter for Distinctive: sizing a text area to a long title must add the border to `scrollHeight`; `event.detail === 0` tells a keyboard click from a pointer click; a sticky element needs a scrolling container of known height; and `react-hooks/purity` flagged `Date.now()` in an event handler in `ModernApp.tsx` but not in `RefinedApp.tsx`, so use a counter for new ids.
 - **Tick marks in toggle buttons.** The meter buttons draw their tick with `content: "\2713\00a0" / ""`, the empty alternative text keeping it out of the accessible name, as the app does. Firefox has supported that syntax only since version 128.
 
 ## Approaches tried that did not work
@@ -126,6 +138,7 @@ The completed card's `opacity: 0.75` lowers every ratio on it further. That was 
 - **Browser verification through Playwright MCP:** refused in the cloud sandbox, as described above. No workaround was attempted.
 - **Two of the first colours** failed the 3:1 non-text contrast check and were replaced (above).
 - **An early port check** used `ss`, then `netstat`, and printed "port 5183 free" when both commands were missing. It proved nothing; the curl check above replaced it.
+- **Modern:** a right-hand inspector panel, grouping tasks by due state, and a popover per detail were each considered and rejected, and three layout bugs were found by reading the code before commit. See [modern/README.md](modern/README.md#failed-approaches-and-lessons-learned).
 - **Considered and rejected without building:** loading the app's `index.css` and overriding it. Its global selectors (`body`, `button`, `.task`) and specificity would leak into the prototype, and later concepts would have been judged partly against leftover styles. Each prototype has a standalone stylesheet instead.
 
 ## Making the next prototype
@@ -138,12 +151,13 @@ The completed card's `opacity: 0.75` lowers every ratio on it further. That was 
 6. If you use `LevelMeter`, style the `.level-meter*` classes in your stylesheet (copy the block at the end of `refined.css`). If you move a dictation setting, keep `data-dictation-setting` on it and on whatever opens it.
 7. Cover the ticket's list for each concept: header, controls row, task cards and their controls, every state, title editing, due date, priority, assignee, complete, hover, keyboard focus, the drag affordance, the dictation hint, retention notice, status box and meter choice. Meet the baseline: AA text contrast, visible focus, state not by colour alone, reduced motion respected.
 8. Add a link in `prototypes/index.html` and a row in the table at the top of this file, and write `prototypes/<name>/README.md` with the approach, advantages, trade-offs, implementation complexity, whether a component library would help, behaviour questions, and what was verified.
-9. Run `npm run build`, `npm run lint` and `npm test`, and confirm that `dist/` still has only `index.html` and `privacy.html`.
+9. Run `npm run build`, `npm run lint` and `npm test`, and confirm that `dist/` still has only `index.html` and `privacy.html`. A stronger check, used for Modern: build `main` and the branch, and compare SHA-256 hashes of every file in `dist/`.
+10. Work out the layout's widths at 1280 px and 1024 px before building, since a browser may not be available to see them. Modern's write-up has a section of guidance for Distinctive.
 
 ## Open questions for Robin
 
 These concern all three concepts. Refined's own questions are in its write-up.
 
-- Should the reviewer controls look the same in every prototype, so they are easy to tell apart from the design? Refined uses a dark bar across the top.
+- Should the reviewer controls look the same in every prototype, so they are easy to tell apart from the design? Refined and Modern both use a dark bar across the top.
 - The ticket's default is to check each prototype at about 1280 px and one narrower desktop width. Refined's layout is written for 1280 px and 1024 px, but neither has been seen in a browser yet. Is that still the range wanted?
 - When the concepts are compared, should they be seen one at a time, or would a page showing them side by side help?
