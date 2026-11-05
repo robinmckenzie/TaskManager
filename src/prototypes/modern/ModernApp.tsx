@@ -14,6 +14,7 @@ import { createPrototypeTasks, getTaskState, prototypeUsers } from "../sampleTas
 import type { PrototypeUser, TaskState } from "../sampleTasks"
 import { readSimulatedLevel, useSimulatedDictation } from "../simulatedDictation"
 import type { SimulatedAvailability, SimulatedDictation } from "../simulatedDictation"
+import { getQuickDueDates, updateTaskInList } from "./quickDueDates"
 
 /*
  * TM #56 prototype: Modern. A sidebar and a compact, column-aligned task list.
@@ -309,16 +310,18 @@ const SettingsDialog: FC<{
 
 /* ---------- The details panel beneath a row ---------- */
 
-const TaskDetails: FC<{
+export const TaskDetails: FC<{
     task: TaskType
+    today: Date
     panelId: string
     names: ReturnType<typeof getTaskControlNames>
     focusField: DetailField | null
     updateTask(id: string, changes: Partial<TaskType>): void
     deleteTask(id: string): void
     onClose(): void
-}> = ({ task, panelId, names, focusField, updateTask, deleteTask, onClose }) => {
+}> = ({ task, today, panelId, names, focusField, updateTask, deleteTask, onClose }) => {
     const panel = useRef<HTMLDivElement>(null)
+    const quickDates = getQuickDueDates(today)
 
     useEffect(() => {
         if (!focusField) {
@@ -348,14 +351,31 @@ const TaskDetails: FC<{
                 <span className="md-field-label" aria-hidden="true">
                     Due date
                 </span>
-                <input
-                    type="date"
-                    className="md-date"
-                    data-focus="due"
-                    value={task.dueDate}
-                    onChange={(event): void => updateTask(task.id, { dueDate: event.target.value })}
-                    aria-label={names.dueDate}
-                />
+                <div className="md-due-controls">
+                    <input
+                        type="date"
+                        className="md-date"
+                        data-focus="due"
+                        value={task.dueDate}
+                        onChange={(event): void => updateTask(task.id, { dueDate: event.target.value })}
+                        aria-label={names.dueDate}
+                    />
+                    <div className="md-quick-dates" role="group" aria-label={`Quick due dates for ${names.dictationTarget}`}>
+                        {quickDates.map(({ label, value, description }) => (
+                            <button
+                                key={label}
+                                type="button"
+                                className="md-quick-date"
+                                aria-pressed={task.dueDate === value}
+                                aria-label={`${label}, ${description}`}
+                                title={description}
+                                onClick={(): void => updateTask(task.id, { dueDate: value })}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             <div className="md-field">
@@ -595,6 +615,7 @@ const TaskRow: FC<TaskRowProps> = ({
             {isExpanded && (
                 <TaskDetails
                     task={task}
+                    today={today}
                     panelId={panelId}
                     names={names}
                     focusField={focusField}
@@ -788,7 +809,7 @@ export const ModernApp: FC = () => {
     }
 
     const updateTask = (id: string, changes: Partial<TaskType>): void =>
-        setTasks((current) => current.map((task) => (task.id === id ? { ...task, ...changes } : task)))
+        setTasks((current) => updateTaskInList(current, id, changes))
 
     const addTask = (): void => {
         const task: TaskType = {

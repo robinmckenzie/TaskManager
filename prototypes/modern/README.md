@@ -13,6 +13,7 @@ The second TM #56 concept: a contemporary productivity layout. A sidebar holds n
 - **Tick the round checkbox** on the left to complete a task. The title is struck through and the due column says "Completed".
 - **Open a task's details** by clicking anywhere in its due / priority / assignee summary. A click on one part focuses that field: click the avatar and the assignee choice has focus. The panel has the due date, priority as five buttons (1 to 5), the assignee as photo chips, and Delete. Escape, or another click on the summary, closes it.
 - **Change the due date** in the panel, or clear it for "No due date". The row updates as you type.
+- **Use the quick due dates** beside the date field: **Today**, **Tomorrow** and **In a week**. One click sets the date, and the date field and the row's summary ("Due today 5 Nov", "1 day remaining 6 Nov") update at once. The button matching the task's date is filled indigo, like the chosen priority; hover one to see its full date ("Fri 1 Jan 2027" when it falls in another year). Choosing another date in the field leaves no button filled, and clearing the field still gives "No due date". See [Quick due dates](#quick-due-dates).
 - **Hover a row** to reveal the drag grip on the far left and the microphone after the title. Both also appear when anything in the row has keyboard focus.
 - **Drag a task** by its grip.
 - **Filter by assignee** in the sidebar. The heading becomes "Bob's tasks", the count "2 of 7 tasks", and Add Task assigns new tasks to that person, as in the app.
@@ -23,6 +24,18 @@ The second TM #56 concept: a contemporary productivity layout. A sidebar holds n
 - **Narrower window:** below 1180 px the sidebar narrows, the assignee column shows the photo alone, and the short date beside the due state is hidden.
 
 Not simulated, as in Refined: the Ctrl + Alt shortcut, inserting dictated text, persistence, sign-in (the button does nothing) and the account panel.
+
+## Quick due dates
+
+Borrows the behaviour of Distinctive's dock (TM #56) while keeping Modern's look.
+
+- **Where:** in the details panel, on the same line as the date field, as one compact segmented control of three buttons styled like the priority buttons: grey edge, indigo fill when chosen. No Distinctive colour, countdown block or fixed dock is used, and there is no separate "No date" button, because the date field already clears.
+- **What they set:** today, tomorrow and seven days on, worked out from the page's `today` (the local date when the page loaded, as for the sample tasks) with date-fns `addDays` and `format(..., "yyyy-MM-dd")`. That is the app's local-date form, the same one the date field reads and writes, so month ends, year ends, leap days and daylight-saving changes come out as calendar days.
+- **How the choice is shown:** the button whose date equals the task's due date has `aria-pressed="true"` and is filled; the date field shows the same date. Each button's accessible name and tooltip give its date, such as "Tomorrow, Fri 6 Nov", with the year added when it is not this year's. The group is labelled "Quick due dates for *task*".
+- **Keyboard:** they are ordinary buttons in the tab order after the date field, with Modern's indigo focus ring. Escape still closes the panel.
+- **Code:** `src/prototypes/modern/quickDueDates.ts` holds the pure helpers, `getQuickDueDates(today)` and `updateTaskInList(tasks, id, changes)`, which `ModernApp`'s `updateTask` now uses. Modern keeps its own helper rather than importing Distinctive's `docket.ts`, so the prototypes still share nothing but the sample tasks and simulated dictation.
+- **Tests:** `quickDueDates.test.ts` covers the three dates, a month end, a leap-year February, a year end, a late-evening local time, a daylight-saving week, and immutable task updates. `TaskDetails.test.tsx` renders the panel with `react-dom/server` (no DOM library is installed) and checks that the date field and the filled button agree for each quick date, for another date, and for no date.
+- **Not changed:** the short date in the row summary stays "d MMM" without a year, as before, so "In a week" across a year end shows "7 Jan" in the row and "Thu 7 Jan 2027" in the button's name.
 
 ## Design rationale
 
@@ -81,6 +94,9 @@ src/prototypes/modern/
   main.tsx            Mounts ModernApp with modern.css; no app CSS, no analytics
   ModernApp.tsx       The whole Modern page, in one file
   modern.css          All Modern styling: tokens, layout, components, level meter rules
+  quickDueDates.ts    Pure helpers for the quick due-date buttons and task updates
+  quickDueDates.test.ts  Unit tests for quickDueDates.ts
+  TaskDetails.test.tsx   Renders the details panel and checks the date field and quick dates agree
 ```
 
 - Shared with Refined: only `src/prototypes/sampleTasks.ts` (the seven tasks, users and `getTaskState`) and `src/prototypes/simulatedDictation.ts`. No Refined component, class or token is used. Class names start with `md-` and tokens with `--md-`.
@@ -109,6 +125,7 @@ None of these is adopted. Each needs Robin's decision before it could reach the 
 13. **Level meter choice in a Settings dialog**, as Refined proposed, opened from the sidebar. Its options are pill-shaped radio buttons instead of toggle buttons.
 14. **Focus after Delete** moves to the next task's title, or the previous one if it was the last, or Add Task if the list is empty. Escape closes the details panel and returns focus to the summary.
 15. **Accent colour** changes from the app's blue to indigo.
+16. **Quick due dates** (Today, Tomorrow, In a week) beside the date field in the details panel. These are a new control, not in the app; the date field and its ability to clear stay as they are.
 
 ## Advantages
 
@@ -174,6 +191,19 @@ Not much yet. Everything here is native: radio groups give arrow-key behaviour f
 - Follow "Making the next prototype" in `prototypes/README.md`.
 
 ## Verification
+
+### Quick due dates
+
+Done in the cloud sandbox:
+
+- `npx vitest run src/prototypes/modern`: 15 of 15 pass.
+- `npm test`: 574 of 575 pass. The one failure is the same pre-existing `speechmaticsAdapters.node.test.ts` test described below, which also fails on unchanged `main` in this sandbox.
+- `npm run lint` passes. `npm run build` passes, including `tsc -b` over the new files.
+- **Production build unchanged:** `dist/` from this branch is byte-for-byte identical to `dist/` from `main` (`diff -r` reports no differences).
+
+Not done: no browser check. The Playwright MCP server failed to connect in this session, and `AGENTS.md` forbids using another browser. So the buttons' layout beside the date field, their focus ring and hover, and the live update of the row have not been seen. These need a check at <http://127.0.0.1:5183/prototypes/modern/> (`npm run dev:browser-check`) or by Robin at <http://localhost:5173/prototypes/modern/> (`npm run dev`).
+
+### First build
 
 Done in the cloud sandbox:
 

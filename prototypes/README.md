@@ -72,6 +72,9 @@ src/prototypes/
     main.tsx               Mounts ModernApp with modern.css; no app CSS, no analytics
     ModernApp.tsx          The whole Modern page, in one file
     modern.css             All Modern styling: tokens, layout, components, level meter rules
+    quickDueDates.ts       Pure helpers: quick due dates, task updates
+    quickDueDates.test.ts  Unit tests for quickDueDates.ts
+    TaskDetails.test.tsx   Checks the details panel's date field and quick dates agree
   distinctive/
     main.tsx               Mounts DistinctiveApp with distinctive.css; no app CSS, no analytics
     DistinctiveApp.tsx     The whole Distinctive page, in one file

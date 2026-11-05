@@ -924,6 +924,58 @@ kbd {
   outline-offset: 1px;
 }
 
+/* The date input and the quick due-date buttons share one line. */
+.md-due-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.md-quick-dates {
+  display: inline-flex;
+  border: 1px solid var(--md-edge);
+  border-radius: var(--md-radius);
+}
+
+.md-quick-date {
+  position: relative;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--md-muted);
+  background: transparent;
+  border: none;
+}
+
+.md-quick-date + .md-quick-date {
+  border-left: 1px solid var(--md-border);
+}
+
+.md-quick-date:first-child {
+  border-radius: 7px 0 0 7px;
+}
+
+.md-quick-date:last-child {
+  border-radius: 0 7px 7px 0;
+}
+
+.md-quick-date:hover {
+  background: var(--md-hover);
+}
+
+/* Chosen: filled like the priority segments, so not by hue alone. */
+.md-quick-date[aria-pressed="true"] {
+  color: #ffffff;
+  background: var(--md-accent);
+}
+
+.md-quick-date:focus-visible {
+  z-index: 1;
+  outline-offset: 2px;
+}
+
 .md-segmented {
   display: inline-flex;
   border: 1px solid var(--md-edge);
