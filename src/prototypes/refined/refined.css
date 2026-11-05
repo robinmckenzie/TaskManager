@@ -1,0 +1,1276 @@
+/*
+ * TM #56 prototype: Refined.
+ *
+ * Standalone: the app's src/index.css is not loaded. Every colour, size and
+ * space comes from the tokens below. The level meter rules near the end are
+ * the app's, with their colours taken from the tokens; the meter designs
+ * themselves are unchanged.
+ */
+
+:root {
+  /* Neutrals. Contrast on white is noted for each text colour. */
+  --rf-bg: #f4f5f7;
+  --rf-surface: #ffffff;
+  --rf-surface-sunken: #f8f9fb;
+  --rf-border: #e1e4e8;
+  --rf-border-control: #7d8794; /* 3.6:1 on white and 3.3:1 on the page, for control edges */
+  --rf-text: #1f2328; /* 15.8:1 */
+  --rf-text-muted: #4b5563; /* 7.6:1 */
+  --rf-text-subtle: #5b6573; /* 5.9:1 */
+
+  /* The app's blue, kept as the accent. */
+  --rf-accent: #2563eb; /* white on it 5.2:1 */
+  --rf-accent-hover: #1d4ed8;
+  --rf-accent-soft: #e8efff;
+  --rf-accent-text: #1d4ed8; /* 6.7:1 */
+  --rf-focus: #1d4ed8;
+
+  --rf-danger: #b91c1c; /* 6.5:1 */
+  --rf-danger-soft: #fef2f2;
+  --rf-recording: #dc2626;
+
+  /* Due states: an edge colour, and a pill with its own text colour. */
+  --rf-overdue-edge: #dc2626;
+  --rf-overdue-bg: #fee2e2;
+  --rf-overdue-text: #991b1b; /* 6.8:1 on its pill */
+  --rf-overdue-card: #fff8f8;
+  --rf-soon-edge: #ea580c;
+  --rf-soon-bg: #ffedd5;
+  --rf-soon-text: #9a3412; /* 6.3:1 */
+  --rf-week-edge: #a16207;
+  --rf-week-bg: #fef9c3;
+  --rf-week-text: #854d0e; /* 6.6:1 */
+  --rf-later-bg: #f1f3f5;
+  --rf-done-edge: #16a34a;
+  --rf-done-bg: #dcfce7;
+  --rf-done-text: #166534; /* 6.5:1 */
+  --rf-done-card: #fbfdfb;
+
+  /* Type: the system's own font, at a small fixed scale. */
+  --rf-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --rf-text-xs: 0.75rem; /* 12px */
+  --rf-text-sm: 0.8125rem; /* 13px */
+  --rf-text-base: 0.9375rem; /* 15px */
+  --rf-text-title: 1.0625rem; /* 17px */
+  --rf-text-heading: 1.75rem; /* 28px */
+
+  /* Space on a 4px grid. */
+  --rf-space-1: 4px;
+  --rf-space-2: 8px;
+  --rf-space-3: 12px;
+  --rf-space-4: 16px;
+  --rf-space-5: 20px;
+  --rf-space-6: 24px;
+  --rf-space-8: 32px;
+
+  --rf-radius-sm: 6px;
+  --rf-radius: 10px;
+  --rf-radius-pill: 999px;
+  --rf-shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 6%);
+  --rf-shadow-raised: 0 4px 12px rgb(16 24 40 / 10%), 0 2px 4px rgb(16 24 40 / 6%);
+  --rf-control-height: 34px;
+  --rf-ease: 0.15s ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--rf-font);
+  font-size: var(--rf-text-base);
+  line-height: 1.45;
+  background: var(--rf-bg);
+  color: var(--rf-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* One focus style everywhere, visible on every background used. */
+:focus-visible {
+  outline: 2px solid var(--rf-focus);
+  outline-offset: 2px;
+}
+
+.rf-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Page ---------- */
+
+.rf-app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--rf-space-6) var(--rf-space-8) var(--rf-space-8);
+}
+
+.rf-account-bar {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 32px;
+  margin-bottom: var(--rf-space-3);
+}
+
+.rf-header {
+  display: grid;
+  grid-template-columns: minmax(13.5rem, 1fr) minmax(0, 30rem) minmax(13.5rem, 1fr);
+  align-items: center;
+  gap: var(--rf-space-4);
+  margin-bottom: var(--rf-space-6);
+}
+
+.rf-heading h1 {
+  margin: 0;
+  font-size: var(--rf-text-heading);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.rf-count {
+  margin: var(--rf-space-1) 0 0;
+  color: var(--rf-text-muted);
+  font-size: var(--rf-text-sm);
+}
+
+.rf-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--rf-space-2);
+}
+
+/* ---------- Buttons and inputs ---------- */
+
+.rf-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--rf-control-height);
+  padding: 0 var(--rf-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--rf-radius-sm);
+  font-size: var(--rf-text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--rf-ease), border-color var(--rf-ease), color var(--rf-ease);
+}
+
+.rf-button svg {
+  flex-shrink: 0;
+}
+
+.rf-button-primary {
+  min-height: 38px;
+  padding: 0 var(--rf-space-4);
+  background: var(--rf-accent);
+  color: #ffffff;
+  box-shadow: var(--rf-shadow);
+}
+
+.rf-button-primary:hover {
+  background: var(--rf-accent-hover);
+}
+
+.rf-button-secondary {
+  min-height: 38px;
+  border-color: var(--rf-border-control);
+  background: var(--rf-surface);
+  color: var(--rf-text);
+}
+
+.rf-account-bar .rf-button-secondary {
+  min-height: 32px;
+  font-weight: 500;
+}
+
+.rf-button-secondary:hover {
+  border-color: var(--rf-text-muted);
+  background: var(--rf-surface-sunken);
+}
+
+.rf-button-danger-quiet {
+  padding: 0 var(--rf-space-2);
+  background: transparent;
+  color: var(--rf-danger);
+  font-weight: 500;
+}
+
+.rf-button-danger-quiet:hover {
+  border-color: #fca5a5;
+  background: var(--rf-danger-soft);
+}
+
+.rf-input {
+  height: var(--rf-control-height);
+  border: 1px solid var(--rf-border-control);
+  border-radius: var(--rf-radius-sm);
+  padding: 0 var(--rf-space-2);
+  background-color: var(--rf-surface);
+  font-size: var(--rf-text-sm);
+  transition: border-color var(--rf-ease);
+}
+
+.rf-input:hover {
+  border-color: var(--rf-text-muted);
+}
+
+/* A native select with a quieter arrow of its own. */
+.rf-select {
+  appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%234b5563' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 10px center;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+input[type="checkbox"],
+input[type="range"],
+input[type="radio"] {
+  accent-color: var(--rf-accent);
+}
+
+/* ---------- Dictation hint, notice and status ---------- */
+
+.rf-dictation-hint {
+  margin: 0;
+  color: var(--rf-text-muted);
+  font-size: var(--rf-text-sm);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.rf-dictation-hint > span {
+  display: inline-block;
+}
+
+/* The microphone drawn like the button it stands for. */
+.rf-hint-mic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--rf-border-control);
+  border-radius: 50%;
+  background: var(--rf-surface);
+  vertical-align: -5px;
+}
+
+.rf-hint-mic svg {
+  width: 12px;
+  height: 12px;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 5px;
+  border: 1px solid var(--rf-border-control);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--rf-surface);
+  color: var(--rf-text);
+  font-family: inherit;
+  font-size: var(--rf-text-xs);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.rf-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--rf-text-subtle);
+  font-size: var(--rf-text-xs);
+}
+
+.rf-notice svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
+/* Room for the status, whether or not there is any, so nothing moves. */
+.rf-dictation-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.5rem;
+}
+
+.rf-status-box {
+  display: flex;
+  align-items: center;
+  gap: var(--rf-space-3);
+  max-width: 100%;
+  min-height: 36px;
+  padding: 4px var(--rf-space-3);
+  border: 1px solid var(--rf-border-control);
+  border-radius: var(--rf-radius);
+  background: var(--rf-surface);
+  box-shadow: var(--rf-shadow);
+}
+
+.rf-status-box-empty {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.rf-status-text {
+  margin: 0;
+  color: var(--rf-text-muted);
+  font-size: var(--rf-text-sm);
+  line-height: 1.35;
+  text-align: center;
+}
+
+.rf-dictation-state {
+  color: var(--rf-text);
+  white-space: nowrap;
+}
+
+/* The app's shapes for each state, so that they do not differ by colour alone. */
+.rf-dictation-state::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border: 2px solid var(--rf-text-subtle);
+  vertical-align: 0;
+}
+
+.rf-dictation-state-starting::before {
+  border-style: dashed;
+  border-radius: 50%;
+}
+
+.rf-dictation-state-listening::before {
+  border-color: var(--rf-recording);
+  border-radius: 50%;
+  background: var(--rf-recording);
+}
+
+.rf-dictation-state-finishing::before {
+  border-radius: 2px;
+  background: var(--rf-text-subtle);
+}
+
+/* ---------- Controls row above the list ---------- */
+
+.rf-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rf-space-2);
+}
+
+.rf-list-controls {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) minmax(15rem, 24rem) minmax(14rem, 1fr);
+  grid-template-areas: "filter feedback notice";
+  align-items: center;
+  gap: var(--rf-space-2) var(--rf-space-4);
+  margin-bottom: var(--rf-space-1);
+}
+
+/* With the meter choice shown inline, as the app has it now. */
+.rf-meter-inline .rf-list-controls {
+  grid-template-columns: minmax(22rem, 1fr) minmax(15rem, 22rem) minmax(22rem, 1fr);
+  grid-template-areas:
+    "notice feedback meter"
+    "filter feedback meter";
+}
+
+.rf-filter {
+  grid-area: filter;
+  display: flex;
+  align-items: center;
+  gap: var(--rf-space-2);
+  color: var(--rf-text-muted);
+  font-size: var(--rf-text-sm);
+  font-weight: 600;
+}
+
+.rf-filter .rf-select {
+  min-width: 10rem;
+  color: var(--rf-text);
+  font-weight: 400;
+}
+
+.rf-list-controls .rf-dictation-feedback {
+  grid-area: feedback;
+}
+
+.rf-list-controls .rf-notice {
+  grid-area: notice;
+  justify-self: end;
+  text-align: right;
+}
+
+.rf-meter-inline .rf-list-controls .rf-notice {
+  justify-self: start;
+  text-align: left;
+}
+
+/* ---------- Level meter choice ---------- */
+
+.rf-meter-style {
+  grid-area: meter;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rf-meter-style-inline {
+  justify-self: end;
+  align-items: flex-end;
+}
+
+.rf-meter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--rf-space-2);
+}
+
+.rf-meter-label {
+  color: var(--rf-text-muted);
+  font-size: var(--rf-text-xs);
+  font-weight: 600;
+}
+
+/* Joined buttons, one of which is chosen. */
+.rf-segments {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--rf-border-control);
+  border-radius: var(--rf-radius-sm);
+  background: var(--rf-surface-sunken);
+}
+
+.rf-segment {
+  min-width: 6.5em;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--rf-text-muted);
+  font-size: var(--rf-text-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rf-segments-looks .rf-segment {
+  min-width: 5.5em;
+}
+
+.rf-segment:hover {
+  color: var(--rf-text);
+}
+
+/* The chosen one is marked with a tick, not only by colour. Room for the tick
+   is kept on every button, so that choosing moves nothing. */
+.rf-segment::before {
+  content: "\2713\00a0" / "";
+  visibility: hidden;
+}
+
+.rf-segment[aria-pressed="true"] {
+  border-color: var(--rf-border-control);
+  background: var(--rf-surface);
+  color: var(--rf-text);
+  font-weight: 600;
+  box-shadow: var(--rf-shadow);
+}
+
+.rf-segment[aria-pressed="true"]::before {
+  visibility: visible;
+}
+
+/* ---------- Task cards ---------- */
+
+.rf-task {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--rf-space-4);
+  padding: var(--rf-space-3) var(--rf-space-4) var(--rf-space-3) var(--rf-space-5);
+  border: 1px solid var(--rf-border);
+  border-radius: var(--rf-radius);
+  background: var(--rf-surface);
+  box-shadow: var(--rf-shadow);
+  transition: box-shadow var(--rf-ease), border-color var(--rf-ease), opacity var(--rf-ease);
+}
+
+/* The state edge: a band down the left side, coloured by due state. */
+.rf-task::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -1px;
+  width: 5px;
+  border-radius: var(--rf-radius) 0 0 var(--rf-radius);
+  background: transparent;
+}
+
+.rf-task:hover {
+  border-color: #cdd2d9;
+  box-shadow: var(--rf-shadow-raised);
+}
+
+.rf-task-overdue {
+  background: var(--rf-overdue-card);
+}
+
+.rf-task-overdue::before {
+  background: var(--rf-overdue-edge);
+}
+
+.rf-task-due-soon::before {
+  background: var(--rf-soon-edge);
+}
+
+.rf-task-due-this-week::before {
+  background: var(--rf-week-edge);
+}
+
+.rf-task-completed {
+  background: var(--rf-done-card);
+}
+
+.rf-task-completed::before {
+  background: var(--rf-done-edge);
+}
+
+.rf-task-completed .rf-task-title {
+  color: var(--rf-text-muted);
+  font-weight: 500;
+}
+
+.rf-task-dragging {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+/* Drag handle and photo: the surface a task is dragged by. */
+.rf-task-grip {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  flex-shrink: 0;
+  gap: var(--rf-space-2);
+  margin: calc(-1 * var(--rf-space-3)) 0 calc(-1 * var(--rf-space-3)) -8px;
+  padding: var(--rf-space-3) 0 var(--rf-space-3) 8px;
+  border-radius: var(--rf-radius-sm);
+  cursor: grab;
+  user-select: none;
+}
+
+.rf-task-grip:active {
+  cursor: grabbing;
+}
+
+.rf-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 32px;
+  border-radius: 4px;
+  color: var(--rf-text-subtle);
+  transition: background-color var(--rf-ease), color var(--rf-ease);
+}
+
+.rf-task:hover .rf-drag-handle {
+  background: var(--rf-bg);
+  color: var(--rf-text);
+}
+
+.rf-avatar {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--rf-accent-soft);
+  box-shadow: 0 0 0 2px var(--rf-surface), 0 0 0 3px var(--rf-border);
+  color: var(--rf-accent-text);
+  font-size: var(--rf-text-sm);
+  font-weight: 700;
+}
+
+.rf-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rf-task-main {
+  flex: 1;
+  min-width: 200px;
+}
+
+.rf-task-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--rf-space-2);
+}
+
+/* The title reads as text until hovered or focused, then as an input. */
+.rf-task-title {
+  flex: 1;
+  min-width: 0;
+  margin-left: -6px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--rf-radius-sm);
+  background: transparent;
+  font-size: var(--rf-text-title);
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  transition: border-color var(--rf-ease), background-color var(--rf-ease);
+}
+
+.rf-task-title:hover {
+  border-color: var(--rf-border);
+  background: var(--rf-surface);
+}
+
+.rf-task-title:focus {
+  outline: none;
+  border-color: var(--rf-focus);
+  background: var(--rf-surface);
+  box-shadow: 0 0 0 3px rgb(29 78 216 / 18%);
+}
+
+.rf-task-dictating .rf-task-title {
+  border-color: var(--rf-recording);
+  box-shadow: 0 0 0 3px rgb(220 38 38 / 14%);
+}
+
+.rf-task-details {
+  display: flex;
+  align-items: center;
+  gap: var(--rf-space-3);
+  margin-top: 6px;
+  color: var(--rf-text-muted);
+  font-size: var(--rf-text-sm);
+}
+
+.rf-due {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rf-due-label {
+  font-weight: 600;
+}
+
+.rf-date {
+  height: 30px;
+  color: var(--rf-text);
+}
+
+/* The due state as a labelled pill, with a shape of its own. */
+.rf-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--rf-radius-pill);
+  background: var(--rf-later-bg);
+  color: var(--rf-text-muted);
+  font-size: var(--rf-text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rf-state-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.rf-state-overdue {
+  background: var(--rf-overdue-bg);
+  color: var(--rf-overdue-text);
+}
+
+.rf-state-due-soon {
+  background: var(--rf-soon-bg);
+  color: var(--rf-soon-text);
+}
+
+.rf-state-due-this-week {
+  background: var(--rf-week-bg);
+  color: var(--rf-week-text);
+}
+
+.rf-state-no-due-date {
+  border: 1px dashed var(--rf-border-control);
+  background: transparent;
+  font-weight: 500;
+}
+
+.rf-state-completed {
+  background: var(--rf-done-bg);
+  color: var(--rf-done-text);
+}
+
+/* ---------- Controls on a card ---------- */
+
+.rf-task-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--rf-space-4);
+}
+
+.rf-priority {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 128px;
+  color: var(--rf-text-muted);
+  font-size: var(--rf-text-xs);
+}
+
+.rf-priority-value {
+  color: var(--rf-text);
+  font-size: var(--rf-text-sm);
+  font-weight: 700;
+}
+
+.rf-priority input {
+  width: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.rf-task-controls .rf-select {
+  width: 7.5rem;
+}
+
+.rf-complete {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--rf-control-height);
+  padding: 0 var(--rf-space-2);
+  border-radius: var(--rf-radius-sm);
+  color: var(--rf-text);
+  font-size: var(--rf-text-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rf-complete:hover {
+  background: var(--rf-bg);
+}
+
+.rf-complete input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* ---------- Dictation button ---------- */
+
+.rf-dictation-button {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--rf-border-control);
+  border-radius: 50%;
+  background: var(--rf-surface);
+  color: var(--rf-text-muted);
+  cursor: pointer;
+  transition: background-color var(--rf-ease), border-color var(--rf-ease), color var(--rf-ease);
+}
+
+.rf-dictation-button:hover {
+  border-color: var(--rf-accent);
+  background: var(--rf-accent-soft);
+  color: var(--rf-accent-text);
+}
+
+/* Recording: solid red, with a ring that breathes unless motion is reduced. */
+.rf-dictation-button[aria-pressed="true"] {
+  border-color: var(--rf-recording);
+  background: var(--rf-recording);
+  color: #ffffff;
+}
+
+.rf-dictation-button-listening::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--rf-recording);
+  border-radius: 50%;
+  opacity: 0.5;
+  animation: rf-breathe 1.6s ease-in-out infinite;
+}
+
+/* Connecting: a dashed ring, so it reads differently from recording. */
+.rf-dictation-button-starting[aria-pressed="true"] {
+  border-style: dashed;
+  background: var(--rf-danger-soft);
+  color: var(--rf-recording);
+}
+
+.rf-dictation-button-finishing[aria-pressed="true"] {
+  border-color: var(--rf-text-subtle);
+  background: var(--rf-text-subtle);
+}
+
+.rf-dictation-button[aria-disabled="true"] {
+  border-style: dashed;
+  background: var(--rf-surface-sunken);
+  color: var(--rf-text-subtle);
+  cursor: not-allowed;
+}
+
+.rf-dictation-button[aria-disabled="true"]:hover {
+  border-color: var(--rf-border-control);
+  background: var(--rf-surface-sunken);
+  color: var(--rf-text-subtle);
+}
+
+@keyframes rf-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scale(1.18);
+    opacity: 0.15;
+  }
+}
+
+/* ---------- Reset ---------- */
+
+.rf-reset {
+  align-self: flex-end;
+  margin-top: var(--rf-space-2);
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--rf-text-muted);
+  font-size: var(--rf-text-sm);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.rf-reset:hover {
+  color: var(--rf-accent-text);
+}
+
+/* ---------- Settings dialog ---------- */
+
+.rf-dialog {
+  width: min(34rem, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--rf-border);
+  border-radius: 14px;
+  background: var(--rf-surface);
+  color: var(--rf-text);
+  box-shadow: 0 24px 48px rgb(16 24 40 / 18%);
+}
+
+.rf-dialog::backdrop {
+  background: rgb(16 24 40 / 40%);
+}
+
+.rf-dialog-body {
+  padding: var(--rf-space-6);
+}
+
+.rf-dialog-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.rf-dialog-header p {
+  margin: var(--rf-space-1) 0 0;
+  color: var(--rf-text-muted);
+  font-size: var(--rf-text-sm);
+}
+
+.rf-dialog-section {
+  margin-top: var(--rf-space-5);
+  padding-top: var(--rf-space-4);
+  border-top: 1px solid var(--rf-border);
+}
+
+.rf-dialog-section h3 {
+  margin: 0 0 var(--rf-space-3);
+  color: var(--rf-text-muted);
+  font-size: var(--rf-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rf-meter-style-dialog .rf-meter-row {
+  display: grid;
+  grid-template-columns: 6rem auto;
+}
+
+.rf-meter-style-dialog .rf-meter-label {
+  font-size: var(--rf-text-sm);
+}
+
+.rf-meter-style-dialog .rf-segment {
+  padding: 4px 10px;
+  font-size: var(--rf-text-sm);
+}
+
+.rf-meter-preview {
+  display: grid;
+  grid-template-columns: 6rem auto 1fr;
+  align-items: center;
+  gap: var(--rf-space-3);
+  margin-top: var(--rf-space-4);
+  padding: var(--rf-space-3);
+  border-radius: var(--rf-radius);
+  background: var(--rf-surface-sunken);
+}
+
+.rf-meter-preview-label {
+  color: var(--rf-text-muted);
+  font-size: var(--rf-text-sm);
+  font-weight: 600;
+}
+
+.rf-meter-preview-note {
+  color: var(--rf-text-muted);
+  font-size: var(--rf-text-xs);
+}
+
+.rf-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--rf-space-6);
+}
+
+/* ---------- Prototype bar (for reviewers, not part of the design) ---------- */
+
+.rf-proto-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rf-space-2) var(--rf-space-5);
+  padding: var(--rf-space-2) var(--rf-space-8);
+  border-bottom: 2px dashed #6b7280;
+  background: #1f2328;
+  color: #f3f4f6;
+  font-size: var(--rf-text-xs);
+}
+
+.rf-proto-bar :focus-visible {
+  outline-color: #93c5fd;
+}
+
+.rf-proto-title {
+  margin: 0;
+  margin-right: auto;
+}
+
+.rf-proto-bar a {
+  color: #93c5fd;
+}
+
+.rf-proto-bar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rf-proto-bar select {
+  border: 1px solid #6b7280;
+  border-radius: 4px;
+  padding: 2px 4px;
+  background: #2d333b;
+  color: #f3f4f6;
+}
+
+.rf-proto-bar fieldset {
+  display: flex;
+  gap: var(--rf-space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.rf-proto-bar legend {
+  float: left;
+  margin-right: var(--rf-space-2);
+}
+
+/* ---------- Narrower desktop windows ---------- */
+
+@media (max-width: 1100px) {
+  .rf-app {
+    padding-inline: var(--rf-space-6);
+  }
+
+  .rf-task-controls {
+    gap: var(--rf-space-3);
+  }
+
+  .rf-priority {
+    width: 112px;
+  }
+
+  .rf-meter-inline .rf-list-controls {
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 22rem);
+    grid-template-areas:
+      "notice meter"
+      "filter feedback";
+  }
+}
+
+@media (max-width: 900px) {
+  .rf-header {
+    grid-template-columns: 1fr auto;
+  }
+
+  .rf-dictation-hint {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .rf-list-controls {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "feedback feedback"
+      "filter notice";
+  }
+
+  .rf-meter-inline .rf-list-controls {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "feedback"
+      "notice"
+      "meter"
+      "filter";
+  }
+
+  .rf-meter-style-inline {
+    justify-self: start;
+    align-items: flex-start;
+  }
+
+  .rf-task {
+    flex-wrap: wrap;
+  }
+
+  .rf-task-controls {
+    width: 100%;
+    flex-wrap: wrap;
+    padding-left: 76px;
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+  }
+
+  .rf-dictation-button-listening::after {
+    animation: none;
+  }
+}
+
+/* ---------- Level meter: the app's rules, with token colours ---------- */
+
+.level-meter {
+  --level: 0;
+  --peak: 0;
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 72px;
+  height: 32px;
+}
+
+.level-meter-track {
+  position: absolute;
+  top: 11px;
+  right: 0;
+  left: 0;
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid var(--rf-border-control);
+  border-radius: 3px;
+  background: var(--rf-surface-sunken);
+}
+
+.level-meter-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--rf-done-edge);
+  transform: scaleX(var(--level));
+  transform-origin: left;
+}
+
+.level-meter-peak {
+  position: absolute;
+  top: 7px;
+  left: calc(var(--peak) * (100% - 2px));
+  width: 2px;
+  height: 18px;
+  background: var(--rf-text);
+}
+
+.level-meter svg {
+  display: block;
+}
+
+.level-meter-scale {
+  fill: none;
+  stroke: var(--rf-text-subtle);
+  stroke-width: 1.5;
+}
+
+.level-meter-hand {
+  stroke: var(--rf-recording);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  transform: rotate(calc((var(--level) - 0.5) * 100deg));
+  transform-box: view-box;
+  transform-origin: 36px 30px;
+}
+
+.level-meter-pivot {
+  fill: var(--rf-text);
+}
+
+.level-meter-bar-segments .level-meter-fill,
+.level-meter-bar-gradient .level-meter-fill {
+  transform: none;
+  clip-path: inset(0 calc((1 - var(--level)) * 100%) 0 0);
+}
+
+.level-meter-bar-segments .level-meter-fill {
+  background: repeating-linear-gradient(to right, #16a34a 0 5px, transparent 5px 7px);
+}
+
+.level-meter-bar-gradient .level-meter-fill {
+  background: linear-gradient(to right, #16a34a 55%, #eab308 78%, #dc2626);
+}
+
+.level-meter-bar-gradient .level-meter-peak {
+  background: linear-gradient(to right, #16a34a 55%, #eab308 78%, #dc2626) no-repeat;
+  background-position-x: calc(var(--peak) * -70px);
+  background-size: 72px 100%;
+}
+
+.level-meter-zone-low,
+.level-meter-zone-mid,
+.level-meter-zone-high {
+  fill: none;
+  stroke-width: 4;
+}
+
+.level-meter-zone-low {
+  stroke: #16a34a;
+}
+
+.level-meter-zone-mid {
+  stroke: #eab308;
+}
+
+.level-meter-zone-high {
+  stroke: #dc2626;
+}
+
+.level-meter-needle-zones .level-meter-hand {
+  stroke: var(--rf-text);
+  stroke-width: 2;
+}
+
+.level-meter-needle-ticks .level-meter-scale {
+  stroke-width: 1;
+}
+
+.level-meter-needle-ticks .level-meter-hand {
+  fill: var(--rf-recording);
+  stroke: none;
+}
+
+.level-meter-wave {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.level-meter-wave-bar {
+  --bar: var(--past, 0);
+  width: 2px;
+  height: 26px;
+  background: var(--rf-text);
+  clip-path: inset(calc((1 - var(--bar)) * (50% - 1px)) 0 round 1px);
+}
+
+.level-meter-waveform-pill .level-meter-wave {
+  inset: 4px 0;
+  border-radius: 12px;
+  background: #000000;
+}
+
+.level-meter-waveform-pill .level-meter-wave-bar {
+  height: 14px;
+  background: #ffffff;
+}
+
+.level-meter-waveform-pulse .level-meter-wave-bar {
+  --bar: calc(var(--level) * var(--shape));
+  background: var(--rf-accent);
+}
+
+.level-meter-waveform-columns .level-meter-wave-bar {
+  background: linear-gradient(to top, #16a34a 55%, #eab308 78%, #dc2626);
+  clip-path: inset(calc((1 - var(--bar)) * (100% - 2px)) 0 0 round 1px);
+}
