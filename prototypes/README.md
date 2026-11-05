@@ -8,6 +8,8 @@ Interactive concepts for TM #56, "Improve TaskManager styling and look and feel"
 | Modern | Built, awaiting Robin's feedback | `/prototypes/modern/` | [modern/README.md](modern/README.md) |
 | Distinctive | Built, awaiting Robin's feedback | `/prototypes/distinctive/` | [distinctive/README.md](distinctive/README.md) |
 
+Robin has chosen **Modern** as the design direction, with Distinctive's quick due dates (Today, Tomorrow, In a week). The plan for adopting it in the app is [modern-adoption-plan.md](modern-adoption-plan.md). The prototypes themselves are unchanged.
+
 ## Quick start
 
 ```sh
