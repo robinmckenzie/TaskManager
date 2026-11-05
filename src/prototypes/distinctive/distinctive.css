@@ -1,0 +1,1289 @@
+/*
+ * TM #56 prototype: Distinctive ("Docket").
+ *
+ * Standalone: neither the app's src/index.css nor another prototype's
+ * stylesheet is loaded. A warm paper page, near-black ink, a system serif for
+ * the masthead, heavy tabular numerals for the countdown blocks, square
+ * corners and ruled lines. Yellow "highlighter" marks focus and the selected
+ * entry. The level meter rules at the end are the app's, with their colours
+ * taken from the tokens; the meter designs are unchanged.
+ */
+
+:root {
+  /* Paper and ink. Contrast of text on the sheet, then on the page, is noted. */
+  --dk-page: #f4f0e6;
+  --dk-sheet: #fffdf7;
+  --dk-hover: #faf5e8;
+  --dk-rule: #e4dccb; /* decorative lines only */
+  --dk-edge: #857a6b; /* 4.1:1 on the sheet, 3.7:1 on the page: control edges */
+  --dk-ink: #1f1b16; /* 16.8:1, 15.0:1 */
+  --dk-ink-2: #5a5247; /* 7.6:1, 6.8:1; 6.9:1 on the highlight */
+
+  /* Highlighter: focus halo and the selected entry. Ink on either passes. */
+  --dk-highlight: #ffd84d; /* ink on it 12.4:1 */
+  --dk-selected: #fff3c4; /* ink 15.4:1, ink-2 6.9:1 */
+
+  /* Due states. */
+  --dk-late: #b42318; /* white on it 6.6:1; as text on the sheet 6.5:1 */
+  --dk-soon: #f5b800; /* ink on it 9.6:1 */
+  --dk-soon-edge: #7a4f00;
+  --dk-week: #7a4f00; /* 7.0:1 on the sheet; 6.2:1 on its tint */
+  --dk-week-tint: #fdefc8;
+  --dk-done: #1d6b41; /* 6.4:1 on the sheet; 5.6:1 on its tint */
+  --dk-done-tint: #e3f1e7;
+  --dk-rec: #b42318;
+
+  --dk-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --dk-serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, Cambria, serif;
+
+  --dk-content: 1120px;
+  --dk-radius: 3px;
+  --dk-ease: 0.1s ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--dk-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--dk-ink);
+  background: var(--dk-page);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* One focus style everywhere: an ink outline with a highlighter halo. */
+:focus-visible {
+  outline: 2px solid var(--dk-ink);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px var(--dk-highlight);
+}
+
+.dk-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.dk-small-caps {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.06em;
+  color: var(--dk-ink-2);
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 4px;
+  border: 1px solid var(--dk-edge);
+  border-bottom-width: 2px;
+  border-radius: var(--dk-radius);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+  background: var(--dk-sheet);
+}
+
+/* ---------- Reviewer bar (not part of the design) ---------- */
+
+.dk-review-bar {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: center;
+  padding: 8px 24px;
+  font-size: 13px;
+  color: #ffffff;
+  background: #111111;
+  border-bottom: 2px dashed #666666;
+}
+
+.dk-review-bar p {
+  flex: 1;
+  margin: 0;
+}
+
+.dk-review-bar a {
+  color: #ffffff;
+}
+
+.dk-review-bar label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dk-review-bar select {
+  padding: 2px 4px;
+  color: #111111;
+  background: #ffffff;
+  border: 1px solid #999999;
+  border-radius: 2px;
+}
+
+.dk-review-bar :focus-visible {
+  outline-color: #ffffff;
+  box-shadow: none;
+}
+
+/* ---------- Page shell: the list scrolls, the dock stays ---------- */
+
+.dk-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.dk-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.dk-main {
+  max-width: calc(var(--dk-content) + 64px);
+  margin: 0 auto;
+  padding: 0 32px 32px;
+}
+
+/* ---------- Header ---------- */
+
+.dk-header {
+  padding: 28px 0 18px;
+}
+
+.dk-masthead {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  padding-bottom: 14px;
+  border-bottom: 3px double var(--dk-ink);
+}
+
+.dk-masthead h1 {
+  margin: 0;
+  font-family: var(--dk-serif);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.dk-count-text {
+  margin: 0;
+  font-family: var(--dk-serif);
+  font-size: 17px;
+  font-style: italic;
+  color: var(--dk-ink-2);
+}
+
+.dk-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-left: auto;
+  align-self: center;
+}
+
+.dk-header-row {
+  display: flex;
+  gap: 16px 32px;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+}
+
+.dk-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.dk-filter-label {
+  margin-right: 6px;
+}
+
+.dk-filter-option {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 14px;
+  background: var(--dk-sheet);
+  border: 1px solid var(--dk-edge);
+  border-radius: 16px;
+  transition: background var(--dk-ease);
+}
+
+.dk-filter-option:has(.dk-avatar) {
+  padding-left: 4px;
+}
+
+.dk-filter-option:hover {
+  background: var(--dk-hover);
+}
+
+/* Chosen: filled with ink, and bold, so not by colour alone. */
+.dk-filter-option[aria-pressed="true"] {
+  font-weight: 700;
+  color: var(--dk-sheet);
+  background: var(--dk-ink);
+  border-color: var(--dk-ink);
+}
+
+.dk-hint {
+  max-width: 400px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--dk-ink-2);
+  text-align: right;
+}
+
+.dk-hint-mic {
+  display: inline-flex;
+  vertical-align: -3px;
+}
+
+/* ---------- Buttons ---------- */
+
+.dk-button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--dk-radius);
+  transition:
+    background var(--dk-ease),
+    color var(--dk-ease);
+}
+
+.dk-button-primary {
+  color: var(--dk-sheet);
+  background: var(--dk-ink);
+}
+
+.dk-button-primary:hover {
+  background: #3a332b;
+}
+
+.dk-button-quiet {
+  font-weight: 500;
+  background: var(--dk-sheet);
+  border-color: var(--dk-edge);
+}
+
+.dk-button-quiet:hover {
+  background: var(--dk-hover);
+}
+
+.dk-button-danger {
+  height: 32px;
+  color: var(--dk-late);
+  background: var(--dk-sheet);
+  border-color: var(--dk-late);
+}
+
+.dk-button-danger:hover {
+  color: #ffffff;
+  background: var(--dk-late);
+}
+
+.dk-link {
+  padding: 2px 0;
+  font-size: 13px;
+  color: var(--dk-ink-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  background: none;
+  border: 0;
+}
+
+.dk-link:hover {
+  color: var(--dk-ink);
+}
+
+/* ---------- Avatars ---------- */
+
+.dk-avatar {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dk-ink);
+  background: var(--dk-week-tint);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--dk-edge);
+}
+
+.dk-avatar-sm {
+  width: 24px;
+  height: 24px;
+}
+
+.dk-avatar-md {
+  width: 34px;
+  height: 34px;
+  font-size: 13px;
+}
+
+.dk-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---------- The list: one ruled sheet of entries ---------- */
+
+.dk-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--dk-sheet);
+  border: 1px solid var(--dk-rule);
+  border-top: 2px solid var(--dk-ink);
+}
+
+.dk-entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: 16px 72px minmax(0, 1fr) 148px 36px;
+  gap: 14px;
+  align-items: center;
+  padding: 10px 14px 10px 10px;
+  border-bottom: 1px solid var(--dk-rule);
+  transition: background var(--dk-ease);
+}
+
+.dk-entry:last-child {
+  border-bottom: 0;
+}
+
+.dk-entry:hover {
+  background: var(--dk-hover);
+}
+
+/* The selected entry: highlighter wash, an ink bar on the left, and the "Editing below" tag. */
+.dk-entry-selected,
+.dk-entry-selected:hover {
+  background: var(--dk-selected);
+  box-shadow: inset 4px 0 0 var(--dk-ink);
+}
+
+.dk-entry-dragging {
+  opacity: 0.55;
+}
+
+.dk-grip {
+  display: grid;
+  place-items: center;
+  height: 40px;
+  color: var(--dk-edge);
+  cursor: grab;
+}
+
+.dk-grip:hover {
+  color: var(--dk-ink);
+}
+
+/* ---------- Countdown block ---------- */
+
+.dk-count-cell {
+  cursor: pointer;
+}
+
+.dk-count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 62px;
+  padding: 4px 2px;
+  line-height: 1;
+  text-align: center;
+  border: 1px solid var(--dk-edge);
+  border-radius: var(--dk-radius);
+  background: var(--dk-sheet);
+}
+
+.dk-count-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dk-count-figure {
+  margin: 3px 0 2px;
+  font-size: 26px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.02em;
+}
+
+.dk-count-word {
+  margin: 5px 0 4px;
+  font-size: 18px;
+}
+
+.dk-count-unit {
+  font-size: 11px;
+}
+
+.dk-count-tick {
+  margin-top: 3px;
+}
+
+/* Overdue: solid red with white text. The strongest mark on the page. */
+.dk-count-overdue {
+  color: #ffffff;
+  background: var(--dk-late);
+  border-color: var(--dk-late);
+}
+
+/* Due today or tomorrow: solid yellow with ink text. */
+.dk-count-due-soon {
+  color: var(--dk-ink);
+  background: var(--dk-soon);
+  border-color: var(--dk-soon-edge);
+}
+
+/* This week: tinted, with brown text. */
+.dk-count-due-this-week {
+  color: var(--dk-week);
+  background: var(--dk-week-tint);
+  border-color: var(--dk-week);
+}
+
+/* Later: plain outline. */
+.dk-count-due-later {
+  color: var(--dk-ink-2);
+}
+
+/* No date: dashed outline. */
+.dk-count-no-due-date {
+  color: var(--dk-ink-2);
+  border-style: dashed;
+}
+
+/* Completed: green with a tick. */
+.dk-count-completed {
+  color: var(--dk-done);
+  background: var(--dk-done-tint);
+  border-color: var(--dk-done);
+}
+
+/* ---------- Entry body: title, then the meta line ---------- */
+
+.dk-body {
+  min-width: 0;
+}
+
+.dk-title-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  gap: 6px;
+  align-items: start;
+}
+
+/* The title reads as text until hovered or focused. */
+.dk-title {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 2px 6px;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.35;
+  resize: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--dk-radius);
+}
+
+.dk-title:hover {
+  border-color: var(--dk-rule);
+  background: var(--dk-sheet);
+}
+
+.dk-title:focus {
+  background: var(--dk-sheet);
+  border-color: var(--dk-ink);
+}
+
+.dk-entry-completed .dk-title {
+  font-weight: 500;
+  color: var(--dk-ink-2);
+}
+
+/* The title being dictated into: a red double edge. */
+.dk-entry-dictating .dk-title {
+  border-color: var(--dk-rec);
+  box-shadow: 0 0 0 2px var(--dk-rec);
+}
+
+.dk-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  align-items: center;
+  margin: 3px 0 0;
+  padding-left: 7px;
+  font-size: 13px;
+  color: var(--dk-ink-2);
+}
+
+.dk-meta-part {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.dk-meta-part:hover {
+  color: var(--dk-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dk-meta-date {
+  font-variant-numeric: tabular-nums;
+}
+
+.dk-entry-overdue .dk-meta-date {
+  font-weight: 600;
+  color: var(--dk-late);
+}
+
+.dk-pips {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.dk-pip {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--dk-ink-2);
+}
+
+.dk-pip-on {
+  background: var(--dk-ink);
+  border-color: var(--dk-ink);
+}
+
+.dk-entry-completed .dk-pip-on {
+  background: var(--dk-ink-2);
+  border-color: var(--dk-ink-2);
+}
+
+.dk-editing-tag {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--dk-ink);
+  border: 1px solid var(--dk-ink);
+  border-radius: var(--dk-radius);
+}
+
+/* ---------- Microphone ---------- */
+
+.dk-mic {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-top: 1px;
+  padding: 0;
+  color: var(--dk-ink-2);
+  background: transparent;
+  border: 1px solid var(--dk-edge);
+  border-radius: 50%;
+  transition:
+    background var(--dk-ease),
+    color var(--dk-ease);
+}
+
+.dk-mic:hover {
+  color: var(--dk-ink);
+  background: var(--dk-sheet);
+}
+
+.dk-mic[aria-disabled="true"] {
+  color: var(--dk-edge);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+/* Connecting: dashed ring. Listening: filled red. Finishing: red outline. */
+.dk-mic-starting {
+  color: var(--dk-rec);
+  border: 2px dashed var(--dk-rec);
+}
+
+.dk-mic-listening,
+.dk-mic-listening:hover {
+  color: #ffffff;
+  background: var(--dk-rec);
+  border-color: var(--dk-rec);
+}
+
+.dk-mic-finishing {
+  color: var(--dk-rec);
+  border: 2px solid var(--dk-rec);
+}
+
+/* ---------- Assignee and done ---------- */
+
+.dk-who {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  height: 44px;
+  padding: 0 8px 0 5px;
+  font-size: 14px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 22px;
+}
+
+.dk-who:hover {
+  background: var(--dk-sheet);
+  border-color: var(--dk-edge);
+}
+
+.dk-who-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dk-done-cell {
+  display: grid;
+  place-items: center;
+}
+
+/* A square ledger box, ticked in ink. */
+.dk-done {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  appearance: none;
+  background: var(--dk-sheet);
+  border: 2px solid var(--dk-edge);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.dk-done:hover {
+  border-color: var(--dk-ink);
+}
+
+.dk-done:checked {
+  background: var(--dk-done)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%23ffffff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 18px no-repeat;
+  border-color: var(--dk-done);
+}
+
+.dk-empty {
+  padding: 32px;
+  margin: 0;
+  font-family: var(--dk-serif);
+  font-size: 17px;
+  font-style: italic;
+  color: var(--dk-ink-2);
+  text-align: center;
+  background: var(--dk-sheet);
+  border: 1px solid var(--dk-rule);
+  border-top: 2px solid var(--dk-ink);
+}
+
+.dk-list-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+}
+
+/* ---------- The dock ---------- */
+
+.dk-dock {
+  flex: none;
+  background: var(--dk-sheet);
+  border-top: 3px double var(--dk-ink);
+  box-shadow: 0 -6px 16px rgb(31 27 22 / 8%);
+}
+
+.dk-dock-inner {
+  max-width: calc(var(--dk-content) + 64px);
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+.dk-editor {
+  padding: 12px 0 12px;
+}
+
+.dk-editor-head {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dk-editor-heading {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  min-width: 0;
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.dk-editor-title {
+  overflow: hidden;
+  font-family: var(--dk-serif);
+  font-size: 18px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dk-editor-empty {
+  margin: 0;
+  padding: 22px 0;
+  font-family: var(--dk-serif);
+  font-size: 16px;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--dk-ink-2);
+}
+
+.dk-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin-top: 8px;
+}
+
+.dk-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  border: 0;
+}
+
+.dk-field-label {
+  line-height: 1;
+}
+
+.dk-field-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.dk-chip {
+  height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+  white-space: nowrap;
+  background: var(--dk-sheet);
+  border: 1px solid var(--dk-edge);
+  border-radius: var(--dk-radius);
+}
+
+.dk-chip:hover {
+  background: var(--dk-hover);
+}
+
+/* Chosen: ink fill and bold. */
+.dk-chip[aria-pressed="true"] {
+  font-weight: 700;
+  color: var(--dk-sheet);
+  background: var(--dk-ink);
+  border-color: var(--dk-ink);
+}
+
+.dk-date {
+  height: 34px;
+  padding: 0 8px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  background: var(--dk-sheet);
+  border: 1px solid var(--dk-edge);
+  border-radius: var(--dk-radius);
+}
+
+.dk-scale-end {
+  font-size: 12px;
+  color: var(--dk-ink-2);
+}
+
+/* A radio stretched invisibly over each label, so clicks, keys and screen readers work as usual. */
+.dk-segment,
+.dk-person {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  background: var(--dk-sheet);
+  border: 1px solid var(--dk-edge);
+  border-radius: var(--dk-radius);
+  cursor: pointer;
+}
+
+.dk-segment input,
+.dk-person input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.dk-segment {
+  justify-content: center;
+  width: 34px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.dk-person {
+  gap: 6px;
+  padding: 0 10px 0 4px;
+  font-size: 13px;
+}
+
+.dk-segment:hover,
+.dk-person:hover {
+  background: var(--dk-hover);
+}
+
+.dk-segment:has(input:checked),
+.dk-person:has(input:checked) {
+  font-weight: 700;
+  color: var(--dk-sheet);
+  background: var(--dk-ink);
+  border-color: var(--dk-ink);
+}
+
+.dk-segment:has(input:focus-visible),
+.dk-person:has(input:focus-visible) {
+  outline: 2px solid var(--dk-ink);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px var(--dk-highlight);
+}
+
+/* ---------- Dictation line, at the foot of the dock ---------- */
+
+.dk-dictation-line {
+  display: flex;
+  gap: 8px 24px;
+  align-items: center;
+  min-height: 44px;
+  border-top: 1px solid var(--dk-rule);
+}
+
+.dk-status {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.dk-status-mic {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: var(--dk-ink-2);
+  border: 1px solid var(--dk-edge);
+  border-radius: 50%;
+}
+
+.dk-status-starting .dk-status-mic {
+  color: var(--dk-rec);
+  border: 2px dashed var(--dk-rec);
+}
+
+.dk-status-listening .dk-status-mic {
+  color: #ffffff;
+  background: var(--dk-rec);
+  border-color: var(--dk-rec);
+}
+
+.dk-status-finishing .dk-status-mic {
+  color: var(--dk-rec);
+  border: 2px solid var(--dk-rec);
+}
+
+.dk-status-text {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* An empty status says so on screen; the empty alternative text keeps it out of the live region. */
+.dk-status-text:empty::before {
+  content: "Dictation is off." / "";
+  color: var(--dk-ink-2);
+}
+
+.dk-status-meter {
+  display: inline-flex;
+}
+
+.dk-notice {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  font-size: 12px;
+  color: var(--dk-ink-2);
+}
+
+.dk-meter-chooser {
+  position: relative;
+}
+
+.dk-meter-button {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  background: var(--dk-sheet);
+  border: 1px solid var(--dk-edge);
+  border-radius: var(--dk-radius);
+}
+
+.dk-meter-button:hover {
+  background: var(--dk-hover);
+}
+
+.dk-meter-button-label {
+  font-weight: 600;
+}
+
+.dk-caret {
+  transition: transform var(--dk-ease);
+}
+
+.dk-caret-open {
+  transform: rotate(180deg);
+}
+
+/* Opens upwards, above the dock. */
+.dk-meter-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 360px;
+  padding: 14px;
+  background: var(--dk-sheet);
+  border: 1px solid var(--dk-ink);
+  border-radius: var(--dk-radius);
+  box-shadow: 4px 4px 0 var(--dk-ink);
+}
+
+.dk-meter-panel[hidden] {
+  display: none;
+}
+
+.dk-meter-preview {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding-bottom: 10px;
+  font-size: 12px;
+  color: var(--dk-ink-2);
+  border-bottom: 1px solid var(--dk-rule);
+}
+
+.dk-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.dk-toggle-label {
+  width: 44px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dk-ink-2);
+}
+
+.dk-toggle {
+  height: 28px;
+  padding: 0 9px;
+  font-size: 12px;
+  background: var(--dk-sheet);
+  border: 1px solid var(--dk-edge);
+  border-radius: var(--dk-radius);
+}
+
+.dk-toggle:hover {
+  background: var(--dk-hover);
+}
+
+/* Chosen: ink fill, bold, and a tick kept out of the accessible name. */
+.dk-toggle[aria-pressed="true"] {
+  font-weight: 700;
+  color: var(--dk-sheet);
+  background: var(--dk-ink);
+  border-color: var(--dk-ink);
+}
+
+.dk-toggle[aria-pressed="true"]::before {
+  content: "\2713\00a0" / "";
+}
+
+/* ---------- Narrower desktop widths ---------- */
+
+@media (max-width: 1240px) {
+  /* The dock's people show photos only; each keeps its name for assistive technology and as a tooltip. */
+  .dk-person {
+    padding: 0 4px;
+  }
+
+  .dk-person-name {
+    display: none;
+  }
+
+  .dk-notice span {
+    max-width: 200px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .dk-main,
+  .dk-dock-inner {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  .dk-entry {
+    grid-template-columns: 16px 72px minmax(0, 1fr) 120px 32px;
+    gap: 12px;
+  }
+
+  .dk-hint {
+    max-width: 300px;
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+}
+
+/* ---------- Level meter: the app's rules, with token colours ---------- */
+.level-meter {
+  --level: 0;
+  --peak: 0;
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 72px;
+  height: 32px;
+}
+
+.level-meter-track {
+  position: absolute;
+  top: 11px;
+  right: 0;
+  left: 0;
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid var(--dk-edge);
+  border-radius: 2px;
+  background: var(--dk-page);
+}
+
+.level-meter-fill {
+  position: absolute;
+  inset: 0;
+  background: #16a34a;
+  transform: scaleX(var(--level));
+  transform-origin: left;
+}
+
+.level-meter-peak {
+  position: absolute;
+  top: 7px;
+  left: calc(var(--peak) * (100% - 2px));
+  width: 2px;
+  height: 18px;
+  background: var(--dk-ink);
+}
+
+.level-meter svg {
+  display: block;
+}
+
+.level-meter-scale {
+  fill: none;
+  stroke: var(--dk-ink-2);
+  stroke-width: 1.5;
+}
+
+.level-meter-hand {
+  stroke: var(--dk-rec);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  transform: rotate(calc((var(--level) - 0.5) * 100deg));
+  transform-box: view-box;
+  transform-origin: 36px 30px;
+}
+
+.level-meter-pivot {
+  fill: var(--dk-ink);
+}
+
+.level-meter-bar-segments .level-meter-fill,
+.level-meter-bar-gradient .level-meter-fill {
+  transform: none;
+  clip-path: inset(0 calc((1 - var(--level)) * 100%) 0 0);
+}
+
+.level-meter-bar-segments .level-meter-fill {
+  background: repeating-linear-gradient(to right, #16a34a 0 5px, transparent 5px 7px);
+}
+
+.level-meter-bar-gradient .level-meter-fill {
+  background: linear-gradient(to right, #16a34a 55%, #eab308 78%, #dc2626);
+}
+
+.level-meter-bar-gradient .level-meter-peak {
+  background: linear-gradient(to right, #16a34a 55%, #eab308 78%, #dc2626) no-repeat;
+  background-position-x: calc(var(--peak) * -70px);
+  background-size: 72px 100%;
+}
+
+.level-meter-zone-low,
+.level-meter-zone-mid,
+.level-meter-zone-high {
+  fill: none;
+  stroke-width: 4;
+}
+
+.level-meter-zone-low {
+  stroke: #16a34a;
+}
+
+.level-meter-zone-mid {
+  stroke: #eab308;
+}
+
+.level-meter-zone-high {
+  stroke: #dc2626;
+}
+
+.level-meter-needle-zones .level-meter-hand {
+  stroke: var(--dk-ink);
+  stroke-width: 2;
+}
+
+.level-meter-needle-ticks .level-meter-scale {
+  stroke-width: 1;
+}
+
+.level-meter-needle-ticks .level-meter-hand {
+  fill: var(--dk-rec);
+  stroke: none;
+}
+
+.level-meter-wave {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.level-meter-wave-bar {
+  --bar: var(--past, 0);
+  width: 2px;
+  height: 26px;
+  background: var(--dk-ink);
+  clip-path: inset(calc((1 - var(--bar)) * (50% - 1px)) 0 round 1px);
+}
+
+.level-meter-waveform-pill .level-meter-wave {
+  inset: 4px 0;
+  border-radius: 12px;
+  background: #000000;
+}
+
+.level-meter-waveform-pill .level-meter-wave-bar {
+  height: 14px;
+  background: #ffffff;
+}
+
+.level-meter-waveform-pulse .level-meter-wave-bar {
+  --bar: calc(var(--level) * var(--shape));
+  background: var(--dk-ink);
+}
+
+.level-meter-waveform-columns .level-meter-wave-bar {
+  background: linear-gradient(to top, #16a34a 55%, #eab308 78%, #dc2626);
+  clip-path: inset(calc((1 - var(--bar)) * (100% - 2px)) 0 0 round 1px);
+}
