@@ -29,7 +29,7 @@ afterEach(() => {
 
 it("shows each sample task's due state with its own icon, and a short date unless there is no due date", () => {
     const rows = renderRows(null)
-    const dueOf = (row: string): string => row.match(/<span class="task-due [\s\S]*?<\/span><\/span>/)?.[0] ?? ""
+    const dueOf = (row: string): string => row.match(/<span id="[^"]*" class="task-due [\s\S]*?<\/span><\/span>/)?.[0] ?? ""
 
     const kinds = rows.map((row) => row.match(/task-due task-due-([a-z-]+)"/)?.[1])
     const icons = rows.map((row) => dueOf(row).match(/<path d="([^"]{0,60})/)?.[1])
@@ -70,7 +70,7 @@ it("keeps the grip and the microphone button in every row", () => {
 it("shows a priority outside 1 to 5 without breaking the row", () => {
     const [row] = renderRows([savedTask({ priority: 9 })])
 
-    expect(row).toContain('<span class="task-priority-number">9</span>')
+    expect(row).toContain('<span class="task-priority-number" aria-hidden="true">9</span>')
     expect(row.match(/priority-bar-on/g)).toHaveLength(5)
 })
 

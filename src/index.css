@@ -615,54 +615,218 @@ button {
   white-space: nowrap;
 }
 
-/*
- * The editing controls, until the details panel replaces them (stage 3). They
- * sit under the title, in the quiet style of the summary.
- */
-.task-editing {
+/* The summary is one button: it opens the details panel beneath the row. */
+button.task-summary {
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+button.task-summary:hover {
+  background: var(--accent-soft);
+}
+
+button.task-summary[aria-expanded="true"] {
+  background: var(--accent-soft);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- The details panel ---------- */
+
+.task-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px 24px;
+  margin: 4px 8px 12px 52px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgb(16 18 29 / 6%);
+}
+
+.detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-label {
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+
+.detail-due {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 16px;
-  padding: 0 8px 8px 62px;
-  font-size: 13px;
-  color: var(--muted);
+  gap: 6px;
 }
 
-.task-editing label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.task-editing select,
-.task-editing input[type="date"] {
-  padding: 3px 6px;
+.detail-date {
+  height: 32px;
+  padding: 0 8px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
   background: #ffffff;
   border: 1px solid var(--edge);
   border-radius: var(--radius-sm);
 }
 
-.priority-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
+.quick-date {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13.5px;
+  color: var(--muted);
+  background: #ffffff;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  transition:
+    background var(--ease),
+    border-color var(--ease);
 }
 
-.priority-control input {
-  width: 110px;
+.quick-date:hover {
+  background: var(--hover);
+}
+
+/* The chosen date: a thicker accent edge, a tint and bold text, so not by colour alone. */
+.quick-date[aria-pressed="true"] {
+  font-weight: 650;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.detail-segmented {
+  display: inline-flex;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+}
+
+.detail-segment {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 30px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.detail-segment + .detail-segment {
+  border-left: 1px solid var(--border);
+}
+
+.detail-segment:first-child {
+  border-radius: 7px 0 0 7px;
+}
+
+.detail-segment:last-child {
+  border-radius: 0 7px 7px 0;
+}
+
+.detail-segment:hover {
+  background: var(--hover);
+}
+
+.detail-segment:has(input:checked) {
+  color: #ffffff;
+  background: var(--accent);
+}
+
+.detail-segment:has(input:focus-visible) {
+  z-index: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.detail-segment input,
+.detail-person input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.detail-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.detail-person {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px 0 4px;
+  font-size: 13.5px;
+  color: var(--muted);
+  background: #ffffff;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.detail-person:hover {
+  background: var(--hover);
+}
+
+/* Chosen: a thicker accent edge, a tint, bold text and a tick, so not by colour alone. */
+.detail-person:has(input:checked) {
+  font-weight: 650;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.detail-person:has(input:checked)::after {
+  content: "\2713" / "";
+}
+
+.detail-person:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .delete-button {
-  padding: 0;
+  height: 32px;
+  margin-left: auto;
+  padding: 0 12px;
   color: var(--danger);
-  background: transparent;
-  border: 0;
+  background: #ffffff;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
 }
 
 .delete-button:hover {
-  text-decoration: underline;
+  background: #fff1f1;
 }
 
 /* Under reduced motion, nothing transitions. */

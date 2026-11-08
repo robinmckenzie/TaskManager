@@ -27,7 +27,7 @@ it("shows the overdue sample task first and the completed one last, which is not
     expect(first.startsWith("task-overdue")).toBe(true)
     expect(first).toContain("2 days overdue")
     expect(first).toContain('<span class="task-assignee-name">Bob</span>')
-    expect(first).toContain('<span class="task-priority-number">5</span>')
+    expect(first).toContain('<span class="task-priority-number" aria-hidden="true">5</span>')
 
     expect(last).toContain('>Deploy initial build</textarea>')
     expect(last.startsWith("task-completed")).toBe(true)
@@ -85,17 +85,16 @@ it("names each control on a task card after what it does and its task", () => {
     for (const name of [
         "Task title",
         "Start dictation into Fix authentication bug",
-        "Due date for Fix authentication bug",
-        "Priority for Fix authentication bug",
-        "Assignee for Fix authentication bug",
+        "Edit details for Fix authentication bug",
         "Complete Fix authentication bug",
-        "Delete Fix authentication bug",
     ]) {
         expect(first).toContain(`aria-label="${name}"`)
     }
 
-    expect(first).toContain('aria-valuetext="5 of 5"')
-    expect(second).toContain('aria-label="Delete Prepare sprint demo"')
+    // The details panel starts closed, and its controls are named in TaskDetails.test.ts.
+    expect(first).toContain('aria-expanded="false"')
+    expect(first).not.toContain("task-details")
+    expect(second).toContain('aria-label="Edit details for Prepare sprint demo"')
 })
 
 it("says how to dictate, with the button's microphone in place of the word", () => {

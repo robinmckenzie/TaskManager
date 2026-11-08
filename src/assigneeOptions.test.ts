@@ -12,7 +12,7 @@ const getFilterNames = (markup: string): string[] => {
     return [...filter!.matchAll(/<span class="filter-name">([^<]*)<\/span>/g)].map((match) => match[1])
 }
 
-it("shares the sorted user options with the filter list and every task dropdown", () => {
+it("sorts the users once, for the filter list and for the panels", () => {
     const roster = Object.freeze([
         { id: "1", name: "Zoe", photo: "" },
         { id: "2", name: "Amy", photo: "" },
@@ -23,14 +23,7 @@ it("shares the sorted user options with the filter list and every task dropdown"
     vi.stubGlobal("localStorage", { getItem: () => null })
     try {
         const markup = renderToStaticMarkup(createElement(App))
-        const dropdowns = [...markup.matchAll(/<select[^>]*>([\s\S]*?)<\/select>/g)]
-            .map((select) => [...select[1].matchAll(/<option[^>]*>([^<]*)<\/option>/g)]
-                .map((option) => option[1]))
         expect(getFilterNames(markup)).toEqual(["All assignees", "Amy", "Ben", "Zoe"])
-        expect(dropdowns).toHaveLength(7)
-        for (const options of dropdowns) {
-            expect(options).toEqual(["Amy", "Ben", "Zoe"])
-        }
         expect(sort).toHaveBeenCalledTimes(1)
         expect(userHelpers.getNewTaskAssignee("", roster)).toBe("1")
         expect(roster.map((user) => user.name)).toEqual(["Zoe", "Amy", "Ben"])
