@@ -1,6 +1,6 @@
 import { addDays, format } from "date-fns"
 import { describe, expect, it } from "vitest"
-import { describeDueStatus, getDaysUntilDue } from "./dueDates"
+import { describeDueStatus, getDaysUntilDue, getDueState } from "./dueDates"
 import { createSampleTasks } from "./tasks"
 
 const toDueDate = (date: Date): string => format(date, "yyyy-MM-dd")
@@ -85,5 +85,48 @@ describe("describeDueStatus", () => {
         expect(describeDueStatus(-5, true)).toBe("Completed")
         expect(describeDueStatus(0, true)).toBe("Completed")
         expect(describeDueStatus(4, true)).toBe("Completed")
+    })
+})
+
+describe("getDueState", () => {
+    const now = new Date(2026, 9, 8, 15, 30)
+    const dueIn = (days: number): string => toDueDate(addDays(now, days))
+
+    it.each([
+        { days: -1, kind: "overdue" },
+        { days: 0, kind: "due-soon" },
+        { days: 1, kind: "due-soon" },
+        { days: 2, kind: "due-this-week" },
+        { days: 3, kind: "due-this-week" },
+        { days: 4, kind: "later" },
+        { days: 21, kind: "later" },
+    ])("puts an incomplete task due in $days days in $kind", ({ days, kind }) => {
+        expect(getDueState(dueIn(days), false, now)).toEqual({ kind, daysUntilDue: days })
+    })
+
+    it("has no due state for a missing or unusable date", () => {
+        expect(getDueState("", false, now)).toEqual({ kind: "none", daysUntilDue: null })
+        expect(getDueState("not a date", false, now)).toEqual({ kind: "none", daysUntilDue: null })
+    })
+
+    it.each([
+        { description: "past", dueDate: dueIn(-5), daysUntilDue: -5 },
+        { description: "future", dueDate: dueIn(5), daysUntilDue: 5 },
+        { description: "empty", dueDate: "", daysUntilDue: null },
+        { description: "unusable", dueDate: "not a date", daysUntilDue: null },
+    ])("puts a completed task with a $description date in completed", ({ dueDate, daysUntilDue }) => {
+        expect(getDueState(dueDate, true, now)).toEqual({ kind: "completed", daysUntilDue })
+    })
+
+    it("applies the thresholds across a month end and a year end", () => {
+        expect(getDueState("2026-11-01", false, new Date(2026, 9, 31, 23, 30)).kind).toBe("due-soon")
+        expect(getDueState("2027-01-02", false, new Date(2026, 11, 31, 18)).kind).toBe("due-this-week")
+        expect(getDueState("2026-12-31", false, new Date(2027, 0, 1, 0, 5)).kind).toBe("overdue")
+    })
+
+    it("keeps the day count that the wording uses", () => {
+        const { daysUntilDue } = getDueState(dueIn(2), false, now)
+
+        expect(describeDueStatus(daysUntilDue, false)).toBe("2 days remaining")
     })
 })
