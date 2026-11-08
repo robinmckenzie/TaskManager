@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { scrollCaretIntoView } from "./caretScroll"
-import { findFieldId, focusFieldWithSavedSelection, isTextArea } from "./dictationFields"
+import { findFieldId, findShortcutTargetId, focusFieldWithSavedSelection, isTextArea } from "./dictationFields"
 import type { DictationField } from "./dictationFields"
 
 type FieldKind = "input" | "textarea"
@@ -41,6 +41,20 @@ describe.each<FieldKind>(["input", "textarea"])("dictation field helpers for a %
         const buttons = new Map([["a", button], ["b", {}]])
 
         expect(findFieldId(buttons, button)).toBe("a")
+    })
+
+    it("targets the focused field, or the focused microphone button, for the shortcut", () => {
+        const first = createField(kind, "one")
+        const second = createField(kind, "two")
+        const fields = new Map([["a", asField(first)], ["b", asField(second)]])
+        const micA = {}
+        const micB = {}
+        const buttons = new Map([["a", micA], ["b", micB]])
+
+        expect(findShortcutTargetId(fields, buttons, first)).toBe("a")
+        expect(findShortcutTargetId(fields, buttons, micB)).toBe("b")
+        expect(findShortcutTargetId(fields, buttons, {})).toBeUndefined()
+        expect(findShortcutTargetId(fields, buttons, null)).toBeUndefined()
     })
 
     it("restores a saved selection when focusing", () => {

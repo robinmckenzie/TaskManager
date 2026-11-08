@@ -14,7 +14,7 @@ import { DictationController } from "./dictationController"
 import type { DictationPhase, DictationState } from "./dictationController"
 import { describeDictationError } from "./dictationMessages"
 import { DictationSession } from "./dictationSession"
-import { findFieldId, focusFieldWithSavedSelection } from "./dictationFields"
+import { findFieldId, findShortcutTargetId, focusFieldWithSavedSelection } from "./dictationFields"
 import type { DictationField } from "./dictationFields"
 import { createDictationTargets, getInputSelection } from "./dictationTargets"
 import type { TextRange } from "./insertionText"
@@ -187,7 +187,7 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         }
 
         const focused = document.activeElement
-        const targetId = findFieldId(inputs.current, focused) ?? findFieldId(buttons.current, focused)
+        const targetId = findShortcutTargetId(inputs.current, buttons.current, focused)
 
         if (targetId) {
             startInInput(targetId)

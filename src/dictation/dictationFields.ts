@@ -46,3 +46,13 @@ export const focusFieldWithSavedSelection = (
         Math.min(saved?.end ?? length, length),
     )
 }
+
+/**
+ * The target a Ctrl + Alt press means: the one whose field has focus, or else
+ * the one whose microphone button has focus. Undefined when neither does.
+ */
+export const findShortcutTargetId = (
+    fields: Map<string, object>,
+    buttons: Map<string, object>,
+    focused: object | null,
+): string | undefined => findFieldId(fields, focused) ?? findFieldId(buttons, focused)

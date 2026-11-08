@@ -15,7 +15,7 @@ import type { TextRange, TranscriptToken } from "./insertionText"
 type FieldKind = "input" | "textarea"
 
 interface FakeField extends TargetInput {
-    kind: FieldKind
+    localName: FieldKind
     setSelectionRange: ReturnType<typeof vi.fn<(start: number, end: number) => void>>
     focus(): void
 }
@@ -29,7 +29,7 @@ const createApp = (kind: FieldKind, initial: Record<string, string>) => {
 
     Object.entries(initial).forEach(([id, text]) => {
         const field: FakeField = {
-            kind,
+            localName: kind,
             value: text,
             selectionStart: text.length,
             selectionEnd: text.length,
@@ -155,6 +155,7 @@ describe.each<FieldKind>(["input", "textarea"])("dictation into a %s", (kind) =>
 
         expect(app.revealed.length).toBeGreaterThanOrEqual(2)
         expect(app.revealed.every((field) => field === app.fields.get("a"))).toBe(true)
+        expect(app.revealed.every((field) => field.localName === kind)).toBe(true)
     })
 
     it("restores the selection a field had when it lost focus", () => {
