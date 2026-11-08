@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, parseISO } from "date-fns"
+import { differenceInCalendarDays, format, isValid, parseISO } from "date-fns"
 
 /**
  * Returns the number of local calendar days until a task is due, whatever the
@@ -31,6 +31,17 @@ export const describeDueStatus = (daysUntilDue: number | null, completed: boolea
     }
 
     return daysUntilDue === 0 ? "Due today" : `${formatDays(daysUntilDue)} remaining`
+}
+
+/**
+ * Words a due date briefly for a task row, such as "6 Nov". A due date that is
+ * blank or cannot be read gives an empty string, so that a saved task with an
+ * unusable date still shows, with no date.
+ */
+export const formatShortDate = (dueDate: string): string => {
+    const date = parseISO(dueDate)
+
+    return isValid(date) ? format(date, "d MMM") : ""
 }
 
 /** The states a task's due date can put it in, with completed taking precedence. */
