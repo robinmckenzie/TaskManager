@@ -110,15 +110,28 @@ const measureTextWidth = (input: HTMLInputElement, text: string): number | undef
  * typing, but not when the value and selection are set from script.
  *
  * A text area wraps its text and grows to fit it, so nothing inside it scrolls.
- * Instead the page is scrolled, when the caret's line is outside the window.
+ * Instead the area that scrolls the list is scrolled (the main area, which owns
+ * the scrollbar, or the page when there is no such area), when the caret's line
+ * is outside its visible part.
  */
 export const scrollCaretIntoView = (input: DictationField): void => {
     if (isTextArea(input)) {
         const line = measureCaretLine(input)
-        const delta = getPageScrollForCaretLine(line.top, line.bottom, window.innerHeight)
+        const container = input.closest<HTMLElement>(".app-content")
+        const containerTop = container ? container.getBoundingClientRect().top : 0
+        const visibleHeight = container ? container.clientHeight : window.innerHeight
+        const delta = getPageScrollForCaretLine(
+            line.top - containerTop,
+            line.bottom - containerTop,
+            visibleHeight,
+        )
 
         if (delta !== 0) {
-            window.scrollBy(0, delta)
+            if (container) {
+                container.scrollBy(0, delta)
+            } else {
+                window.scrollBy(0, delta)
+            }
         }
 
         return

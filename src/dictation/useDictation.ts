@@ -45,6 +45,11 @@ export interface Dictation {
     toggleFromButton(targetId: string): void
     recordEdit(targetId: string, before: string, after: string): void
     removeTarget(targetId: string): void
+    /**
+     * Returns focus to an element. A dictation field gets its saved selection
+     * back, which text recognised while focus was elsewhere has kept up to date.
+     */
+    restoreFocus(element: HTMLElement): void
 }
 
 /**
@@ -329,6 +334,16 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         getTargets().forget(targetId)
     }, [getTargets])
 
+    const restoreFocus = useCallback((element: HTMLElement): void => {
+        const targetId = findFieldId(inputs.current, element)
+
+        if (targetId) {
+            focusInput(element as DictationField, targetId)
+        } else {
+            element.focus()
+        }
+    }, [focusInput])
+
     return {
         availability,
         phase: state.phase,
@@ -340,5 +355,6 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         toggleFromButton,
         recordEdit,
         removeTarget,
+        restoreFocus,
     }
 }

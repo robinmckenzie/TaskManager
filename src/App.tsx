@@ -349,6 +349,14 @@ const Task: FC<TaskProps> = ({
                     aria-label={`Edit details for ${controlNames.dictationTarget}`}
                     aria-describedby={`${summaryId}-due ${summaryId}-priority ${summaryId}-assignee`}
                     onClick={handleSummaryClick}
+                    onKeyDown={(event): void => {
+                        // Focus stays here when the panel is opened from the
+                        // keyboard, so Escape must work from this button too.
+                        if (event.key === "Escape" && isOpen) {
+                            event.stopPropagation()
+                            toggleTaskPanel(task.id, null)
+                        }
+                    }}
                 >
                     <span id={`${summaryId}-due`} className={`task-due task-due-${dueState.kind}`} data-field="due">
                         <Icon name={DUE_STATE_ICONS[dueState.kind]} className="task-due-icon" size={14} />
@@ -529,7 +537,7 @@ const App: FC = () => {
         focusBeforeSettings.current = null
 
         if (previous?.isConnected) {
-            previous.focus()
+            dictation.restoreFocus(previous)
         }
     }
 

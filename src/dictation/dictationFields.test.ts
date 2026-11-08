@@ -120,12 +120,36 @@ describe("scrollCaretIntoView for a text area", () => {
         return { scrollBy, areaTop: lineTop - marker.offsetTop }
     }
 
-    it("scrolls the page, not the text area, when the caret's line is below the window", () => {
+    it("scrolls the main area, not the page or the text area, when it holds the text area", () => {
+        const { scrollBy: pageScrollBy, areaTop } = stubPage(590, 900)
+        const containerScrollBy = vi.fn()
+        // The main area starts 50 px down and shows 540 px, so the line (590 to
+        // 612) is 540 to 562 within it: 22 px plus the 12 px margin too low.
+        const container = {
+            clientHeight: 540,
+            getBoundingClientRect: () => ({ top: 50 }),
+            scrollBy: containerScrollBy,
+        }
+        const textArea = {
+            ...createField("textarea", "A long title that wraps onto more than one line"),
+            scrollTop: 0,
+            getBoundingClientRect: () => ({ top: areaTop }),
+            closest: () => container,
+        }
+
+        scrollCaretIntoView(textArea as unknown as DictationField)
+
+        expect(containerScrollBy).toHaveBeenCalledWith(0, 34)
+        expect(pageScrollBy).not.toHaveBeenCalled()
+    })
+
+    it("scrolls the page when there is no main area and the caret's line is below the window", () => {
         const { scrollBy, areaTop } = stubPage(590, 600)
         const textArea = {
             ...createField("textarea", "A long title that wraps onto more than one line"),
             scrollTop: 0,
             getBoundingClientRect: () => ({ top: areaTop }),
+            closest: () => null,
         }
 
         scrollCaretIntoView(textArea as unknown as DictationField)
@@ -141,6 +165,7 @@ describe("scrollCaretIntoView for a text area", () => {
             ...createField("textarea", "Short"),
             scrollTop: 0,
             getBoundingClientRect: () => ({ top: areaTop }),
+            closest: () => null,
         }
 
         scrollCaretIntoView(textArea as unknown as DictationField)

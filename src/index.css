@@ -69,7 +69,10 @@ button {
   height: 100vh;
 }
 
+/* Positioned so that visually hidden inputs inside the list are clipped here,
+   not added to the page's own scroll height (which gave a second scrollbar). */
 .app-content {
+  position: relative;
   min-width: 0;
   overflow-y: auto;
 }
