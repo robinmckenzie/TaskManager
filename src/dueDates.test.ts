@@ -55,11 +55,11 @@ describe("getDaysUntilDue", () => {
         expect(getDaysUntilDue("2026-10-09", new Date(2026, 9, 9, 0, 0, 0))).toBe(0)
     })
 
-    it("counts the sample tasks as due 2 days ago, yesterday and in 2, 10 and 21 days", () => {
+    it("counts the sample tasks as due 2 days ago, today, in 1, 3 and 10 days, never, and 3 days ago", () => {
         const now = new Date(2026, 9, 8, 15, 30)
 
         expect(createSampleTasks(now).map((task) => getDaysUntilDue(task.dueDate, now)))
-            .toEqual([-2, -1, 2, 10, 21])
+            .toEqual([-2, 0, 1, 3, 10, null, -3])
     })
 })
 

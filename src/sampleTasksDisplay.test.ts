@@ -18,20 +18,22 @@ afterEach(() => {
     vi.unstubAllGlobals()
 })
 
-it("shows the completed sample task first, styled as completed and not as overdue", () => {
-    const [first, second] = taskMarkup
+it("shows the overdue sample task first and the completed one last, which is not styled as overdue", () => {
+    const first = taskMarkup[0]
+    const last = taskMarkup[6]
 
-    expect(taskMarkup).toHaveLength(5)
-    expect(first).toContain('value="Deploy initial build"')
-    expect(first.startsWith("task-completed")).toBe(true)
-    expect(first).toContain("Completed")
-    expect(first).not.toContain("overdue")
-    expect(first).toContain('alt="Alice"')
+    expect(taskMarkup).toHaveLength(7)
+    expect(first).toContain('value="Fix authentication bug"')
+    expect(first.startsWith("task-overdue")).toBe(true)
+    expect(first).toContain("2 days overdue")
+    expect(first).toContain('alt="Bob"')
     expect(first).toContain("Priority: 5/5")
 
-    expect(second).toContain('value="Design UI"')
-    expect(second.startsWith("task-overdue")).toBe(true)
-    expect(second).toContain("1 day overdue")
+    expect(last).toContain('value="Deploy initial build"')
+    expect(last.startsWith("task-completed")).toBe(true)
+    expect(last).toContain("Completed")
+    expect(last).not.toContain("overdue")
+    expect(last).toContain('alt="Bob"')
 })
 
 it("gives no task an inline animation, so that an overdue task does not pulse", () => {
@@ -50,15 +52,24 @@ it("offers resetting to the sample tasks as a button below the last task, with t
     expect(controls).toContain('<label class="assignee-filter">')
     expect(controls).not.toContain("Reset to sample tasks")
     expect(markup.split(resetButton)).toHaveLength(2)
-    expect(taskMarkup[4].endsWith(`${resetButton}</section></main>`)).toBe(true)
+    expect(taskMarkup[6].endsWith(`${resetButton}</section></main>`)).toBe(true)
 })
 
+// One task, for Alice, so that the other three assignees have none.
+const aliceOnly = JSON.stringify([
+    { id: "saved-1", text: "Only task", userId: "1", priority: 3, dueDate: "", completed: false },
+])
+
 it.each([
-    ["the list is empty", TASKS_STORAGE_KEY, "[]", "0 tasks"],
-    ["the assignee filter matches no task", ASSIGNEE_FILTER_STORAGE_KEY, "4", "5 tasks"],
-])("still offers resetting to the sample tasks, below the controls, when %s", (_view, savedKey, savedValue, taskCount) => {
+    ["the list is empty", { [TASKS_STORAGE_KEY]: "[]" }, "0 tasks"],
+    [
+        "the assignee filter matches no task",
+        { [TASKS_STORAGE_KEY]: aliceOnly, [ASSIGNEE_FILTER_STORAGE_KEY]: "4" },
+        "1 task",
+    ],
+])("still offers resetting to the sample tasks, below the controls, when %s", (_view, saved, taskCount) => {
     vi.stubGlobal("localStorage", {
-        getItem: (key: string): string | null => (key === savedKey ? savedValue : null),
+        getItem: (key: string): string | null => (saved as Record<string, string>)[key] ?? null,
     })
     const emptyMarkup = renderToStaticMarkup(createElement(App))
 
@@ -73,18 +84,18 @@ it("names each control on a task card after what it does and its task", () => {
 
     for (const name of [
         "Task title",
-        "Start dictation into Deploy initial build",
-        "Due date for Deploy initial build",
-        "Priority for Deploy initial build",
-        "Assignee for Deploy initial build",
-        "Complete Deploy initial build",
-        "Delete Deploy initial build",
+        "Start dictation into Fix authentication bug",
+        "Due date for Fix authentication bug",
+        "Priority for Fix authentication bug",
+        "Assignee for Fix authentication bug",
+        "Complete Fix authentication bug",
+        "Delete Fix authentication bug",
     ]) {
         expect(first).toContain(`aria-label="${name}"`)
     }
 
     expect(first).toContain('aria-valuetext="5 of 5"')
-    expect(second).toContain('aria-label="Delete Design UI"')
+    expect(second).toContain('aria-label="Delete Prepare sprint demo"')
 })
 
 it("says how to dictate, with the button's microphone in place of the word", () => {

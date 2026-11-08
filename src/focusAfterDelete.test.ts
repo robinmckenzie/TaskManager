@@ -24,12 +24,12 @@ describe("focus after deleting a task", () => {
     })
 
     it("skips tasks hidden by the assignee filter", () => {
-        // Alice has the first, second and last sample tasks.
+        // Bob has the first and last sample tasks, with the others between them.
         const tasks = createSampleTasks()
-        const aliceTaskIds = getVisibleTasks(tasks, "1").map(({ task }) => task.id)
+        const bobTaskIds = getVisibleTasks(tasks, "2").map(({ task }) => task.id)
 
-        expect(aliceTaskIds).toEqual([tasks[0].id, tasks[1].id, tasks[4].id])
-        expect(findTaskToFocusAfterDelete(aliceTaskIds, tasks[1].id)).toBe(tasks[4].id)
-        expect(findTaskToFocusAfterDelete(aliceTaskIds, tasks[4].id)).toBe(tasks[1].id)
+        expect(bobTaskIds).toEqual([tasks[0].id, tasks[6].id])
+        expect(findTaskToFocusAfterDelete(bobTaskIds, tasks[0].id)).toBe(tasks[6].id)
+        expect(findTaskToFocusAfterDelete(bobTaskIds, tasks[6].id)).toBe(tasks[0].id)
     })
 })
