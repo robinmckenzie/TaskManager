@@ -818,6 +818,34 @@ button.task-summary[aria-expanded="true"] {
   background: #fff1f1;
 }
 
+/* ---------- Between 1024 and 1180 px ---------- */
+
+@media (max-width: 1180px) {
+  /* The assignee shows as a photo alone (the name stays for screen readers),
+     and the short date leaves the row (it remains in the details panel). */
+  :root {
+    --col-due: 150px;
+    --col-assignee: 64px;
+  }
+
+  .task-assignee {
+    position: relative;
+  }
+
+  .task-assignee-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .task-due-date {
+    display: none;
+  }
+}
+
 /* Under reduced motion, nothing transitions. */
 @media (prefers-reduced-motion: reduce) {
   *,
