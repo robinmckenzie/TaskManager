@@ -13,13 +13,20 @@ interface SidebarProps {
     /** The id of the assignee the list is filtered to, or "" for all. */
     assigneeFilter: string
     onFilterChange: (assigneeId: string) => void
+    onOpenSettings: () => void
 }
 
 /**
  * The app's name, the assignee filter as a list with a task count for each
- * person, and how to dictate, with the notice that dictated text may be kept.
+ * person, and how to dictate, with the notice that dictated text may be kept, and the way to open Settings.
  */
-export const Sidebar: FC<SidebarProps> = ({ tasks, users, assigneeFilter, onFilterChange }) => (
+export const Sidebar: FC<SidebarProps> = ({
+    tasks,
+    users,
+    assigneeFilter,
+    onFilterChange,
+    onOpenSettings,
+}) => (
     <aside className="sidebar">
         <div className="sidebar-brand">
             <Icon name="mark" size={22} className="sidebar-brand-mark" />
@@ -69,5 +76,20 @@ export const Sidebar: FC<SidebarProps> = ({ tasks, users, assigneeFilter, onFilt
             <DictationHint />
             <p className="dictation-notice">This demo may retain dictated text for diagnostics.</p>
         </section>
+
+        <div className="sidebar-footer">
+            {/* A dictation setting: opening Settings does not stop dictation, and
+                a mouse press leaves focus where it was, to return to on close. */}
+            <button
+                type="button"
+                className="settings-button"
+                data-dictation-setting
+                onMouseDown={(event): void => event.preventDefault()}
+                onClick={onOpenSettings}
+            >
+                <Icon name="sliders" />
+                Settings
+            </button>
+        </div>
     </aside>
 )

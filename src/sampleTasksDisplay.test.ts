@@ -44,6 +44,9 @@ it("tells visitors that dictated text may be retained", () => {
     expect(markup).toContain('<p class="dictation-notice">This demo may retain dictated text for diagnostics.</p>')
 })
 
+// The floating status pill follows the reset button, at the foot of the list.
+const statusPill = '<div class="dictation-pill-area">'
+
 const resetButton = '<button type="button" class="reset-tasks-button">Reset to sample tasks</button>'
 
 it("offers resetting to the sample tasks as a button below the last task, with the assignee filter above the tasks", () => {
@@ -52,7 +55,7 @@ it("offers resetting to the sample tasks as a button below the last task, with t
     expect(beforeTasks).toContain('<nav class="assignee-filter"')
     expect(beforeTasks).not.toContain("Reset to sample tasks")
     expect(markup.split(resetButton)).toHaveLength(2)
-    expect(taskMarkup[6]).toContain(`${resetButton}</section></main>`)
+    expect(taskMarkup[6]).toContain(`${resetButton}${statusPill}`)
 })
 
 // One task, for Alice, so that the other three assignees have none.
@@ -76,7 +79,7 @@ it.each([
     expect(emptyMarkup).not.toContain('<div class="task ')
     expect(emptyMarkup).toContain(taskCount)
     expect(emptyMarkup.split(resetButton)).toHaveLength(2)
-    expect(emptyMarkup).toContain(`${resetButton}</section></main>`)
+    expect(emptyMarkup).toContain(`${resetButton}${statusPill}`)
 })
 
 it("names each control on a task card after what it does and its task", () => {
@@ -129,4 +132,21 @@ it("offers only the looks of the selected meter style", () => {
     ])
     expect(markup).not.toContain("Classic")
     expect(markup).not.toContain("Pill")
+})
+
+it("always has an empty live announcement area in the status pill, with no level meter while idle", () => {
+    expect(markup).toContain(
+        '<div class="dictation-pill dictation-pill-empty"><p class="dictation-status" role="status"></p></div>',
+    )
+    expect(markup).not.toContain("level-meter")
+})
+
+it("opens Settings from the sidebar, with the level meter choice only inside the closed dialog", () => {
+    const sidebar = markup.slice(markup.indexOf('<aside class="sidebar">'), markup.indexOf("</aside>"))
+
+    expect(sidebar).toContain("Settings</button>")
+    expect(sidebar).not.toContain("Level meter")
+    expect(markup).toContain('<dialog class="settings-dialog" aria-labelledby="settings-heading"')
+    expect(markup.slice(markup.indexOf("<dialog"))).toContain("Level meter")
+    expect(markup).not.toContain("<dialog open")
 })

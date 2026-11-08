@@ -33,10 +33,11 @@ import { Avatar } from "./Avatar"
 import { Icon } from "./Icon"
 import type { IconName } from "./Icon"
 import { PriorityBars } from "./PriorityBars"
+import { SettingsDialog } from "./SettingsDialog"
 import { Sidebar } from "./Sidebar"
 import { TaskDetails } from "./TaskDetails"
 import { DictationButton } from "./dictation/DictationButton"
-import { DictationStatus, MeterStyleSelector } from "./dictation/DictationFeedback"
+import { DictationStatus } from "./dictation/DictationFeedback"
 import type { MeterChoice } from "./dictation/LevelMeter"
 import { useDictation } from "./dictation/useDictation"
 import { toSingleLine } from "./singleLineText"
@@ -510,6 +511,28 @@ const App: FC = () => {
         waveform: "pill",
     })
 
+    // Settings is a modal dialog. Focus goes back to where it was before it
+    // opened, when it closes.
+    const [settingsOpen, setSettingsOpen] = useState(false)
+    const focusBeforeSettings = useRef<HTMLElement | null>(null)
+
+    const openSettings = (): void => {
+        focusBeforeSettings.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null
+        setSettingsOpen(true)
+    }
+
+    const closeSettings = (): void => {
+        setSettingsOpen(false)
+
+        const previous = focusBeforeSettings.current
+        focusBeforeSettings.current = null
+
+        if (previous?.isConnected) {
+            previous.focus()
+        }
+    }
+
     // Sends focus to where it goes when a task leaves the list on show: the next
     // task's summary button, else the previous one's, else Add Task.
     const moveFocusFromLeavingTask = (id: string): void => {
@@ -604,6 +627,7 @@ const App: FC = () => {
                     users={alphabeticalUsers}
                     assigneeFilter={assigneeFilter}
                     onFilterChange={changeFilter}
+                    onOpenSettings={openSettings}
                 />
 
                 <div className="app-content">
@@ -631,10 +655,6 @@ const App: FC = () => {
                         </header>
 
                         <section className="task-list">
-                            <div className="task-list-controls">
-                                <DictationStatus dictation={dictation} meter={meter} />
-                                <MeterStyleSelector meter={meter} onChange={setMeter} />
-                            </div>
                             <div className="task-columns" aria-hidden="true">
                                 <span className="task-column-task">Task</span>
                                 <span className="task-column-due">Due</span>
@@ -668,10 +688,17 @@ const App: FC = () => {
                             >
                                 Reset to sample tasks
                             </button>
+                            <DictationStatus dictation={dictation} meter={meter} />
                         </section>
                     </main>
                 </div>
             </div>
+            <SettingsDialog
+                open={settingsOpen}
+                meter={meter}
+                onMeterChange={setMeter}
+                onClose={closeSettings}
+            />
         </DndProvider>
     )
 }
