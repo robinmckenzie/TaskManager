@@ -314,234 +314,373 @@ button {
   }
 }
 
-/* ---------- Task card, until it becomes a compact row (TM #84, stage 2) ---------- */
+/* ---------- Task rows (TM #84) ---------- */
+
+:root {
+  /* Due states: the text colour, and a tint behind the two urgent ones. */
+  --overdue: #c4232b; /* 5.8:1 on white, 5.3:1 on its tint */
+  --overdue-tint: #fff1f1;
+  --soon: #b14a06; /* 5.1:1 on its tint */
+  --soon-tint: #fff6ec;
+  --week: #8a5a00; /* 5.9:1 */
+  --later: #4a5060;
+  --none: #5d6472;
+  --done: #1d7a45; /* 5.4:1 */
+  --rec: #e11d48; /* 4.7:1 */
+
+  /* The widths of the summary columns, shared by the column labels and every row. */
+  --col-due: 196px;
+  --col-priority: 68px;
+  --col-assignee: 104px;
+}
+
+.task-columns,
+.task-row {
+  display: grid;
+  grid-template-columns:
+    16px 20px minmax(0, 1fr)
+    var(--col-due) var(--col-priority) var(--col-assignee);
+  column-gap: 10px;
+  padding: 0 8px 0 6px;
+}
+
+.task-columns {
+  align-items: end;
+  padding-bottom: 8px;
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--subtle);
+  border-bottom: 1px solid var(--border);
+}
+
+.task-column-task {
+  grid-column: 3;
+  padding-left: 9px;
+}
+
+.task-column-due {
+  grid-column: 4;
+}
+
+.task-column-priority {
+  grid-column: 5;
+}
+
+.task-column-assignee {
+  grid-column: 6;
+}
+
+/* The rows sit on one list, divided by lines. */
+.task-list {
+  gap: 0;
+}
 
 .task {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 14px;
-  padding: 16px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
-  transition:
-    opacity 0.15s,
-    box-shadow 0.15s,
-    transform 0.15s;
+  border-bottom: 1px solid var(--line);
+  transition: background var(--ease);
 }
 
 .task:hover {
-  box-shadow:
-    0 4px 10px rgba(0, 0, 0, 0.12);
+  background: var(--hover);
 }
 
-.task-drag-handle {
-  color: #888;
+.task-row {
+  align-items: start;
+  padding-top: 6px;
+  padding-bottom: 2px;
+}
+
+.task-grip {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 32px;
+  color: var(--edge);
   cursor: grab;
-  font-size: 20px;
   user-select: none;
 }
 
-.task-drag-handle:active {
+.task-grip:hover {
+  color: var(--muted);
+}
+
+.task-grip:active {
   cursor: grabbing;
 }
 
-.task-drag-surface {
-  cursor: grab;
-  user-select: none;
-}
-
-.task-drag-surface:active {
-  cursor: grabbing;
-}
-
-.task-left-drag-surface {
-  display: flex;
-  align-items: center;
-  align-self: stretch;
-  flex-shrink: 0;
-  gap: 14px;
-  margin: -16px -14px -16px -16px;
-  padding: 16px 14px 16px 16px;
-  border-radius: 8px 0 0 8px;
-}
-
-.user-photo {
-  width: 44px;
-  height: 44px;
+/* The round completion checkbox. */
+.task-check {
+  appearance: none;
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin: 6px 0 0;
+  background: #ffffff;
+  border: 1.5px solid var(--edge);
   border-radius: 50%;
-  object-fit: cover;
+  cursor: pointer;
+  transition:
+    border-color var(--ease),
+    background var(--ease);
 }
 
-.task-main {
-  flex: 1 1 260px;
-  min-width: 200px;
+.task-check:hover {
+  border-color: var(--done);
+  background: #eef8f1;
+}
+
+.task-check:checked {
+  background: var(--done)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.2l2.6 2.6L12 5.4' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 14px no-repeat;
+  border-color: var(--done);
+}
+
+.task-title-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
 }
 
 .task-title {
-  width: 100%;
-  border: 0;
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 4px 8px;
+  font-size: 15px;
+  font-weight: 550;
+  line-height: 22px;
+  letter-spacing: -0.005em;
+  color: var(--text);
   background: transparent;
-  font-size: 18px;
-  font-weight: 600;
-  padding: 4px 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition:
+    border-color var(--ease),
+    box-shadow var(--ease),
+    background var(--ease);
+}
+
+.task-title:hover {
+  background: #ffffff;
+  border-color: var(--border);
 }
 
 .task-title:focus {
   outline: none;
-  border-bottom: 2px solid var(--accent);
+  background: #ffffff;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
-.task-details {
-  position: relative;
-  isolation: isolate;
-  display: flex;
+/* A completed title is struck through and dimmer, but the row is not dimmed. */
+.task-completed .task-title {
+  font-weight: 450;
+  color: var(--subtle);
+  text-decoration: line-through;
+  text-decoration-color: var(--edge);
+}
+
+/* The summary: due state, priority and assignee, in aligned columns. */
+.task-summary {
+  display: grid;
+  grid-column: 4 / 7;
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: 16px;
-  margin-top: 6px;
-  color: #666;
+  min-height: 32px;
+}
+
+.task-due {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 5px;
+  max-width: calc(var(--col-due) - 8px);
+  padding: 2px 0;
   font-size: 13px;
+  font-weight: 550;
+  white-space: nowrap;
 }
 
-.task-details-drag-surface {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
+.task-due-icon {
+  flex-shrink: 0;
 }
 
-.task-details > label,
-.task-details > span {
-  position: relative;
-  z-index: 1;
+.task-due-date {
+  font-size: 12px;
+  font-weight: 450;
+  font-variant-numeric: tabular-nums;
+  color: var(--subtle);
 }
 
-.task-details label {
+.task-due-date::before {
+  content: "\00b7";
+  margin-right: 5px;
+}
+
+/* Only the two urgent states are tinted. */
+.task-due-overdue,
+.task-due-due-soon {
+  padding: 2px 8px 2px 6px;
+  border-radius: 999px;
+}
+
+.task-due-overdue {
+  color: var(--overdue);
+  background: var(--overdue-tint);
+}
+
+.task-due-due-soon {
+  color: var(--soon);
+  background: var(--soon-tint);
+}
+
+.task-due-overdue .task-due-date,
+.task-due-due-soon .task-due-date {
+  color: inherit;
+}
+
+.task-due-due-this-week {
+  color: var(--week);
+}
+
+.task-due-later {
+  color: var(--later);
+  font-weight: 450;
+}
+
+.task-due-none {
+  color: var(--none);
+  font-weight: 450;
+  font-style: italic;
+}
+
+.task-due-completed {
+  color: var(--done);
+}
+
+.task-priority {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.priority-bar-on {
+  fill: var(--accent);
+}
+
+.priority-bar-off {
+  fill: #d6d9e1;
+}
+
+.task-completed .priority-bar-on {
+  fill: var(--edge);
+}
+
+.task-priority-number {
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.task-assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.task-assignee-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * The editing controls, until the details panel replaces them (stage 3). They
+ * sit under the title, in the quiet style of the summary.
+ */
+.task-editing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 0 8px 8px 62px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.task-editing label {
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
-.task-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
-.task-controls select,
-.task-details input[type="date"] {
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  padding: 5px 7px;
-  background: white;
+.task-editing select,
+.task-editing input[type="date"] {
+  padding: 3px 6px;
+  background: #ffffff;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
 }
 
 .priority-control {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 130px;
-  font-size: 12px;
-}
-
-.priority-control input {
-  width: 130px;
-}
-
-.completed-control {
-  display: flex;
   align-items: center;
-  gap: 5px;
-  white-space: nowrap;
+  gap: 8px;
   font-size: 13px;
 }
 
+.priority-control input {
+  width: 110px;
+}
+
 .delete-button {
-  border: 0;
+  padding: 0;
+  color: var(--danger);
   background: transparent;
-  color: #dc2626;
-  cursor: pointer;
+  border: 0;
 }
 
 .delete-button:hover {
   text-decoration: underline;
 }
 
-/*
- * Due-date colours.
- */
-
-.task-normal {
-  background: #ffffff;
-}
-
-.task-due-this-week {
-  background: #fffde7;
-}
-
-.task-due-soon {
-  background: #fff3cd;
-}
-
-.task-completed {
-  background: #dcfce7;
-  opacity: 0.75;
-}
-
-/*
- * Overdue tasks have a static pastel pink background.
- */
-
-.task-overdue {
-  background: #fecaca;
-}
-
-/*
- * When the device asks for reduced motion, overdue tasks are also
- * marked with a red border.
- */
-
+/* Under reduced motion, nothing transitions. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     transition-duration: 0s !important;
   }
-
-  .task-overdue {
-    border-color: #dc2626;
-  }
 }
 
-.task-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.task-title-row .task-title {
-  flex: 1;
-  min-width: 0;
-}
-
+/* The microphone is quiet until it is used, but always in view. */
 .dictation-button {
-  display: inline-flex;
+  display: inline-grid;
   flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
+  place-items: center;
+  width: 30px;
+  height: 30px;
   padding: 0;
-  border: 1px solid #ccc;
+  margin-top: 1px;
+  border: 1px solid transparent;
   border-radius: 50%;
-  background: white;
-  color: #555;
-  cursor: pointer;
+  background: transparent;
+  color: var(--subtle);
+  transition:
+    background var(--ease),
+    color var(--ease);
 }
 
 .dictation-button:hover {
-  border-color: var(--accent);
+  background: var(--accent-soft);
   color: var(--accent);
 }
 

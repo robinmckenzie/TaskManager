@@ -26,14 +26,14 @@ it("shows the overdue sample task first and the completed one last, which is not
     expect(first).toContain('value="Fix authentication bug"')
     expect(first.startsWith("task-overdue")).toBe(true)
     expect(first).toContain("2 days overdue")
-    expect(first).toContain('alt="Bob"')
-    expect(first).toContain("Priority: 5/5")
+    expect(first).toContain('<span class="task-assignee-name">Bob</span>')
+    expect(first).toContain('<span class="task-priority-number">5</span>')
 
     expect(last).toContain('value="Deploy initial build"')
     expect(last.startsWith("task-completed")).toBe(true)
     expect(last).toContain("Completed")
     expect(last).not.toContain("overdue")
-    expect(last).toContain('alt="Bob"')
+    expect(last).toContain('<span class="task-assignee-name">Bob</span>')
 })
 
 it("gives no task an inline animation, so that an overdue task does not pulse", () => {
@@ -100,7 +100,7 @@ it("names each control on a task card after what it does and its task", () => {
 
 it("says how to dictate, with the button's microphone in place of the word", () => {
     const hint = markup.match(/<p class="dictation-hint">([\s\S]*?)<\/p>/)?.[1]
-    const buttonIcon = taskMarkup[0].match(/<path[^>]*>/)?.[0]
+    const buttonIcon = taskMarkup[0].match(/<button[^>]*dictation-button[^>]*>.*?(<path[^>]*>)/)?.[1]
 
     expect(hint?.replace(/<svg[^>]*role="img" aria-label="microphone"[^>]*>[\s\S]*?<\/svg>/, "[microphone]").replace("<br/>", " ").replace(/<\/?span>/g, "")).toBe(
         "Dictate a task title: click its [microphone] button, or click a title and press Ctrl + Alt. These both toggle the mic on/off.",

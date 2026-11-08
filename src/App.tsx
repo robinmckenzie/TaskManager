@@ -16,7 +16,7 @@ import {
     loadAssigneeFilter,
     saveAssigneeFilter,
 } from "./assigneeFilter"
-import { describeDueStatus, getDueState } from "./dueDates"
+import { describeDueStatus, formatShortDate, getDueState } from "./dueDates"
 import type { DueStateKind } from "./dueDates"
 import { findTaskToFocusAfterDelete } from "./focusAfterDelete"
 import { getTaskControlNames } from "./taskControlNames"
@@ -26,7 +26,10 @@ import { getNewTaskAssignee, sortAssigneesByName } from "./users"
 import type { User } from "./users"
 import { useToday } from "./useToday"
 import { AccountControl } from "./account/AccountControl"
+import { Avatar } from "./Avatar"
 import { Icon } from "./Icon"
+import type { IconName } from "./Icon"
+import { PriorityBars } from "./PriorityBars"
 import { Sidebar } from "./Sidebar"
 import { DictationButton } from "./dictation/DictationButton"
 import { DictationStatus, MeterStyleSelector } from "./dictation/DictationFeedback"
@@ -45,6 +48,16 @@ const DUE_STATE_CLASSES: Record<DueStateKind, string> = {
     "due-soon": "task-due-soon",
     "due-this-week": "task-due-this-week",
     later: "task-normal",
+}
+
+/** The shape drawn beside each due state, so that colour is never the only signal. */
+const DUE_STATE_ICONS: Record<DueStateKind, IconName> = {
+    completed: "check",
+    none: "dash",
+    overdue: "warning",
+    "due-soon": "clock",
+    "due-this-week": "calendar",
+    later: "arrow",
 }
 
 interface DragItem {
@@ -119,6 +132,8 @@ const Task: FC<TaskProps> = ({
 
     const dueState = getDueState(task.dueDate, task.completed, today)
 
+    const shortDate = formatShortDate(task.dueDate)
+
     /*
      * react-dnd drop target.
      *
@@ -187,17 +202,7 @@ const Task: FC<TaskProps> = ({
     /*
      * react-dnd drag source.
      */
-    const [
-        { isDragging: isLeftDragging },
-        connectSourceElementForLeftDrag,
-        connectPreviewElementForLeftDrag,
-    ] = useTaskDrag(task.id, index)
-    const [
-        { isDragging: isDetailsDragging },
-        connectSourceElementForDetailsDrag,
-        connectPreviewElementForDetailsDrag,
-    ] = useTaskDrag(task.id, index)
-    const isDragging = isLeftDragging || isDetailsDragging
+    const [{ isDragging }, connectGrip, connectPreview] = useTaskDrag(task.id, index)
 
     const handleTextChange = (
         event: React.ChangeEvent<HTMLInputElement>,
@@ -248,31 +253,33 @@ const Task: FC<TaskProps> = ({
                 ref.current = element
 
                 drop(element)
-                connectPreviewElementForLeftDrag(element)
-                connectPreviewElementForDetailsDrag(element)
+                connectPreview(element)
             }}
             className={`task ${DUE_STATE_CLASSES[dueState.kind]}`}
             style={{
                 opacity: isDragging ? 0.5 : 1,
             }}
         >
-            <div
-                className="task-left-drag-surface task-drag-surface"
-                ref={(element): void => {
-                    connectSourceElementForLeftDrag(element)
-                }}
-            >
-                <div className="task-drag-handle">⋮⋮</div>
-                <img
-                    src={user?.photo}
-                    alt={user?.name ?? "Unassigned"}
-                    className="user-photo"
-                    draggable={false}
-                />
-            </div>
+            <div className="task-row">
+                <span
+                    className="task-grip"
+                    title="Drag to reorder"
+                    ref={(element): void => {
+                        connectGrip(element)
+                    }}
+                >
+                    <Icon name="grip" />
+                </span>
 
-            <div className="task-main">
-                <div className="task-title-row">
+                <input
+                    type="checkbox"
+                    className="task-check"
+                    checked={task.completed}
+                    onChange={handleCompletedChange}
+                    aria-label={controlNames.completed}
+                />
+
+                <div className="task-title-cell">
                     <input
                         type="text"
                         ref={(input): void => {
@@ -291,31 +298,35 @@ const Task: FC<TaskProps> = ({
                     />
                 </div>
 
-                <div className="task-details">
-                    <div
-                        className="task-details-drag-surface task-drag-surface"
-                        ref={(element): void => {
-                            connectSourceElementForDetailsDrag(element)
-                        }}
-                        aria-hidden="true"
-                    />
-                    <label>
-                        Due:
-                        <input
-                            type="date"
-                            value={task.dueDate}
-                            onChange={handleDueDateChange}
-                            aria-label={controlNames.dueDate}
-                        />
-                    </label>
-
-                    <span>
-                        {describeDueStatus(dueState.daysUntilDue, task.completed)}
+                <div className="task-summary">
+                    <span className={`task-due task-due-${dueState.kind}`}>
+                        <Icon name={DUE_STATE_ICONS[dueState.kind]} className="task-due-icon" size={14} />
+                        <span>{describeDueStatus(dueState.daysUntilDue, task.completed)}</span>
+                        {shortDate && <span className="task-due-date">{shortDate}</span>}
+                    </span>
+                    <span className="task-priority">
+                        <PriorityBars priority={task.priority} />
+                        <span className="task-priority-number">{task.priority}</span>
+                    </span>
+                    <span className="task-assignee">
+                        <Avatar user={user} />
+                        <span className="task-assignee-name">{user?.name ?? "Unassigned"}</span>
                     </span>
                 </div>
             </div>
 
-            <div className="task-controls">
+            {/* These editing controls stay in view until the details panel replaces them (TM #84, stage 3). */}
+            <div className="task-editing">
+                <label>
+                    Due:
+                    <input
+                        type="date"
+                        value={task.dueDate}
+                        onChange={handleDueDateChange}
+                        aria-label={controlNames.dueDate}
+                    />
+                </label>
+
                 <label className="priority-control">
                     <span>Priority: {task.priority}/5</span>
 
@@ -342,16 +353,6 @@ const Task: FC<TaskProps> = ({
                         </option>
                     ))}
                 </select>
-
-                <label className="completed-control">
-                    <input
-                        type="checkbox"
-                        checked={task.completed}
-                        onChange={handleCompletedChange}
-                        aria-label={controlNames.completed}
-                    />
-                    Complete
-                </label>
 
                 <button
                     type="button"
@@ -555,6 +556,12 @@ const App: FC = () => {
                             <div className="task-list-controls">
                                 <DictationStatus dictation={dictation} meter={meter} />
                                 <MeterStyleSelector meter={meter} onChange={setMeter} />
+                            </div>
+                            <div className="task-columns" aria-hidden="true">
+                                <span className="task-column-task">Task</span>
+                                <span className="task-column-due">Due</span>
+                                <span className="task-column-priority">Priority</span>
+                                <span className="task-column-assignee">Assignee</span>
                             </div>
                             {view.emptyMessage && <p className="empty-view">{view.emptyMessage}</p>}
                             {visibleTasks.map(({ task, index }, visibleIndex) => (

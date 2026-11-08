@@ -2,12 +2,12 @@
 
 A browser-based task manager for creating and editing tasks, assigning users,
 setting priorities and due dates, marking tasks complete, and deleting tasks.
-Drag and drop tasks to reorder them. Due-date colors highlight upcoming and
-missed deadlines, and overdue tasks have a pastel pink background. If your
-device is set to reduce motion, overdue tasks are also marked with a red
-border. A task
-whose due date is cleared shows "No due date" in the normal colour. Deadlines
-follow the current date while the page stays open, with no need to reload.
+Drag a task by its grip to reorder it. Each row shows when the task is due
+with an icon and a short date, so that colour is never the only signal. Only
+overdue and due soon tasks have a tinted label, and completed tasks have a
+struck-through title. A task whose due date is cleared shows "No due date".
+Deadlines follow the current date while the page stays open, with no need to
+reload.
 
 Tasks are saved in this browser using localStorage and restored on refresh.
 The sample tasks appear on your first visit, with due dates relative to that
