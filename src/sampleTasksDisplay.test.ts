@@ -47,12 +47,12 @@ it("tells visitors that dictated text may be retained", () => {
 const resetButton = '<button type="button" class="reset-tasks-button">Reset to sample tasks</button>'
 
 it("offers resetting to the sample tasks as a button below the last task, with the assignee filter above the tasks", () => {
-    const controls = markup.match(/<div class="task-list-controls">[\s\S]*?<div class="task /)?.[0]
+    const beforeTasks = markup.slice(0, markup.indexOf('<div class="task '))
 
-    expect(controls).toContain('<label class="assignee-filter">')
-    expect(controls).not.toContain("Reset to sample tasks")
+    expect(beforeTasks).toContain('<nav class="assignee-filter"')
+    expect(beforeTasks).not.toContain("Reset to sample tasks")
     expect(markup.split(resetButton)).toHaveLength(2)
-    expect(taskMarkup[6].endsWith(`${resetButton}</section></main>`)).toBe(true)
+    expect(taskMarkup[6]).toContain(`${resetButton}</section></main>`)
 })
 
 // One task, for Alice, so that the other three assignees have none.
@@ -65,7 +65,7 @@ it.each([
     [
         "the assignee filter matches no task",
         { [TASKS_STORAGE_KEY]: aliceOnly, [ASSIGNEE_FILTER_STORAGE_KEY]: "4" },
-        "1 task",
+        "0 of 1 task",
     ],
 ])("still offers resetting to the sample tasks, below the controls, when %s", (_view, saved, taskCount) => {
     vi.stubGlobal("localStorage", {
@@ -76,7 +76,7 @@ it.each([
     expect(emptyMarkup).not.toContain('<div class="task ')
     expect(emptyMarkup).toContain(taskCount)
     expect(emptyMarkup.split(resetButton)).toHaveLength(2)
-    expect(emptyMarkup.endsWith(`</div>${resetButton}</section></main>`)).toBe(true)
+    expect(emptyMarkup).toContain(`${resetButton}</section></main>`)
 })
 
 it("names each control on a task card after what it does and its task", () => {

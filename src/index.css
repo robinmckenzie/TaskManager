@@ -1,69 +1,263 @@
+/*
+ * The Modern design (TM #84): a sidebar and a main area on a white page, with
+ * one indigo accent and system fonts only. The colour tokens note their
+ * contrast on white, then on the sidebar, where it matters for text.
+ */
+
+:root {
+  --page: #ffffff;
+  --sidebar: #f5f5f8;
+  --hover: #f7f7fb;
+  --line: #eceef2;
+  --border: #e3e5ea;
+  --edge: #868c9a; /* 3.4:1 on white, 3.1:1 on the sidebar: control edges */
+  --text: #16181d; /* 17.8:1 */
+  --muted: #4a5060; /* 8.1:1, 7.4:1 */
+  --subtle: #5d6472; /* 6.0:1, 5.5:1 */
+
+  --accent: #4f46e5; /* 6.3:1; white on it 6.3:1 */
+  --accent-strong: #4338ca;
+  --accent-soft: #eef0ff;
+
+  --danger: #c4232b; /* 5.8:1 */
+
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --sidebar-width: 248px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --ease: 0.12s ease;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-  background: #f4f5f7;
-  color: #202124;
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--page);
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
+  color: inherit;
 }
 
-.app {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 32px;
+button {
+  cursor: pointer;
 }
 
-/* Equal side columns, each wide enough for the heading, put the dictation hint
-   at the centre of the page, in line with the dictation feedback below it. */
-.app-header {
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Shell ---------- */
+
+/* The page fills the window; the sidebar and the main area scroll separately. */
+.app-shell {
   display: grid;
-  grid-template-columns: minmax(13.5rem, 1fr) minmax(0, 30rem) minmax(13.5rem, 1fr);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  height: 100vh;
+}
+
+.app-content {
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.app-main {
+  width: 100%;
+  max-width: 1120px;
+  padding: 24px 48px;
+}
+
+/* ---------- Sidebar ---------- */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 0;
+  padding: 20px 12px 16px;
+  overflow-y: auto;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+}
+
+.sidebar-brand {
+  display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 10px;
+  padding: 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
-.app-header .add-button {
-  flex-shrink: 0;
-  justify-self: end;
+.sidebar-brand-mark {
+  color: var(--accent);
 }
 
-.app-header h1 {
+.assignee-filter ul {
   margin: 0;
-  font-size: 32px;
+  padding: 0;
+  list-style: none;
 }
 
-.app-header p {
+.sidebar-heading {
+  margin: 0 0 6px;
+  padding: 0 10px;
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  font-size: 14px;
+  text-align: left;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  transition: background var(--ease);
+}
+
+.filter-item:hover {
+  background: #ebecf1;
+}
+
+.filter-item[aria-pressed="true"] {
+  font-weight: 650;
+  color: var(--text);
+  background: #ffffff;
+  border-color: var(--border);
+  box-shadow: 0 1px 2px rgb(16 18 29 / 6%);
+}
+
+.filter-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-count {
+  font-size: 12.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--subtle);
+}
+
+.filter-icon {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  color: var(--muted);
+  background: #e7e8ee;
+  border-radius: 50%;
+}
+
+/* A photo, with the person's initial showing behind it until it loads. */
+.avatar {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--muted);
+  background: #e7e8ee;
+  border-radius: 50%;
+}
+
+.avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sidebar-card {
+  padding: 12px 10px 4px;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-card .sidebar-heading {
+  padding: 0;
+}
+
+/* ---------- Main area ---------- */
+
+.view-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.view-header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 720;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.view-count {
   margin: 4px 0 0;
-  color: #666;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.view-summary {
+  color: var(--subtle);
 }
 
 .add-button {
-  border: 0;
-  border-radius: 6px;
-  padding: 10px 18px;
-  background: #2563eb;
-  color: white;
-  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  font-size: 14px;
   font-weight: 600;
+  white-space: nowrap;
+  color: #ffffff;
+  background: var(--accent);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgb(67 56 202 / 25%);
+  transition: background var(--ease);
 }
 
 .add-button:hover {
-  background: #1d4ed8;
+  background: var(--accent-strong);
 }
 
 .task-list {
@@ -72,28 +266,12 @@ select {
   gap: 10px;
 }
 
-/*
- * The dictation feedback sits in the middle column, across both rows. Its
- * height is reserved, so nothing moves when the feedback changes. The side
- * columns are equal, to centre it, and each is wide enough for the level
- * meter buttons, so the middle column narrows before they can run into it.
- */
-.task-list-controls {
-  display: grid;
-  grid-template-columns: minmax(24.5rem, 1fr) minmax(15rem, 22rem) minmax(24.5rem, 1fr);
-  grid-template-areas:
-    "notice feedback meter-style"
-    "filter feedback meter-style";
-  align-items: center;
-  gap: 6px 16px;
-  margin-bottom: 6px;
-}
-
-.assignee-filter {
-  grid-area: filter;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+/* Shown in place of the tasks when a filter leaves none. */
+.empty-view {
+  margin: 0;
+  padding: 32px 14px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
 }
 
 /* A button that reads as a quiet text link, below the last task. */
@@ -103,30 +281,44 @@ select {
   border: 0;
   padding: 0;
   background: transparent;
-  color: #666;
+  color: var(--subtle);
   font-size: 13px;
   text-decoration: underline;
   cursor: pointer;
 }
 
 .reset-tasks-button:hover {
-  color: #2563eb;
+  color: var(--accent);
 }
 
-.reset-tasks-button:focus-visible {
-  outline: 2px solid #2563eb;
-  outline-offset: 2px;
+/* ---------- Dictation feedback, until it moves (TM #84, stage 4) ---------- */
+
+.task-list-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+  margin-bottom: 6px;
 }
 
-.assignee-filter select {
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  padding: 5px 7px;
-  background: white;
+/* ---------- Narrower desktop widths ---------- */
+
+@media (max-width: 1180px) {
+  :root {
+    --sidebar-width: 220px;
+  }
+
+  .app-main {
+    padding: 24px 28px;
+  }
 }
+
+/* ---------- Task card, until it becomes a compact row (TM #84, stage 2) ---------- */
 
 .task {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 14px;
   padding: 16px;
@@ -183,7 +375,7 @@ select {
 }
 
 .task-main {
-  flex: 1;
+  flex: 1 1 260px;
   min-width: 200px;
 }
 
@@ -198,7 +390,7 @@ select {
 
 .task-title:focus {
   outline: none;
-  border-bottom: 2px solid #2563eb;
+  border-bottom: 2px solid var(--accent);
 }
 
 .task-details {
@@ -232,6 +424,7 @@ select {
 
 .task-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
 }
@@ -310,29 +503,14 @@ select {
  */
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+  }
+
   .task-overdue {
     border-color: #dc2626;
-  }
-}
-
-@media (max-width: 850px) {
-  .task-left-drag-surface {
-    margin-bottom: 0;
-    padding-bottom: 0;
-  }
-  .task {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .task-main {
-    min-width: calc(100% - 120px);
-  }
-
-  .task-controls {
-    width: 100%;
-    flex-wrap: wrap;
-    padding-left: 58px;
   }
 }
 
@@ -363,12 +541,12 @@ select {
 }
 
 .dictation-button:hover {
-  border-color: #2563eb;
-  color: #2563eb;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .dictation-button:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -388,18 +566,16 @@ select {
 }
 
 .dictation-notice {
-  grid-area: notice;
   margin: 0;
-  color: #777;
-  font-size: 12px;
+  color: var(--subtle);
+  font-size: 12.5px;
 }
 
-.app-header .dictation-hint {
-  margin: 0;
-  color: #555;
+.dictation-hint {
+  margin: 0 0 10px;
+  color: var(--muted);
   font-size: 13px;
-  line-height: 1.4;
-  text-align: center;
+  line-height: 1.55;
 }
 
 .dictation-hint span {
@@ -414,8 +590,8 @@ select {
 
 /* Room for three lines of status text, whether or not there is any. */
 .dictation-feedback {
-  grid-area: feedback;
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
   min-height: 3.75rem;
@@ -632,7 +808,7 @@ select {
 /* The bars keep their places and swell together with the level. */
 .level-meter-waveform-pulse .level-meter-wave-bar {
   --bar: calc(var(--level) * var(--shape));
-  background: #2563eb;
+  background: var(--accent);
 }
 
 .level-meter-waveform-columns .level-meter-wave-bar {
@@ -641,8 +817,6 @@ select {
 }
 
 .meter-style {
-  grid-area: meter-style;
-  justify-self: end;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -673,11 +847,11 @@ select {
 }
 
 .meter-style button:hover {
-  border-color: #2563eb;
+  border-color: var(--accent);
 }
 
 .meter-style button:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -686,8 +860,8 @@ select {
  * keeps room for the tick, so that choosing a style moves nothing.
  */
 .meter-style button[aria-pressed="true"] {
-  border-color: #2563eb;
-  background: #dbeafe;
+  border-color: var(--accent);
+  background: var(--accent-soft);
   color: #202124;
 }
 
@@ -699,103 +873,6 @@ select {
 
 .meter-style button[aria-pressed="true"]::before {
   visibility: visible;
-}
-
-/*
- * Narrower windows keep the controls where they are for as long as they fit.
- * First the level meter buttons, which are what crowd the feedback, move up
- * to a row they share with the notice. The feedback stays in the middle, now
- * beside the filter, which needs less room at its side.
- */
-@media (max-width: 1137px) {
-  .task-list-controls {
-    grid-template-columns: minmax(13rem, 1fr) minmax(15rem, 22rem) minmax(13rem, 1fr);
-    grid-template-areas: none;
-  }
-
-  .dictation-notice {
-    grid-area: 1 / 1 / 2 / 3;
-  }
-
-  .meter-style {
-    grid-area: 1 / 2 / 2 / 4;
-  }
-
-  /* The filter stays next to the task list. */
-  .assignee-filter {
-    grid-area: 2 / 1;
-    align-self: end;
-  }
-
-  .dictation-feedback {
-    grid-area: 2 / 2;
-  }
-}
-
-/*
- * Then the hint moves below the heading, and the feedback, with no room left
- * in the middle, to a row of its own directly below the hint. The other
- * controls stay together next to the task list.
- */
-@media (max-width: 780px) {
-  .app-header {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    /* The space held for the feedback below already separates the two. */
-    margin-bottom: 8px;
-  }
-
-  .app-header .dictation-hint {
-    order: 1;
-    flex-basis: 100%;
-  }
-
-  .task-list-controls {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "feedback feedback"
-      "notice meter-style"
-      "filter meter-style";
-  }
-
-  .dictation-notice {
-    grid-area: notice;
-  }
-
-  .meter-style {
-    grid-area: meter-style;
-  }
-
-  .assignee-filter {
-    grid-area: filter;
-  }
-
-  .dictation-feedback {
-    grid-area: feedback;
-  }
-}
-
-/* Last, the level meter buttons move below the notice. */
-@media (max-width: 640px) {
-  .task-list-controls {
-    grid-template-columns: max-content minmax(0, 1fr);
-    grid-template-areas:
-      "feedback feedback"
-      "notice notice"
-      "meter-style meter-style"
-      "filter filter";
-  }
-
-  .meter-style {
-    justify-self: start;
-    align-items: flex-start;
-  }
-
-  /* The three styles do not fit on one line of a narrow phone. */
-  .meter-style > div {
-    flex-wrap: wrap;
-  }
 }
 
 /*
@@ -829,7 +906,7 @@ select {
 
 .account-button:focus-visible,
 .account-panel button:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 

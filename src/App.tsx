@@ -20,15 +20,16 @@ import { describeDueStatus, getDueState } from "./dueDates"
 import type { DueStateKind } from "./dueDates"
 import { findTaskToFocusAfterDelete } from "./focusAfterDelete"
 import { getTaskControlNames } from "./taskControlNames"
+import { summariseTasks } from "./taskSummary"
+import { describeTaskSummary, describeTaskView } from "./taskView"
 import { getNewTaskAssignee, sortAssigneesByName } from "./users"
+import type { User } from "./users"
 import { useToday } from "./useToday"
 import { AccountControl } from "./account/AccountControl"
+import { Icon } from "./Icon"
+import { Sidebar } from "./Sidebar"
 import { DictationButton } from "./dictation/DictationButton"
-import {
-    DictationHint,
-    DictationStatus,
-    MeterStyleSelector,
-} from "./dictation/DictationFeedback"
+import { DictationStatus, MeterStyleSelector } from "./dictation/DictationFeedback"
 import type { MeterChoice } from "./dictation/LevelMeter"
 import { useDictation } from "./dictation/useDictation"
 import type { Dictation } from "./dictation/useDictation"
@@ -44,12 +45,6 @@ const DUE_STATE_CLASSES: Record<DueStateKind, string> = {
     "due-soon": "task-due-soon",
     "due-this-week": "task-due-this-week",
     later: "task-normal",
-}
-
-interface User {
-    id: string
-    name: string
-    photo: string
 }
 
 interface DragItem {
@@ -389,6 +384,14 @@ const App: FC = () => {
 
     const visibleTasks = getVisibleTasks(tasks, assigneeFilter)
     const alphabeticalUsers = sortAssigneesByName(users)
+    const filteredUser = users.find((user: User): boolean => user.id === assigneeFilter)
+    const view = describeTaskView(filteredUser?.name, visibleTasks.length, tasks.length)
+    const summary = describeTaskSummary(
+        summariseTasks(
+            visibleTasks.map(({ task }): TaskType => task),
+            today,
+        ),
+    )
 
     useEffect(() => {
         try {
@@ -516,79 +519,71 @@ const App: FC = () => {
 
     return (
         <DndProvider backend={HTML5Backend}>
-            <main className="app">
-                <AccountControl />
+            <div className="app-shell">
+                <Sidebar
+                    tasks={tasks}
+                    users={alphabeticalUsers}
+                    assigneeFilter={assigneeFilter}
+                    onFilterChange={setAssigneeFilter}
+                />
 
-                <header className="app-header">
-                    <div>
-                        <h1>Task Manager</h1>
-                        <p>
-                            {tasks.length} task
-                            {tasks.length === 1 ? "" : "s"}
-                        </p>
-                    </div>
+                <div className="app-content">
+                    <main className="app-main">
+                        <AccountControl />
 
-                    <DictationHint />
+                        <header className="view-header">
+                            <div>
+                                <h1>{view.heading}</h1>
+                                <p className="view-count">
+                                    {view.count}
+                                    {summary && <span className="view-summary"> · {summary}</span>}
+                                </p>
+                            </div>
 
-                    <button
-                        type="button"
-                        ref={addButton}
-                        onClick={addTask}
-                        className="add-button"
-                    >
-                        + Add Task
-                    </button>
-                </header>
-
-                <section className="task-list">
-                    <div className="task-list-controls">
-                        <p className="dictation-notice">
-                            This demo may retain dictated text for diagnostics.
-                        </p>
-                        <label className="assignee-filter">
-                            Assignee
-                            <select
-                                value={assigneeFilter}
-                                onChange={(
-                                    event: React.ChangeEvent<HTMLSelectElement>,
-                                ): void => setAssigneeFilter(event.target.value)}
+                            <button
+                                type="button"
+                                ref={addButton}
+                                onClick={addTask}
+                                className="add-button"
                             >
-                                <option value="">All assignees</option>
-                                {alphabeticalUsers.map((user: User) => (
-                                    <option key={user.id} value={user.id}>
-                                        {user.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <DictationStatus dictation={dictation} meter={meter} />
-                        <MeterStyleSelector meter={meter} onChange={setMeter} />
-                    </div>
-                    {visibleTasks.map(({ task, index }, visibleIndex) => (
-                        <Task
-                            key={task.id}
-                            task={task}
-                            index={index}
-                            visiblePosition={visibleIndex + 1}
-                            users={alphabeticalUsers}
-                            today={today}
-                            moveTask={moveTask}
-                            updateTask={updateTask}
-                            deleteTask={deleteTask}
-                            registerTitleInput={registerTitleInput}
-                            registerDeleteButton={registerDeleteButton}
-                            dictation={dictation}
-                        />
-                    ))}
-                    <button
-                        type="button"
-                        onClick={resetToSampleTasks}
-                        className="reset-tasks-button"
-                    >
-                        Reset to sample tasks
-                    </button>
-                </section>
-            </main>
+                                <Icon name="plus" />
+                                Add Task
+                            </button>
+                        </header>
+
+                        <section className="task-list">
+                            <div className="task-list-controls">
+                                <DictationStatus dictation={dictation} meter={meter} />
+                                <MeterStyleSelector meter={meter} onChange={setMeter} />
+                            </div>
+                            {view.emptyMessage && <p className="empty-view">{view.emptyMessage}</p>}
+                            {visibleTasks.map(({ task, index }, visibleIndex) => (
+                                <Task
+                                    key={task.id}
+                                    task={task}
+                                    index={index}
+                                    visiblePosition={visibleIndex + 1}
+                                    users={alphabeticalUsers}
+                                    today={today}
+                                    moveTask={moveTask}
+                                    updateTask={updateTask}
+                                    deleteTask={deleteTask}
+                                    registerTitleInput={registerTitleInput}
+                                    registerDeleteButton={registerDeleteButton}
+                                    dictation={dictation}
+                                />
+                            ))}
+                            <button
+                                type="button"
+                                onClick={resetToSampleTasks}
+                                className="reset-tasks-button"
+                            >
+                                Reset to sample tasks
+                            </button>
+                        </section>
+                    </main>
+                </div>
+            </div>
         </DndProvider>
     )
 }
