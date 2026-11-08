@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { getVisibleTasks } from "./assigneeFilter"
-import { findTaskToFocusAfterDelete } from "./focusAfterDelete"
+import { findTaskToFocusAfterDelete, findTaskToFocusAfterHidden } from "./focusAfterDelete"
 import { createSampleTasks } from "./tasks"
 
 describe("focus after deleting a task", () => {
@@ -31,5 +31,25 @@ describe("focus after deleting a task", () => {
         expect(bobTaskIds).toEqual([tasks[0].id, tasks[6].id])
         expect(findTaskToFocusAfterDelete(bobTaskIds, tasks[0].id)).toBe(tasks[6].id)
         expect(findTaskToFocusAfterDelete(bobTaskIds, tasks[6].id)).toBe(tasks[0].id)
+    })
+})
+
+describe("focus after a filter hides a task", () => {
+    const all = ["A", "B", "C", "D"]
+
+    it("goes to the next task still on show", () => {
+        expect(findTaskToFocusAfterHidden(all, ["A", "C"], "B")).toBe("C")
+    })
+
+    it("goes to the previous task still on show when none follows", () => {
+        expect(findTaskToFocusAfterHidden(all, ["A", "B"], "D")).toBe("B")
+    })
+
+    it("has no task to go to when nothing is on show", () => {
+        expect(findTaskToFocusAfterHidden(all, [], "B")).toBeUndefined()
+    })
+
+    it("has no task to go to for an unknown task", () => {
+        expect(findTaskToFocusAfterHidden(all, ["A"], "Z")).toBeUndefined()
     })
 })

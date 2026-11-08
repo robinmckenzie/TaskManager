@@ -20,7 +20,7 @@ import { describeDueStatus, formatShortDate, getDueState } from "./dueDates"
 import type { DueStateKind } from "./dueDates"
 import { keepPanelIfShown, togglePanel } from "./detailsPanel"
 import type { DetailField, OpenPanel } from "./detailsPanel"
-import { findTaskToFocusAfterDelete } from "./focusAfterDelete"
+import { findTaskToFocusAfterDelete, findTaskToFocusAfterHidden } from "./focusAfterDelete"
 import { getQuickDueDates } from "./quickDueDates"
 import { getTaskControlNames } from "./taskControlNames"
 import { summariseTasks } from "./taskSummary"
@@ -456,7 +456,7 @@ const App: FC = () => {
     useEffect(() => {
         moveFocusAfterRender.current?.()
         moveFocusAfterRender.current = null
-    }, [tasks])
+    }, [tasks, assigneeFilter])
 
     const addTask = (): void => {
         const newTask: TaskType = {
@@ -543,14 +543,30 @@ const App: FC = () => {
         updateTask(id, { userId })
     }
 
-    // A new filter closes the panel of a task it hides. Focus stays on the
-    // person just chosen in the sidebar.
+    // A new filter closes the panel of a task it hides. Focus then goes on as
+    // after Delete: to the next task still on show, else the previous, else
+    // Add Task.
     const changeFilter = (selection: string): void => {
+        const shownTaskIds = getVisibleTasks(tasks, selection).map(({ task }): string => task.id)
+
+        if (openPanel !== null && !shownTaskIds.includes(openPanel.taskId)) {
+            const nextTaskId = findTaskToFocusAfterHidden(
+                tasks.map((task: TaskType): string => task.id),
+                shownTaskIds,
+                openPanel.taskId,
+            )
+
+            moveFocusAfterRender.current = (): void => {
+                const destination = nextTaskId
+                    ? summaryButtons.current.get(nextTaskId)
+                    : addButton.current
+
+                destination?.focus()
+            }
+        }
+
         setOpenPanel((current: OpenPanel | null): OpenPanel | null =>
-            keepPanelIfShown(
-                current,
-                getVisibleTasks(tasks, selection).map(({ task }): string => task.id),
-            ),
+            keepPanelIfShown(current, shownTaskIds),
         )
         setAssigneeFilter(selection)
     }
