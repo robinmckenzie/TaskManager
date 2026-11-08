@@ -23,13 +23,13 @@ it("shows the overdue sample task first and the completed one last, which is not
     const last = taskMarkup[6]
 
     expect(taskMarkup).toHaveLength(7)
-    expect(first).toContain('value="Fix authentication bug"')
+    expect(first).toContain('>Fix authentication bug</textarea>')
     expect(first.startsWith("task-overdue")).toBe(true)
     expect(first).toContain("2 days overdue")
     expect(first).toContain('<span class="task-assignee-name">Bob</span>')
     expect(first).toContain('<span class="task-priority-number">5</span>')
 
-    expect(last).toContain('value="Deploy initial build"')
+    expect(last).toContain('>Deploy initial build</textarea>')
     expect(last.startsWith("task-completed")).toBe(true)
     expect(last).toContain("Completed")
     expect(last).not.toContain("overdue")

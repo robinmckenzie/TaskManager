@@ -447,8 +447,16 @@ button {
 
 .task-title {
   flex: 1;
+  display: block;
   min-width: 0;
+  box-sizing: border-box;
+  /* Height is set from the text by useAutoGrow, so a long title wraps in full. */
   height: 32px;
+  min-height: 32px;
+  overflow: hidden;
+  resize: none;
+  font-family: inherit;
+  overflow-wrap: anywhere;
   padding: 4px 8px;
   font-size: 15px;
   font-weight: 550;
@@ -462,6 +470,11 @@ button {
     border-color var(--ease),
     box-shadow var(--ease),
     background var(--ease);
+}
+
+.task-title::placeholder {
+  color: var(--subtle);
+  opacity: 1;
 }
 
 .task-title:hover {

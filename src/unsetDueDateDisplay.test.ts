@@ -25,8 +25,8 @@ afterEach(() => {
 
 it("loads saved tasks that have an empty due date", () => {
     expect(taskMarkup).toHaveLength(2)
-    expect(taskMarkup[0]).toContain('value="No date yet"')
-    expect(taskMarkup[1]).toContain('value="Done without a date"')
+    expect(taskMarkup[0]).toContain('>No date yet</textarea>')
+    expect(taskMarkup[1]).toContain('>Done without a date</textarea>')
 })
 
 it("shows an incomplete task with no due date as having none, in the neutral colour", () => {

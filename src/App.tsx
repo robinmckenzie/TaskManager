@@ -35,6 +35,8 @@ import { DictationButton } from "./dictation/DictationButton"
 import { DictationStatus, MeterStyleSelector } from "./dictation/DictationFeedback"
 import type { MeterChoice } from "./dictation/LevelMeter"
 import { useDictation } from "./dictation/useDictation"
+import { toSingleLine } from "./singleLineText"
+import { useAutoGrow } from "./useAutoGrow"
 import type { Dictation } from "./dictation/useDictation"
 
 import "./index.css"
@@ -76,7 +78,7 @@ interface TaskProps {
     moveTask: (fromIndex: number, toIndex: number) => void
     updateTask: (id: string, changes: Partial<TaskType>) => void
     deleteTask: (id: string) => void
-    registerTitleInput: (id: string, input: HTMLInputElement | null) => void
+    registerTitleInput: (id: string, input: HTMLTextAreaElement | null) => void
     registerDeleteButton: (id: string, button: HTMLButtonElement | null) => void
     dictation: Dictation
 }
@@ -204,13 +206,44 @@ const Task: FC<TaskProps> = ({
      */
     const [{ isDragging }, connectGrip, connectPreview] = useTaskDrag(task.id, index)
 
-    const handleTextChange = (
-        event: React.ChangeEvent<HTMLInputElement>,
-    ): void => {
-        dictation.recordEdit(task.id, task.text, event.target.value)
+    const titleRef = useRef<HTMLTextAreaElement | null>(null)
+    useAutoGrow(titleRef, task.text)
+
+    const changeTitle = (text: string): void => {
+        dictation.recordEdit(task.id, task.text, text)
         updateTask(task.id, {
-            text: event.target.value,
+            text,
         })
+    }
+
+    const handleTextChange = (
+        event: React.ChangeEvent<HTMLTextAreaElement>,
+    ): void => {
+        changeTitle(toSingleLine(event.target.value))
+    }
+
+    // Enter would add a line break, but a title is a single line, so it does nothing.
+    // (Enter that confirms an input-method composition must still get through.)
+    const handleTitleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+        if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+            event.preventDefault()
+        }
+    }
+
+    // Pasted line breaks become spaces. Doing it here, not only in handleTextChange,
+    // keeps the caret just after the pasted text instead of jumping to the end.
+    const handleTitlePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>): void => {
+        const pasted = event.clipboardData.getData("text")
+
+        if (toSingleLine(pasted) === pasted) {
+            return
+        }
+
+        event.preventDefault()
+
+        const area = event.currentTarget
+        area.setRangeText(toSingleLine(pasted), area.selectionStart, area.selectionEnd, "end")
+        changeTitle(area.value)
     }
 
     const handlePriorityChange = (
@@ -280,14 +313,18 @@ const Task: FC<TaskProps> = ({
                 />
 
                 <div className="task-title-cell">
-                    <input
-                        type="text"
-                        ref={(input): void => {
-                            dictation.registerInput(task.id, input)
-                            registerTitleInput(task.id, input)
+                    <textarea
+                        rows={1}
+                        ref={(area): void => {
+                            titleRef.current = area
+                            dictation.registerInput(task.id, area)
+                            registerTitleInput(task.id, area)
                         }}
                         value={task.text}
                         onChange={handleTextChange}
+                        onKeyDown={handleTitleKeyDown}
+                        onPaste={handleTitlePaste}
+                        placeholder="Untitled task"
                         className="task-title"
                         aria-label={controlNames.title}
                     />
@@ -405,11 +442,11 @@ const App: FC = () => {
         }
     }, [tasks])
 
-    const titleInputs = useRef(new Map<string, HTMLInputElement>())
+    const titleInputs = useRef(new Map<string, HTMLTextAreaElement>())
     const deleteButtons = useRef(new Map<string, HTMLButtonElement>())
     const addButton = useRef<HTMLButtonElement>(null)
 
-    const registerTitleInput = (id: string, input: HTMLInputElement | null): void => {
+    const registerTitleInput = (id: string, input: HTMLTextAreaElement | null): void => {
         if (input) {
             titleInputs.current.set(id, input)
         } else {

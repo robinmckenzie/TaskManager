@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { scrollCaretIntoView } from "./caretScroll"
 import { findFieldId, findShortcutTargetId, focusFieldWithSavedSelection, isTextArea } from "./dictationFields"
 import type { DictationField } from "./dictationFields"
@@ -100,11 +100,51 @@ describe("isTextArea", () => {
 })
 
 describe("scrollCaretIntoView for a text area", () => {
-    it("does not scroll or measure anything, because the text area grows to fit its text", () => {
-        const textArea = createField("textarea", "A long title that wraps onto more than one line")
+    afterEach(() => {
+        vi.unstubAllGlobals()
+    })
 
-        // getComputedStyle and document are unavailable here: touching either would throw.
-        expect(() => scrollCaretIntoView(asField(textArea))).not.toThrow()
+    /** Stubs the page so the caret's line lands at `lineTop` in a window `windowHeight` tall. */
+    const stubPage = (lineTop: number, windowHeight: number) => {
+        const scrollBy = vi.fn()
+        const marker = { textContent: "", offsetTop: 40, offsetHeight: 22 }
+        const mirror = { style: {} as Record<string, string>, textContent: "", append: vi.fn(), remove: vi.fn() }
+
+        vi.stubGlobal("getComputedStyle", () => ({ lineHeight: "22px", borderTopWidth: "0px" }))
+        vi.stubGlobal("window", { innerHeight: windowHeight, scrollBy })
+        vi.stubGlobal("document", {
+            createElement: (tag: string) => (tag === "span" ? marker : mirror),
+            body: { append: vi.fn() },
+        })
+
+        return { scrollBy, areaTop: lineTop - marker.offsetTop }
+    }
+
+    it("scrolls the page, not the text area, when the caret's line is below the window", () => {
+        const { scrollBy, areaTop } = stubPage(590, 600)
+        const textArea = {
+            ...createField("textarea", "A long title that wraps onto more than one line"),
+            scrollTop: 0,
+            getBoundingClientRect: () => ({ top: areaTop }),
+        }
+
+        scrollCaretIntoView(textArea as unknown as DictationField)
+
+        // The line spans 590 to 612 in a 600 px window, plus a 12 px margin.
+        expect(scrollBy).toHaveBeenCalledWith(0, 24)
         expect(textArea.scrollLeft).toBe(0)
+    })
+
+    it("leaves the page alone when the caret's line is in the window", () => {
+        const { scrollBy, areaTop } = stubPage(100, 600)
+        const textArea = {
+            ...createField("textarea", "Short"),
+            scrollTop: 0,
+            getBoundingClientRect: () => ({ top: areaTop }),
+        }
+
+        scrollCaretIntoView(textArea as unknown as DictationField)
+
+        expect(scrollBy).not.toHaveBeenCalled()
     })
 })

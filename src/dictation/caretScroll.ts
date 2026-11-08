@@ -28,6 +28,70 @@ export const getScrollLeftForCaret = (
     return scrollLeft
 }
 
+/**
+ * How far the page must scroll vertically to bring a caret line into the
+ * window, moving as little as possible. Positive scrolls down. Positions are in
+ * pixels from the top of the window.
+ */
+export const getPageScrollForCaretLine = (
+    lineTop: number,
+    lineBottom: number,
+    windowHeight: number,
+    margin: number = CARET_MARGIN_PX,
+): number => {
+    if (lineTop - margin < 0) {
+        return lineTop - margin
+    }
+
+    if (lineBottom + margin > windowHeight) {
+        return lineBottom + margin - windowHeight
+    }
+
+    return 0
+}
+
+/** Style properties that decide where a text area wraps its text. */
+const MIRRORED_PROPERTIES = [
+    "boxSizing", "width", "fontFamily", "fontSize", "fontStyle", "fontWeight", "letterSpacing",
+    "lineHeight", "textTransform", "wordSpacing", "textIndent", "tabSize",
+    "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+    "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth",
+] as const
+
+/**
+ * The caret's line in a text area, in window coordinates. Found by laying the
+ * text before the caret out in a hidden copy of the area and noting where it ends.
+ */
+const measureCaretLine = (area: HTMLTextAreaElement): { top: number; bottom: number } => {
+    const style = getComputedStyle(area)
+    const mirror = document.createElement("div")
+
+    for (const property of MIRRORED_PROPERTIES) {
+        mirror.style[property] = style[property]
+    }
+
+    mirror.style.position = "absolute"
+    mirror.style.visibility = "hidden"
+    mirror.style.top = "0"
+    mirror.style.left = "-9999px"
+    mirror.style.whiteSpace = "pre-wrap"
+    mirror.style.overflowWrap = "break-word"
+    mirror.textContent = area.value.slice(0, area.selectionEnd ?? area.value.length)
+
+    const marker = document.createElement("span")
+    marker.textContent = "\u200b"
+    mirror.append(marker)
+    document.body.append(mirror)
+
+    const lineHeight = parseFloat(style.lineHeight) || marker.offsetHeight
+    const markerTop = marker.offsetTop
+    mirror.remove()
+
+    const areaTop = area.getBoundingClientRect().top + (parseFloat(style.borderTopWidth) || 0)
+
+    return { top: areaTop + markerTop - area.scrollTop, bottom: areaTop + markerTop - area.scrollTop + lineHeight }
+}
+
 const measureTextWidth = (input: HTMLInputElement, text: string): number | undefined => {
     measuringContext ??= document.createElement("canvas").getContext("2d")
 
@@ -45,13 +109,18 @@ const measureTextWidth = (input: HTMLInputElement, text: string): number | undef
  * Scrolls a single-line input so its caret is visible. Browsers do this for
  * typing, but not when the value and selection are set from script.
  *
- * A text area is not scrolled: it wraps its text and grows to fit it, so
- * nothing inside it needs to scroll for the caret to be in view. (Keeping the
- * caret in view in the page, and text areas that scroll inside themselves, are
- * outside TM #83.)
+ * A text area wraps its text and grows to fit it, so nothing inside it scrolls.
+ * Instead the page is scrolled, when the caret's line is outside the window.
  */
 export const scrollCaretIntoView = (input: DictationField): void => {
     if (isTextArea(input)) {
+        const line = measureCaretLine(input)
+        const delta = getPageScrollForCaretLine(line.top, line.bottom, window.innerHeight)
+
+        if (delta !== 0) {
+            window.scrollBy(0, delta)
+        }
+
         return
     }
 
