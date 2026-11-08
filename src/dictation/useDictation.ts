@@ -14,6 +14,8 @@ import { DictationController } from "./dictationController"
 import type { DictationPhase, DictationState } from "./dictationController"
 import { describeDictationError } from "./dictationMessages"
 import { DictationSession } from "./dictationSession"
+import { findFieldId, findShortcutTargetId, focusFieldWithSavedSelection } from "./dictationFields"
+import type { DictationField } from "./dictationFields"
 import { createDictationTargets, getInputSelection } from "./dictationTargets"
 import type { TextRange } from "./insertionText"
 import {
@@ -38,18 +40,12 @@ export interface Dictation {
     message: string
     /** The microphone input level and its recent peak, to show while listening. */
     readAudioLevel(): AudioLevelReading
-    registerInput(targetId: string, input: HTMLInputElement | null): void
+    registerInput(targetId: string, input: DictationField | null): void
     registerButton(targetId: string, button: HTMLButtonElement | null): void
     toggleFromButton(targetId: string): void
     recordEdit(targetId: string, before: string, after: string): void
     removeTarget(targetId: string): void
 }
-
-const findTargetId = <T extends Element>(
-    elements: Map<string, T>,
-    element: Element | null,
-): string | undefined =>
-    [...elements].find(([, candidate]) => candidate === element)?.[0]
 
 /**
  * Whether an element is a dictation setting, marked with
@@ -71,13 +67,13 @@ const describeUnavailability = (availability: DictationAvailability): string =>
         : describeDictationError(availability === "unsupported" ? "unsupported" : "not_configured")
 
 /**
- * Connects dictation to registered text inputs: their dictation buttons, the
+ * Connects dictation to registered text fields (single-line inputs or text areas): their dictation buttons, the
  * Ctrl + Alt shortcut, cursor and focus tracking, and status messages.
  */
 export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptions): Dictation => {
     const [availability, setAvailability] = useState<DictationAvailability>("checking")
     const [state, setState] = useState<DictationState>({ phase: "idle", targetId: null, message: "" })
-    const inputs = useRef(new Map<string, HTMLInputElement>())
+    const inputs = useRef(new Map<string, DictationField>())
     const buttons = useRef(new Map<string, HTMLButtonElement>())
     const savedSelections = useRef(new Map<string, TextRange>())
     const vocabularyRef = useRef(vocabulary)
@@ -96,9 +92,9 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
 
     // Targets outlive their inputs, so that text still settling reaches a
     // task whose input has left the page, such as one that was filtered out.
-    const targetsRef = useRef<ReturnType<typeof createDictationTargets<HTMLInputElement>> | null>(null)
+    const targetsRef = useRef<ReturnType<typeof createDictationTargets<DictationField>> | null>(null)
     const getTargets = useCallback(() => {
-        targetsRef.current ??= createDictationTargets<HTMLInputElement>({
+        targetsRef.current ??= createDictationTargets<DictationField>({
             getInput: (targetId) => inputs.current.get(targetId),
             getText: (targetId) => getTextRef.current(targetId),
             setText: (targetId, text) => flushSync(() => setTextRef.current(targetId, text)),
@@ -147,18 +143,12 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         return false
     }, [])
 
-    /** Focuses an input, restoring its last cursor position or selection. */
-    const focusInput = useCallback((input: HTMLInputElement, targetId: string): void => {
-        if (document.activeElement === input) {
-            return
-        }
-
-        const saved = savedSelections.current.get(targetId)
-        const length = input.value.length
-        input.focus()
-        input.setSelectionRange(
-            Math.min(saved?.start ?? length, length),
-            Math.min(saved?.end ?? length, length),
+    /** Focuses a field, restoring its last cursor position or selection. */
+    const focusInput = useCallback((input: DictationField, targetId: string): void => {
+        focusFieldWithSavedSelection(
+            input,
+            savedSelections.current.get(targetId),
+            document.activeElement === input,
         )
     }, [])
 
@@ -197,7 +187,7 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         }
 
         const focused = document.activeElement
-        const targetId = findTargetId(inputs.current, focused) ?? findTargetId(buttons.current, focused)
+        const targetId = findShortcutTargetId(inputs.current, buttons.current, focused)
 
         if (targetId) {
             startInInput(targetId)
@@ -241,8 +231,8 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
 
         const handleSelectionChange = (): void => {
             const controller = controllerRef.current
-            const input = document.activeElement as HTMLInputElement | null
-            const targetId = findTargetId(inputs.current, input)
+            const input = document.activeElement as DictationField | null
+            const targetId = findFieldId(inputs.current, input)
 
             if (controller?.isActive && input && targetId) {
                 controller.moveInsertionPoint(targetId, getInputSelection(input))
@@ -258,12 +248,12 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
             }
 
             const focused = document.activeElement
-            const inputId = findTargetId(inputs.current, focused)
+            const inputId = findFieldId(inputs.current, focused)
 
             if (inputId) {
-                controller.moveInsertionPoint(inputId, getInputSelection(focused as HTMLInputElement))
+                controller.moveInsertionPoint(inputId, getInputSelection(focused as DictationField))
             } else if (
-                findTargetId(buttons.current, focused) !== controller.activeTargetId &&
+                findFieldId(buttons.current, focused) !== controller.activeTargetId &&
                 !isDictationSetting(focused)
             ) {
                 controller.stop("focus")
@@ -271,10 +261,10 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         }
 
         const handleFocusOut = (event: FocusEvent): void => {
-            const targetId = findTargetId(inputs.current, event.target as Element)
+            const targetId = findFieldId(inputs.current, event.target as Element)
 
             if (targetId) {
-                savedSelections.current.set(targetId, getInputSelection(event.target as HTMLInputElement))
+                savedSelections.current.set(targetId, getInputSelection(event.target as DictationField))
             }
 
             // Wait until focus has settled on its new element.
@@ -300,7 +290,7 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         controllerRef.current?.dispose()
     }, [])
 
-    const registerInput = useCallback((targetId: string, input: HTMLInputElement | null): void => {
+    const registerInput = useCallback((targetId: string, input: DictationField | null): void => {
         if (input) {
             inputs.current.set(targetId, input)
             return

@@ -1,3 +1,6 @@
+import { isTextArea } from "./dictationFields"
+import type { DictationField } from "./dictationFields"
+
 // Keeps a little text visible beyond the caret, and absorbs small differences
 // between measured and rendered text widths.
 const CARET_MARGIN_PX = 12
@@ -41,8 +44,17 @@ const measureTextWidth = (input: HTMLInputElement, text: string): number | undef
 /**
  * Scrolls a single-line input so its caret is visible. Browsers do this for
  * typing, but not when the value and selection are set from script.
+ *
+ * A text area is not scrolled: it wraps its text and grows to fit it, so
+ * nothing inside it needs to scroll for the caret to be in view. (Keeping the
+ * caret in view in the page, and text areas that scroll inside themselves, are
+ * outside TM #83.)
  */
-export const scrollCaretIntoView = (input: HTMLInputElement): void => {
+export const scrollCaretIntoView = (input: DictationField): void => {
+    if (isTextArea(input)) {
+        return
+    }
+
     const caretIndex = input.selectionEnd ?? input.value.length
     const textWidth = measureTextWidth(input, input.value.slice(0, caretIndex))
 

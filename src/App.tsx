@@ -16,7 +16,8 @@ import {
     loadAssigneeFilter,
     saveAssigneeFilter,
 } from "./assigneeFilter"
-import { describeDueStatus, getDaysUntilDue } from "./dueDates"
+import { describeDueStatus, getDueState } from "./dueDates"
+import type { DueStateKind } from "./dueDates"
 import { findTaskToFocusAfterDelete } from "./focusAfterDelete"
 import { getTaskControlNames } from "./taskControlNames"
 import { getNewTaskAssignee, sortAssigneesByName } from "./users"
@@ -35,6 +36,15 @@ import type { Dictation } from "./dictation/useDictation"
 import "./index.css"
 
 const TASK_DRAG_TYPE = "TASK"
+
+const DUE_STATE_CLASSES: Record<DueStateKind, string> = {
+    completed: "task-completed",
+    none: "task-normal",
+    overdue: "task-overdue",
+    "due-soon": "task-due-soon",
+    "due-this-week": "task-due-this-week",
+    later: "task-normal",
+}
 
 interface User {
     id: string
@@ -112,10 +122,7 @@ const Task: FC<TaskProps> = ({
 
     const controlNames = getTaskControlNames(task.text, visiblePosition)
 
-    const daysUntilDue: number | null = getDaysUntilDue(task.dueDate, today)
-
-    const overdue: boolean =
-        !task.completed && daysUntilDue !== null && daysUntilDue < 0
+    const dueState = getDueState(task.dueDate, task.completed, today)
 
     /*
      * react-dnd drop target.
@@ -240,30 +247,6 @@ const Task: FC<TaskProps> = ({
         })
     }
 
-    const getBackgroundClass = (): string => {
-        if (task.completed) {
-            return "task-completed"
-        }
-
-        if (daysUntilDue === null) {
-            return "task-normal"
-        }
-
-        if (overdue) {
-            return "task-overdue"
-        }
-
-        if (daysUntilDue <= 1) {
-            return "task-due-soon"
-        }
-
-        if (daysUntilDue <= 3) {
-            return "task-due-this-week"
-        }
-
-        return "task-normal"
-    }
-
     return (
         <div
             ref={(element: HTMLDivElement | null): void => {
@@ -273,7 +256,7 @@ const Task: FC<TaskProps> = ({
                 connectPreviewElementForLeftDrag(element)
                 connectPreviewElementForDetailsDrag(element)
             }}
-            className={`task ${getBackgroundClass()}`}
+            className={`task ${DUE_STATE_CLASSES[dueState.kind]}`}
             style={{
                 opacity: isDragging ? 0.5 : 1,
             }}
@@ -332,7 +315,7 @@ const Task: FC<TaskProps> = ({
                     </label>
 
                     <span>
-                        {describeDueStatus(daysUntilDue, task.completed)}
+                        {describeDueStatus(dueState.daysUntilDue, task.completed)}
                     </span>
                 </div>
             </div>
