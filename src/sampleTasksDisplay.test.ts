@@ -18,20 +18,22 @@ afterEach(() => {
     vi.unstubAllGlobals()
 })
 
-it("shows the completed sample task first, styled as completed and not as overdue", () => {
-    const [first, second] = taskMarkup
+it("shows the overdue sample task first and the completed one last, which is not styled as overdue", () => {
+    const first = taskMarkup[0]
+    const last = taskMarkup[6]
 
-    expect(taskMarkup).toHaveLength(5)
-    expect(first).toContain('value="Deploy initial build"')
-    expect(first.startsWith("task-completed")).toBe(true)
-    expect(first).toContain("Completed")
-    expect(first).not.toContain("overdue")
-    expect(first).toContain('alt="Alice"')
-    expect(first).toContain("Priority: 5/5")
+    expect(taskMarkup).toHaveLength(7)
+    expect(first).toContain('>Fix authentication bug</textarea>')
+    expect(first.startsWith("task-overdue")).toBe(true)
+    expect(first).toContain("2 days overdue")
+    expect(first).toContain('<span class="task-assignee-name">Bob</span>')
+    expect(first).toContain('<span class="task-priority-number" aria-hidden="true">5</span>')
 
-    expect(second).toContain('value="Design UI"')
-    expect(second.startsWith("task-overdue")).toBe(true)
-    expect(second).toContain("1 day overdue")
+    expect(last).toContain('>Deploy initial build</textarea>')
+    expect(last.startsWith("task-completed")).toBe(true)
+    expect(last).toContain("Completed")
+    expect(last).not.toContain("overdue")
+    expect(last).toContain('<span class="task-assignee-name">Bob</span>')
 })
 
 it("gives no task an inline animation, so that an overdue task does not pulse", () => {
@@ -42,30 +44,42 @@ it("tells visitors that dictated text may be retained", () => {
     expect(markup).toContain('<p class="dictation-notice">This demo may retain dictated text for diagnostics.</p>')
 })
 
+// The floating status pill follows the reset button, at the foot of the list.
+const statusPill = '<div class="dictation-pill-area">'
+
 const resetButton = '<button type="button" class="reset-tasks-button">Reset to sample tasks</button>'
 
 it("offers resetting to the sample tasks as a button below the last task, with the assignee filter above the tasks", () => {
-    const controls = markup.match(/<div class="task-list-controls">[\s\S]*?<div class="task /)?.[0]
+    const beforeTasks = markup.slice(0, markup.indexOf('<div class="task '))
 
-    expect(controls).toContain('<label class="assignee-filter">')
-    expect(controls).not.toContain("Reset to sample tasks")
+    expect(beforeTasks).toContain('<nav class="assignee-filter"')
+    expect(beforeTasks).not.toContain("Reset to sample tasks")
     expect(markup.split(resetButton)).toHaveLength(2)
-    expect(taskMarkup[4].endsWith(`${resetButton}</section></main>`)).toBe(true)
+    expect(taskMarkup[6]).toContain(`${resetButton}${statusPill}`)
 })
 
+// One task, for Alice, so that the other three assignees have none.
+const aliceOnly = JSON.stringify([
+    { id: "saved-1", text: "Only task", userId: "1", priority: 3, dueDate: "", completed: false },
+])
+
 it.each([
-    ["the list is empty", TASKS_STORAGE_KEY, "[]", "0 tasks"],
-    ["the assignee filter matches no task", ASSIGNEE_FILTER_STORAGE_KEY, "4", "5 tasks"],
-])("still offers resetting to the sample tasks, below the controls, when %s", (_view, savedKey, savedValue, taskCount) => {
+    ["the list is empty", { [TASKS_STORAGE_KEY]: "[]" }, "0 tasks"],
+    [
+        "the assignee filter matches no task",
+        { [TASKS_STORAGE_KEY]: aliceOnly, [ASSIGNEE_FILTER_STORAGE_KEY]: "4" },
+        "0 of 1 task",
+    ],
+])("still offers resetting to the sample tasks, below the controls, when %s", (_view, saved, taskCount) => {
     vi.stubGlobal("localStorage", {
-        getItem: (key: string): string | null => (key === savedKey ? savedValue : null),
+        getItem: (key: string): string | null => (saved as Record<string, string>)[key] ?? null,
     })
     const emptyMarkup = renderToStaticMarkup(createElement(App))
 
     expect(emptyMarkup).not.toContain('<div class="task ')
     expect(emptyMarkup).toContain(taskCount)
     expect(emptyMarkup.split(resetButton)).toHaveLength(2)
-    expect(emptyMarkup.endsWith(`</div>${resetButton}</section></main>`)).toBe(true)
+    expect(emptyMarkup).toContain(`${resetButton}${statusPill}`)
 })
 
 it("names each control on a task card after what it does and its task", () => {
@@ -73,23 +87,22 @@ it("names each control on a task card after what it does and its task", () => {
 
     for (const name of [
         "Task title",
-        "Start dictation into Deploy initial build",
-        "Due date for Deploy initial build",
-        "Priority for Deploy initial build",
-        "Assignee for Deploy initial build",
-        "Complete Deploy initial build",
-        "Delete Deploy initial build",
+        "Start dictation into Fix authentication bug",
+        "Edit details for Fix authentication bug",
+        "Complete Fix authentication bug",
     ]) {
         expect(first).toContain(`aria-label="${name}"`)
     }
 
-    expect(first).toContain('aria-valuetext="5 of 5"')
-    expect(second).toContain('aria-label="Delete Design UI"')
+    // The details panel starts closed, and its controls are named in TaskDetails.test.ts.
+    expect(first).toContain('aria-expanded="false"')
+    expect(first).not.toContain("task-details")
+    expect(second).toContain('aria-label="Edit details for Prepare sprint demo"')
 })
 
 it("says how to dictate, with the button's microphone in place of the word", () => {
     const hint = markup.match(/<p class="dictation-hint">([\s\S]*?)<\/p>/)?.[1]
-    const buttonIcon = taskMarkup[0].match(/<path[^>]*>/)?.[0]
+    const buttonIcon = taskMarkup[0].match(/<button[^>]*dictation-button[^>]*>.*?(<path[^>]*>)/)?.[1]
 
     expect(hint?.replace(/<svg[^>]*role="img" aria-label="microphone"[^>]*>[\s\S]*?<\/svg>/, "[microphone]").replace("<br/>", " ").replace(/<\/?span>/g, "")).toBe(
         "Dictate a task title: click its [microphone] button, or click a title and press Ctrl + Alt. These both toggle the mic on/off.",
@@ -119,4 +132,21 @@ it("offers only the looks of the selected meter style", () => {
     ])
     expect(markup).not.toContain("Classic")
     expect(markup).not.toContain("Pill")
+})
+
+it("always has an empty live announcement area in the status pill, with no level meter while idle", () => {
+    expect(markup).toContain(
+        '<div class="dictation-pill dictation-pill-empty"><p class="dictation-status" role="status"></p></div>',
+    )
+    expect(markup).not.toContain("level-meter")
+})
+
+it("opens Settings from the sidebar, with the level meter choice only inside the closed dialog", () => {
+    const sidebar = markup.slice(markup.indexOf('<aside class="sidebar">'), markup.indexOf("</aside>"))
+
+    expect(sidebar).toContain("Settings</button>")
+    expect(sidebar).not.toContain("Level meter")
+    expect(markup).toContain('<dialog class="settings-dialog" aria-labelledby="settings-heading"')
+    expect(markup.slice(markup.indexOf("<dialog"))).toContain("Level meter")
+    expect(markup).not.toContain("<dialog open")
 })

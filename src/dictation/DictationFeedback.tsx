@@ -28,9 +28,11 @@ interface DictationStatusProps {
 }
 
 /**
- * The dictation state and latest message in a box, with the microphone level
- * while listening. The level sits outside the status text, so that assistive
- * technology announces a change of state but not each change of level.
+ * The dictation state and latest message in a floating pill at the foot of the
+ * list, with the microphone level while listening. The live announcement area
+ * is always on the page, even when empty, so that the first message is
+ * announced. The level sits outside it, so that assistive technology announces
+ * a change of state but not each change of level.
  */
 export const DictationStatus: FC<DictationStatusProps> = ({ dictation, meter }) => {
     const { phase, message } = dictation
@@ -38,8 +40,8 @@ export const DictationStatus: FC<DictationStatusProps> = ({ dictation, meter }) 
     const isEmpty = !stateText && !message
 
     return (
-        <div className="dictation-feedback">
-            <div className={`dictation-status-box${isEmpty ? " dictation-status-box-empty" : ""}`}>
+        <div className="dictation-pill-area">
+            <div className={`dictation-pill${isEmpty ? " dictation-pill-empty" : ""}`}>
                 <p className="dictation-status" role="status">
                     {stateText && (
                         <strong className={`dictation-state dictation-state-${phase}`}>
@@ -111,14 +113,13 @@ interface MeterStyleSelectorProps {
 
 /**
  * Chooses how the microphone level is drawn: its style and, below, one of the
- * looks that style has. Usable while dictating.
+ * looks that style has. Usable while dictating: it is shown in the Settings
+ * dialog, which is marked as a dictation setting.
  */
 export const MeterStyleSelector: FC<MeterStyleSelectorProps> = ({ meter, onChange }) => (
     <div
         className="meter-style"
         data-dictation-setting
-        // Keep focus, and the cursor position or selection, in the text input.
-        onMouseDown={(event): void => event.preventDefault()}
     >
         <div role="group" aria-labelledby="meter-style-label">
             <span id="meter-style-label">Level meter</span>

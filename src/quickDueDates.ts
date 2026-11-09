@@ -1,4 +1,5 @@
 import { addDays, format } from "date-fns"
+import { formatShortDate } from "./dueDates"
 
 export type QuickDueDateName = "Today" | "Tomorrow" | "In a week"
 
@@ -25,3 +26,14 @@ export const getQuickDueDates = (today: Date): QuickDueDate[] =>
         name,
         dueDate: format(addDays(today, days), "yyyy-MM-dd"),
     }))
+
+/**
+ * Names a quick due date button for assistive technology: the visible name
+ * first, then the date it sets, then the task, such as
+ * "Tomorrow, 9 Nov, for Prepare sprint demo".
+ */
+export const describeQuickDueDate = (quickDueDate: QuickDueDate, taskName: string): string => {
+    const shortDate = formatShortDate(quickDueDate.dueDate)
+
+    return `${quickDueDate.name}, ${shortDate}, for ${taskName}`
+}

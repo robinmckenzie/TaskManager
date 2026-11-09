@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { getVisibleTasks } from "./assigneeFilter"
-import { findTaskToFocusAfterDelete } from "./focusAfterDelete"
+import { findTaskToFocusAfterDelete, findTaskToFocusAfterHidden } from "./focusAfterDelete"
 import { createSampleTasks } from "./tasks"
 
 describe("focus after deleting a task", () => {
@@ -24,12 +24,32 @@ describe("focus after deleting a task", () => {
     })
 
     it("skips tasks hidden by the assignee filter", () => {
-        // Alice has the first, second and last sample tasks.
+        // Bob has the first and last sample tasks, with the others between them.
         const tasks = createSampleTasks()
-        const aliceTaskIds = getVisibleTasks(tasks, "1").map(({ task }) => task.id)
+        const bobTaskIds = getVisibleTasks(tasks, "2").map(({ task }) => task.id)
 
-        expect(aliceTaskIds).toEqual([tasks[0].id, tasks[1].id, tasks[4].id])
-        expect(findTaskToFocusAfterDelete(aliceTaskIds, tasks[1].id)).toBe(tasks[4].id)
-        expect(findTaskToFocusAfterDelete(aliceTaskIds, tasks[4].id)).toBe(tasks[1].id)
+        expect(bobTaskIds).toEqual([tasks[0].id, tasks[6].id])
+        expect(findTaskToFocusAfterDelete(bobTaskIds, tasks[0].id)).toBe(tasks[6].id)
+        expect(findTaskToFocusAfterDelete(bobTaskIds, tasks[6].id)).toBe(tasks[0].id)
+    })
+})
+
+describe("focus after a filter hides a task", () => {
+    const all = ["A", "B", "C", "D"]
+
+    it("goes to the next task still on show", () => {
+        expect(findTaskToFocusAfterHidden(all, ["A", "C"], "B")).toBe("C")
+    })
+
+    it("goes to the previous task still on show when none follows", () => {
+        expect(findTaskToFocusAfterHidden(all, ["A", "B"], "D")).toBe("B")
+    })
+
+    it("has no task to go to when nothing is on show", () => {
+        expect(findTaskToFocusAfterHidden(all, [], "B")).toBeUndefined()
+    })
+
+    it("has no task to go to for an unknown task", () => {
+        expect(findTaskToFocusAfterHidden(all, ["A"], "Z")).toBeUndefined()
     })
 })

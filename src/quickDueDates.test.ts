@@ -1,6 +1,6 @@
 import { format } from "date-fns"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
-import { getQuickDueDates } from "./quickDueDates"
+import { describeQuickDueDate, getQuickDueDates } from "./quickDueDates"
 
 const datesFor = (today: Date): string[] => getQuickDueDates(today).map((quick) => quick.dueDate)
 
@@ -102,5 +102,19 @@ describe("getQuickDueDates", () => {
         getQuickDueDates(today)
 
         expect(today.getTime()).toBe(before)
+    })
+})
+
+describe("describeQuickDueDate", () => {
+    it("names the button, the date it sets and the task", () => {
+        expect(
+            describeQuickDueDate({ name: "Tomorrow", dueDate: "2026-11-09" }, "Prepare sprint demo"),
+        ).toBe("Tomorrow, 9 Nov, for Prepare sprint demo")
+    })
+
+    it("names a blank task by its position", () => {
+        expect(
+            describeQuickDueDate({ name: "Today", dueDate: "2026-11-08" }, "untitled task 2"),
+        ).toBe("Today, 8 Nov, for untitled task 2")
     })
 })

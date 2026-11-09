@@ -44,13 +44,20 @@ Codex investigation of 8 October 2026 suggested considering:
 
 A task title can be cleared and left blank, and the blank task is saved like any
 other. The TM-6 browser checks observed this; it matches the code, which has no
-title validation.
+title validation. Since TM #84 a blank title shows a greyed "Untitled task",
+which is a placeholder and is never saved.
 
 Whether blank titles should be prevented is a product decision that has not been
 made. If they are, decide what happens to a title while it is being edited, and
 to blank titles already saved under `taskmanager.tasks`.
 
 ## Layout on narrow screens
+
+TM #84 (the Modern design) supports desktop browsers about 1024 px wide and up.
+Between 1024 and 1180 px the assignee shows as a photo alone and the short date
+is left out of the row. The old narrow-screen rules were not carried over, and
+phones, narrow windows and high zoom have no requirement. The notes below
+describe the layout before that change.
 
 Low priority. The app was not designed specifically for mobile.
 
@@ -97,3 +104,21 @@ TM #45 added Google sign-in with Better Auth. If its code is reused elsewhere:
   that tasks stay usable. Unit tests cover the account code, and a browser
   check covered sign-in being unavailable. The project has no component test
   library; adding one would allow such a test.
+
+## Test coverage of the interface
+
+The project has no component test library, and TM #84 added none. Unit tests
+cover the pure logic (open and close rules for the details panel, quick dates,
+focus after Delete or a hidden task, control names, single-line text, summary
+wording) and the rendered markup of the first state. These are covered only by
+a browser checklist, not by automated tests:
+
+- the details panel opening, Escape, a second click, and focus landing on the
+  part clicked;
+- focus after Delete and after a filter hides the open task;
+- the Settings dialog: focus inside, Tab staying inside, focus returning;
+- dragging from the grip and selecting text in a title with a real mouse;
+- the 1024 to 1180 px layout, contrast and focus-ring measurements, and
+  reduced motion.
+
+A component test library would allow tests for these.

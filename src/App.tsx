@@ -16,21 +16,32 @@ import {
     loadAssigneeFilter,
     saveAssigneeFilter,
 } from "./assigneeFilter"
-import { describeDueStatus, getDueState } from "./dueDates"
+import { describeDueStatus, formatShortDate, getDueState } from "./dueDates"
 import type { DueStateKind } from "./dueDates"
-import { findTaskToFocusAfterDelete } from "./focusAfterDelete"
+import { keepPanelIfShown, togglePanel } from "./detailsPanel"
+import type { DetailField, OpenPanel } from "./detailsPanel"
+import { findTaskToFocusAfterDelete, findTaskToFocusAfterHidden } from "./focusAfterDelete"
+import { getQuickDueDates } from "./quickDueDates"
 import { getTaskControlNames } from "./taskControlNames"
+import { summariseTasks } from "./taskSummary"
+import { describeTaskSummary, describeTaskView } from "./taskView"
 import { getNewTaskAssignee, sortAssigneesByName } from "./users"
+import type { User } from "./users"
 import { useToday } from "./useToday"
 import { AccountControl } from "./account/AccountControl"
+import { Avatar } from "./Avatar"
+import { Icon } from "./Icon"
+import type { IconName } from "./Icon"
+import { PriorityBars } from "./PriorityBars"
+import { SettingsDialog } from "./SettingsDialog"
+import { Sidebar } from "./Sidebar"
+import { TaskDetails } from "./TaskDetails"
 import { DictationButton } from "./dictation/DictationButton"
-import {
-    DictationHint,
-    DictationStatus,
-    MeterStyleSelector,
-} from "./dictation/DictationFeedback"
+import { DictationStatus } from "./dictation/DictationFeedback"
 import type { MeterChoice } from "./dictation/LevelMeter"
 import { useDictation } from "./dictation/useDictation"
+import { toSingleLine } from "./singleLineText"
+import { useAutoGrow } from "./useAutoGrow"
 import type { Dictation } from "./dictation/useDictation"
 
 import "./index.css"
@@ -46,10 +57,14 @@ const DUE_STATE_CLASSES: Record<DueStateKind, string> = {
     later: "task-normal",
 }
 
-interface User {
-    id: string
-    name: string
-    photo: string
+/** The shape drawn beside each due state, so that colour is never the only signal. */
+const DUE_STATE_ICONS: Record<DueStateKind, IconName> = {
+    completed: "check",
+    none: "dash",
+    overdue: "warning",
+    "due-soon": "clock",
+    "due-this-week": "calendar",
+    later: "arrow",
 }
 
 interface DragItem {
@@ -68,8 +83,13 @@ interface TaskProps {
     moveTask: (fromIndex: number, toIndex: number) => void
     updateTask: (id: string, changes: Partial<TaskType>) => void
     deleteTask: (id: string) => void
-    registerTitleInput: (id: string, input: HTMLInputElement | null) => void
-    registerDeleteButton: (id: string, button: HTMLButtonElement | null) => void
+    registerTitleInput: (id: string, input: HTMLTextAreaElement | null) => void
+    registerSummaryButton: (id: string, button: HTMLButtonElement | null) => void
+    /** Changes the assignee, and closes the panel if that hides the task under the filter. */
+    changeAssignee: (id: string, userId: string) => void
+    /** The field to focus if this task's details panel is open, else undefined. */
+    openPanel: OpenPanel | undefined
+    togglePanel: (id: string, field: DetailField | null) => void
     dictation: Dictation
 }
 
@@ -111,7 +131,10 @@ const Task: FC<TaskProps> = ({
     updateTask,
     deleteTask,
     registerTitleInput,
-    registerDeleteButton,
+    registerSummaryButton,
+    changeAssignee,
+    openPanel,
+    togglePanel: toggleTaskPanel,
     dictation,
 }) => {
     const ref = useRef<HTMLDivElement>(null)
@@ -123,6 +146,8 @@ const Task: FC<TaskProps> = ({
     const controlNames = getTaskControlNames(task.text, visiblePosition)
 
     const dueState = getDueState(task.dueDate, task.completed, today)
+
+    const shortDate = formatShortDate(task.dueDate)
 
     /*
      * react-dnd drop target.
@@ -192,51 +217,61 @@ const Task: FC<TaskProps> = ({
     /*
      * react-dnd drag source.
      */
-    const [
-        { isDragging: isLeftDragging },
-        connectSourceElementForLeftDrag,
-        connectPreviewElementForLeftDrag,
-    ] = useTaskDrag(task.id, index)
-    const [
-        { isDragging: isDetailsDragging },
-        connectSourceElementForDetailsDrag,
-        connectPreviewElementForDetailsDrag,
-    ] = useTaskDrag(task.id, index)
-    const isDragging = isLeftDragging || isDetailsDragging
+    const [{ isDragging }, connectGrip, connectPreview] = useTaskDrag(task.id, index)
+
+    const titleRef = useRef<HTMLTextAreaElement | null>(null)
+    useAutoGrow(titleRef, task.text)
+
+    const changeTitle = (text: string): void => {
+        dictation.recordEdit(task.id, task.text, text)
+        updateTask(task.id, {
+            text,
+        })
+    }
 
     const handleTextChange = (
-        event: React.ChangeEvent<HTMLInputElement>,
+        event: React.ChangeEvent<HTMLTextAreaElement>,
     ): void => {
-        dictation.recordEdit(task.id, task.text, event.target.value)
-        updateTask(task.id, {
-            text: event.target.value,
-        })
+        changeTitle(toSingleLine(event.target.value))
     }
 
-    const handlePriorityChange = (
-        event: React.ChangeEvent<HTMLInputElement>,
-    ): void => {
-        const priority: number = Number(event.target.value)
-
-        updateTask(task.id, {
-            priority,
-        })
+    // Enter would add a line break, but a title is a single line, so it does nothing.
+    // (Enter that confirms an input-method composition must still get through.)
+    const handleTitleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+        if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+            event.preventDefault()
+        }
     }
 
-    const handleUserChange = (
-        event: React.ChangeEvent<HTMLSelectElement>,
-    ): void => {
-        updateTask(task.id, {
-            userId: event.target.value,
-        })
+    // Pasted line breaks become spaces. Doing it here, not only in handleTextChange,
+    // keeps the caret just after the pasted text instead of jumping to the end.
+    const handleTitlePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>): void => {
+        const pasted = event.clipboardData.getData("text")
+
+        if (toSingleLine(pasted) === pasted) {
+            return
+        }
+
+        event.preventDefault()
+
+        const area = event.currentTarget
+        area.setRangeText(toSingleLine(pasted), area.selectionStart, area.selectionEnd, "end")
+        changeTitle(area.value)
     }
 
-    const handleDueDateChange = (
-        event: React.ChangeEvent<HTMLInputElement>,
-    ): void => {
-        updateTask(task.id, {
-            dueDate: event.target.value,
-        })
+    const summaryRef = useRef<HTMLButtonElement | null>(null)
+    const isOpen = openPanel !== undefined
+    const panelId = `task-details-${task.id}`
+    const summaryId = `task-summary-${task.id}`
+
+    const handleSummaryClick = (event: React.MouseEvent<HTMLButtonElement>): void => {
+        // A pointer click on one part of the summary opens the panel at that
+        // field. From the keyboard (a click with no pointer), focus stays on the
+        // button, as for any disclosure.
+        const part = (event.target as Element).closest<HTMLElement>("[data-field]")?.dataset.field
+        const fromPointer = event.detail > 0
+
+        toggleTaskPanel(task.id, fromPointer ? ((part as DetailField | undefined) ?? "due") : null)
     }
 
     const handleCompletedChange = (
@@ -253,39 +288,45 @@ const Task: FC<TaskProps> = ({
                 ref.current = element
 
                 drop(element)
-                connectPreviewElementForLeftDrag(element)
-                connectPreviewElementForDetailsDrag(element)
+                connectPreview(element)
             }}
             className={`task ${DUE_STATE_CLASSES[dueState.kind]}`}
             style={{
                 opacity: isDragging ? 0.5 : 1,
             }}
         >
-            <div
-                className="task-left-drag-surface task-drag-surface"
-                ref={(element): void => {
-                    connectSourceElementForLeftDrag(element)
-                }}
-            >
-                <div className="task-drag-handle">⋮⋮</div>
-                <img
-                    src={user?.photo}
-                    alt={user?.name ?? "Unassigned"}
-                    className="user-photo"
-                    draggable={false}
-                />
-            </div>
+            <div className="task-row">
+                <span
+                    className="task-grip"
+                    title="Drag to reorder"
+                    ref={(element): void => {
+                        connectGrip(element)
+                    }}
+                >
+                    <Icon name="grip" />
+                </span>
 
-            <div className="task-main">
-                <div className="task-title-row">
-                    <input
-                        type="text"
-                        ref={(input): void => {
-                            dictation.registerInput(task.id, input)
-                            registerTitleInput(task.id, input)
+                <input
+                    type="checkbox"
+                    className="task-check"
+                    checked={task.completed}
+                    onChange={handleCompletedChange}
+                    aria-label={controlNames.completed}
+                />
+
+                <div className="task-title-cell">
+                    <textarea
+                        rows={1}
+                        ref={(area): void => {
+                            titleRef.current = area
+                            dictation.registerInput(task.id, area)
+                            registerTitleInput(task.id, area)
                         }}
                         value={task.text}
                         onChange={handleTextChange}
+                        onKeyDown={handleTitleKeyDown}
+                        onPaste={handleTitlePaste}
+                        placeholder="Untitled task"
                         className="task-title"
                         aria-label={controlNames.title}
                     />
@@ -296,78 +337,63 @@ const Task: FC<TaskProps> = ({
                     />
                 </div>
 
-                <div className="task-details">
-                    <div
-                        className="task-details-drag-surface task-drag-surface"
-                        ref={(element): void => {
-                            connectSourceElementForDetailsDrag(element)
-                        }}
-                        aria-hidden="true"
-                    />
-                    <label>
-                        Due:
-                        <input
-                            type="date"
-                            value={task.dueDate}
-                            onChange={handleDueDateChange}
-                            aria-label={controlNames.dueDate}
-                        />
-                    </label>
-
-                    <span>
-                        {describeDueStatus(dueState.daysUntilDue, task.completed)}
-                    </span>
-                </div>
-            </div>
-
-            <div className="task-controls">
-                <label className="priority-control">
-                    <span>Priority: {task.priority}/5</span>
-
-                    <input
-                        type="range"
-                        min="1"
-                        max="5"
-                        step="1"
-                        value={task.priority}
-                        onChange={handlePriorityChange}
-                        aria-label={controlNames.priority}
-                        aria-valuetext={`${task.priority} of 5`}
-                    />
-                </label>
-
-                <select
-                    value={task.userId}
-                    onChange={handleUserChange}
-                    aria-label={controlNames.assignee}
-                >
-                    {users.map((currentUser: User) => (
-                        <option key={currentUser.id} value={currentUser.id}>
-                            {currentUser.name}
-                        </option>
-                    ))}
-                </select>
-
-                <label className="completed-control">
-                    <input
-                        type="checkbox"
-                        checked={task.completed}
-                        onChange={handleCompletedChange}
-                        aria-label={controlNames.completed}
-                    />
-                    Complete
-                </label>
-
                 <button
                     type="button"
-                    ref={(button): void => registerDeleteButton(task.id, button)}
-                    onClick={(): void => deleteTask(task.id)}
-                    className="delete-button"
-                    aria-label={controlNames.deleteButton}
+                    ref={(button): void => {
+                        summaryRef.current = button
+                        registerSummaryButton(task.id, button)
+                    }}
+                    className="task-summary"
+                    aria-expanded={isOpen}
+                    aria-controls={isOpen ? panelId : undefined}
+                    aria-label={`Edit details for ${controlNames.dictationTarget}`}
+                    aria-describedby={`${summaryId}-due ${summaryId}-priority ${summaryId}-assignee`}
+                    onClick={handleSummaryClick}
+                    onKeyDown={(event): void => {
+                        // Focus stays here when the panel is opened from the
+                        // keyboard, so Escape must work from this button too.
+                        if (event.key === "Escape" && isOpen) {
+                            event.stopPropagation()
+                            toggleTaskPanel(task.id, null)
+                        }
+                    }}
                 >
-                    Delete
+                    <span id={`${summaryId}-due`} className={`task-due task-due-${dueState.kind}`} data-field="due">
+                        <Icon name={DUE_STATE_ICONS[dueState.kind]} className="task-due-icon" size={14} />
+                        <span>{describeDueStatus(dueState.daysUntilDue, task.completed)}</span>
+                        {shortDate && <span className="task-due-date">{shortDate}</span>}
+                    </span>
+                    <span id={`${summaryId}-priority`} className="task-priority" data-field="priority">
+                        <PriorityBars priority={task.priority} />
+                        <span className="task-priority-number" aria-hidden="true">
+                            {task.priority}
+                        </span>
+                        <span className="visually-hidden">Priority {task.priority} of 5</span>
+                    </span>
+                    <span id={`${summaryId}-assignee`} className="task-assignee" data-field="assignee">
+                        <Avatar user={user} />
+                        <span className="task-assignee-name">{user?.name ?? "Unassigned"}</span>
+                    </span>
                 </button>
             </div>
+
+            {isOpen && openPanel && (
+                <TaskDetails
+                    task={task}
+                    panelId={panelId}
+                    names={controlNames}
+                    users={users}
+                    quickDueDates={getQuickDueDates(today)}
+                    focusField={openPanel.focusField}
+                    updateTask={updateTask}
+                    changeAssignee={changeAssignee}
+                    deleteTask={deleteTask}
+                    onClose={(): void => {
+                        toggleTaskPanel(task.id, null)
+                        summaryRef.current?.focus()
+                    }}
+                />
+            )}
         </div>
     )
 }
@@ -383,12 +409,23 @@ const App: FC = () => {
         loadAssigneeFilter(users),
     )
 
+    // The details panel that is open, if any. Not saved.
+    const [openPanel, setOpenPanel] = useState<OpenPanel | null>(null)
+
     useEffect(() => {
         saveAssigneeFilter(assigneeFilter)
     }, [assigneeFilter])
 
     const visibleTasks = getVisibleTasks(tasks, assigneeFilter)
     const alphabeticalUsers = sortAssigneesByName(users)
+    const filteredUser = users.find((user: User): boolean => user.id === assigneeFilter)
+    const view = describeTaskView(filteredUser?.name, visibleTasks.length, tasks.length)
+    const summary = describeTaskSummary(
+        summariseTasks(
+            visibleTasks.map(({ task }): TaskType => task),
+            today,
+        ),
+    )
 
     useEffect(() => {
         try {
@@ -401,11 +438,11 @@ const App: FC = () => {
         }
     }, [tasks])
 
-    const titleInputs = useRef(new Map<string, HTMLInputElement>())
-    const deleteButtons = useRef(new Map<string, HTMLButtonElement>())
+    const titleInputs = useRef(new Map<string, HTMLTextAreaElement>())
+    const summaryButtons = useRef(new Map<string, HTMLButtonElement>())
     const addButton = useRef<HTMLButtonElement>(null)
 
-    const registerTitleInput = (id: string, input: HTMLInputElement | null): void => {
+    const registerTitleInput = (id: string, input: HTMLTextAreaElement | null): void => {
         if (input) {
             titleInputs.current.set(id, input)
         } else {
@@ -413,11 +450,11 @@ const App: FC = () => {
         }
     }
 
-    const registerDeleteButton = (id: string, button: HTMLButtonElement | null): void => {
+    const registerSummaryButton = (id: string, button: HTMLButtonElement | null): void => {
         if (button) {
-            deleteButtons.current.set(id, button)
+            summaryButtons.current.set(id, button)
         } else {
-            deleteButtons.current.delete(id)
+            summaryButtons.current.delete(id)
         }
     }
 
@@ -428,7 +465,7 @@ const App: FC = () => {
     useEffect(() => {
         moveFocusAfterRender.current?.()
         moveFocusAfterRender.current = null
-    }, [tasks])
+    }, [tasks, assigneeFilter])
 
     const addTask = (): void => {
         const newTask: TaskType = {
@@ -482,7 +519,41 @@ const App: FC = () => {
         waveform: "pill",
     })
 
-    const deleteTask = (id: string): void => {
+    // Settings is a modal dialog. Focus goes back to where it was before it
+    // opened, when it closes.
+    const [settingsOpen, setSettingsOpen] = useState(false)
+    const focusBeforeSettings = useRef<HTMLElement | null>(null)
+
+    const openSettings = (): void => {
+        focusBeforeSettings.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null
+        setSettingsOpen(true)
+    }
+
+    const closeSettings = (): void => {
+        setSettingsOpen(false)
+    }
+
+    // Focus goes back once the dialog has really closed. The dialog's own effect
+    // closes it first, and closing makes the browser return focus to the box on
+    // its own, with the cursor at the start. Restoring any earlier would lose.
+    const restoreFocus = dictation.restoreFocus
+    useEffect(() => {
+        if (settingsOpen) {
+            return
+        }
+
+        const previous = focusBeforeSettings.current
+        focusBeforeSettings.current = null
+
+        if (previous?.isConnected) {
+            restoreFocus(previous)
+        }
+    }, [settingsOpen, restoreFocus])
+
+    // Sends focus to where it goes when a task leaves the list on show: the next
+    // task's summary button, else the previous one's, else Add Task.
+    const moveFocusFromLeavingTask = (id: string): void => {
         const nextTaskId = findTaskToFocusAfterDelete(
             visibleTasks.map(({ task }): string => task.id),
             id,
@@ -490,11 +561,62 @@ const App: FC = () => {
 
         moveFocusAfterRender.current = (): void => {
             const destination = nextTaskId
-                ? deleteButtons.current.get(nextTaskId)
+                ? summaryButtons.current.get(nextTaskId)
                 : addButton.current
 
             destination?.focus()
         }
+    }
+
+    const toggleTaskPanel = (id: string, field: DetailField | null): void =>
+        setOpenPanel((current: OpenPanel | null): OpenPanel | null => togglePanel(current, id, field))
+
+    // Changing a task's assignee can hide it under the filter. Then its panel
+    // closes and focus moves on, as after Delete.
+    const changeAssignee = (id: string, userId: string): void => {
+        if (assigneeFilter !== "" && userId !== assigneeFilter) {
+            moveFocusFromLeavingTask(id)
+            setOpenPanel((current: OpenPanel | null): OpenPanel | null =>
+                current?.taskId === id ? null : current,
+            )
+        }
+
+        updateTask(id, { userId })
+    }
+
+    // A new filter closes the panel of a task it hides. Focus then goes on as
+    // after Delete: to the next task still on show, else the previous, else
+    // Add Task.
+    const changeFilter = (selection: string): void => {
+        const shownTaskIds = getVisibleTasks(tasks, selection).map(({ task }): string => task.id)
+
+        if (openPanel !== null && !shownTaskIds.includes(openPanel.taskId)) {
+            const nextTaskId = findTaskToFocusAfterHidden(
+                tasks.map((task: TaskType): string => task.id),
+                shownTaskIds,
+                openPanel.taskId,
+            )
+
+            moveFocusAfterRender.current = (): void => {
+                const destination = nextTaskId
+                    ? summaryButtons.current.get(nextTaskId)
+                    : addButton.current
+
+                destination?.focus()
+            }
+        }
+
+        setOpenPanel((current: OpenPanel | null): OpenPanel | null =>
+            keepPanelIfShown(current, shownTaskIds),
+        )
+        setAssigneeFilter(selection)
+    }
+
+    const deleteTask = (id: string): void => {
+        moveFocusFromLeavingTask(id)
+        setOpenPanel((current: OpenPanel | null): OpenPanel | null =>
+            current?.taskId === id ? null : current,
+        )
 
         dictation.removeTarget(id)
         setTasks((currentTasks: TaskType[]): TaskType[] =>
@@ -505,6 +627,7 @@ const App: FC = () => {
     const resetToSampleTasks = (): void => {
         // Stop dictating into, and revising, the titles being replaced.
         tasks.forEach((task: TaskType): void => dictation.removeTarget(task.id))
+        setOpenPanel(null)
         setTasks(createSampleTasks())
     }
 
@@ -516,79 +639,84 @@ const App: FC = () => {
 
     return (
         <DndProvider backend={HTML5Backend}>
-            <main className="app">
-                <AccountControl />
+            <div className="app-shell">
+                <Sidebar
+                    tasks={tasks}
+                    users={alphabeticalUsers}
+                    assigneeFilter={assigneeFilter}
+                    onFilterChange={changeFilter}
+                    onOpenSettings={openSettings}
+                />
 
-                <header className="app-header">
-                    <div>
-                        <h1>Task Manager</h1>
-                        <p>
-                            {tasks.length} task
-                            {tasks.length === 1 ? "" : "s"}
-                        </p>
-                    </div>
+                <div className="app-content">
+                    <main className="app-main">
+                        <AccountControl />
 
-                    <DictationHint />
+                        <header className="view-header">
+                            <div>
+                                <h1>{view.heading}</h1>
+                                <p className="view-count">
+                                    {view.count}
+                                    {summary && <span className="view-summary"> · {summary}</span>}
+                                </p>
+                            </div>
 
-                    <button
-                        type="button"
-                        ref={addButton}
-                        onClick={addTask}
-                        className="add-button"
-                    >
-                        + Add Task
-                    </button>
-                </header>
-
-                <section className="task-list">
-                    <div className="task-list-controls">
-                        <p className="dictation-notice">
-                            This demo may retain dictated text for diagnostics.
-                        </p>
-                        <label className="assignee-filter">
-                            Assignee
-                            <select
-                                value={assigneeFilter}
-                                onChange={(
-                                    event: React.ChangeEvent<HTMLSelectElement>,
-                                ): void => setAssigneeFilter(event.target.value)}
+                            <button
+                                type="button"
+                                ref={addButton}
+                                onClick={addTask}
+                                className="add-button"
                             >
-                                <option value="">All assignees</option>
-                                {alphabeticalUsers.map((user: User) => (
-                                    <option key={user.id} value={user.id}>
-                                        {user.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <DictationStatus dictation={dictation} meter={meter} />
-                        <MeterStyleSelector meter={meter} onChange={setMeter} />
-                    </div>
-                    {visibleTasks.map(({ task, index }, visibleIndex) => (
-                        <Task
-                            key={task.id}
-                            task={task}
-                            index={index}
-                            visiblePosition={visibleIndex + 1}
-                            users={alphabeticalUsers}
-                            today={today}
-                            moveTask={moveTask}
-                            updateTask={updateTask}
-                            deleteTask={deleteTask}
-                            registerTitleInput={registerTitleInput}
-                            registerDeleteButton={registerDeleteButton}
-                            dictation={dictation}
-                        />
-                    ))}
-                    <button
-                        type="button"
-                        onClick={resetToSampleTasks}
-                        className="reset-tasks-button"
-                    >
-                        Reset to sample tasks
-                    </button>
-                </section>
-            </main>
+                                <Icon name="plus" />
+                                Add Task
+                            </button>
+                        </header>
+
+                        <section className="task-list">
+                            <div className="task-columns" aria-hidden="true">
+                                <span className="task-column-task">Task</span>
+                                <span className="task-column-due">Due</span>
+                                <span className="task-column-priority">Priority</span>
+                                <span className="task-column-assignee">Assignee</span>
+                            </div>
+                            {view.emptyMessage && <p className="empty-view">{view.emptyMessage}</p>}
+                            {visibleTasks.map(({ task, index }, visibleIndex) => (
+                                <Task
+                                    key={task.id}
+                                    task={task}
+                                    index={index}
+                                    visiblePosition={visibleIndex + 1}
+                                    users={alphabeticalUsers}
+                                    today={today}
+                                    moveTask={moveTask}
+                                    updateTask={updateTask}
+                                    deleteTask={deleteTask}
+                                    registerTitleInput={registerTitleInput}
+                                    registerSummaryButton={registerSummaryButton}
+                                    changeAssignee={changeAssignee}
+                                    openPanel={openPanel?.taskId === task.id ? openPanel : undefined}
+                                    togglePanel={toggleTaskPanel}
+                                    dictation={dictation}
+                                />
+                            ))}
+                            <button
+                                type="button"
+                                onClick={resetToSampleTasks}
+                                className="reset-tasks-button"
+                            >
+                                Reset to sample tasks
+                            </button>
+                            <DictationStatus dictation={dictation} meter={meter} />
+                        </section>
+                    </main>
+                </div>
+            </div>
+            <SettingsDialog
+                open={settingsOpen}
+                meter={meter}
+                onMeterChange={setMeter}
+                onClose={closeSettings}
+            />
         </DndProvider>
     )
 }

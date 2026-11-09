@@ -27,13 +27,26 @@ export const reorderTasks = (
     return updatedTasks
 }
 
-/** Sample tasks, with due dates as calendar days relative to today. */
-const sampleTasks: (Omit<TaskType, "dueDate"> & { dueInDays: number })[] = [
-    { id: "task-5", text: "Deploy initial build", userId: "1", priority: 5, dueInDays: -2, completed: true },
-    { id: "task-1", text: "Design UI", userId: "1", priority: 4, dueInDays: -1, completed: false },
-    { id: "task-2", text: "Fix authentication bug", userId: "2", priority: 5, dueInDays: 2, completed: false },
-    { id: "task-3", text: "Write documentation", userId: "3", priority: 2, dueInDays: 10, completed: false },
-    { id: "task-4", text: "Deploy to production", userId: "1", priority: 3, dueInDays: 21, completed: false },
+/**
+ * Sample tasks, with due dates as calendar days relative to today, or null for
+ * no due date. Together they show every due state, every priority and every
+ * assignee, a long title, and a completed task whose date has passed.
+ */
+const sampleTasks: (Omit<TaskType, "dueDate"> & { dueInDays: number | null })[] = [
+    { id: "task-1", text: "Fix authentication bug", userId: "2", priority: 5, dueInDays: -2, completed: false },
+    { id: "task-2", text: "Prepare sprint demo", userId: "1", priority: 4, dueInDays: 0, completed: false },
+    { id: "task-3", text: "Review dictation pull request", userId: "3", priority: 3, dueInDays: 1, completed: false },
+    { id: "task-4", text: "Write release notes", userId: "4", priority: 2, dueInDays: 3, completed: false },
+    {
+        id: "task-5",
+        text: "Update the onboarding documentation for contributors joining the project next month",
+        userId: "3",
+        priority: 3,
+        dueInDays: 10,
+        completed: false,
+    },
+    { id: "task-6", text: "Plan the next quarter's roadmap", userId: "1", priority: 1, dueInDays: null, completed: false },
+    { id: "task-7", text: "Deploy initial build", userId: "2", priority: 5, dueInDays: -3, completed: true },
 ]
 
 /**
@@ -43,7 +56,7 @@ const sampleTasks: (Omit<TaskType, "dueDate"> & { dueInDays: number })[] = [
 export const createSampleTasks = (today: Date = new Date()): TaskType[] =>
     sampleTasks.map(({ dueInDays, ...task }) => ({
         ...task,
-        dueDate: format(addDays(today, dueInDays), "yyyy-MM-dd"),
+        dueDate: dueInDays === null ? "" : format(addDays(today, dueInDays), "yyyy-MM-dd"),
     }))
 
 const isTask = (value: unknown): value is TaskType => {

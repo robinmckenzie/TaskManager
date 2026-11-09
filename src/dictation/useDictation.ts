@@ -45,6 +45,11 @@ export interface Dictation {
     toggleFromButton(targetId: string): void
     recordEdit(targetId: string, before: string, after: string): void
     removeTarget(targetId: string): void
+    /**
+     * Returns focus to an element. A dictation field gets its saved selection
+     * back, which text recognised while focus was elsewhere has kept up to date.
+     */
+    restoreFocus(element: HTMLElement): void
 }
 
 /**
@@ -144,11 +149,12 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
     }, [])
 
     /** Focuses a field, restoring its last cursor position or selection. */
-    const focusInput = useCallback((input: DictationField, targetId: string): void => {
+    const focusInput = useCallback((input: DictationField, targetId: string, force = false): void => {
         focusFieldWithSavedSelection(
             input,
             savedSelections.current.get(targetId),
             document.activeElement === input,
+            force,
         )
     }, [])
 
@@ -329,6 +335,18 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         getTargets().forget(targetId)
     }, [getTargets])
 
+    const restoreFocus = useCallback((element: HTMLElement): void => {
+        const targetId = findFieldId(inputs.current, element)
+
+        if (targetId) {
+            // The browser may already have returned focus here by itself, with
+            // the cursor at the start, so the saved selection is applied anyway.
+            focusInput(element as DictationField, targetId, true)
+        } else {
+            element.focus()
+        }
+    }, [focusInput])
+
     return {
         availability,
         phase: state.phase,
@@ -340,5 +358,6 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         toggleFromButton,
         recordEdit,
         removeTarget,
+        restoreFocus,
     }
 }

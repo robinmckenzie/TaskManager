@@ -1,6 +1,6 @@
 import { addDays, format } from "date-fns"
 import { describe, expect, it } from "vitest"
-import { describeDueStatus, getDaysUntilDue, getDueState } from "./dueDates"
+import { describeDueStatus, formatShortDate, getDaysUntilDue, getDueState } from "./dueDates"
 import { createSampleTasks } from "./tasks"
 
 const toDueDate = (date: Date): string => format(date, "yyyy-MM-dd")
@@ -55,11 +55,11 @@ describe("getDaysUntilDue", () => {
         expect(getDaysUntilDue("2026-10-09", new Date(2026, 9, 9, 0, 0, 0))).toBe(0)
     })
 
-    it("counts the sample tasks as due 2 days ago, yesterday and in 2, 10 and 21 days", () => {
+    it("counts the sample tasks as due 2 days ago, today, in 1, 3 and 10 days, never, and 3 days ago", () => {
         const now = new Date(2026, 9, 8, 15, 30)
 
         expect(createSampleTasks(now).map((task) => getDaysUntilDue(task.dueDate, now)))
-            .toEqual([-2, -1, 2, 10, 21])
+            .toEqual([-2, 0, 1, 3, 10, null, -3])
     })
 })
 
@@ -129,4 +129,21 @@ describe("getDueState", () => {
 
         expect(describeDueStatus(daysUntilDue, false)).toBe("2 days remaining")
     })
+})
+
+describe("formatShortDate", () => {
+    it.each([
+        { dueDate: "2026-11-06", expected: "6 Nov" },
+        { dueDate: "2026-01-31", expected: "31 Jan" },
+        { dueDate: "2028-02-29", expected: "29 Feb" },
+    ])("words $dueDate as $expected", ({ dueDate, expected }) => {
+        expect(formatShortDate(dueDate)).toBe(expected)
+    })
+
+    it.each(["", "not a date", "2026-13-45", "2026-02-30"])(
+        "gives nothing for the unusable due date %j, as it does not throw",
+        (dueDate) => {
+            expect(formatShortDate(dueDate)).toBe("")
+        },
+    )
 })

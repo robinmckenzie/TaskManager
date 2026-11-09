@@ -1,69 +1,266 @@
+/*
+ * The Modern design (TM #84): a sidebar and a main area on a white page, with
+ * one indigo accent and system fonts only. The colour tokens note their
+ * contrast on white, then on the sidebar, where it matters for text.
+ */
+
+:root {
+  --page: #ffffff;
+  --sidebar: #f5f5f8;
+  --hover: #f7f7fb;
+  --line: #eceef2;
+  --border: #e3e5ea;
+  --edge: #868c9a; /* 3.4:1 on white, 3.1:1 on the sidebar: control edges */
+  --text: #16181d; /* 17.8:1 */
+  --muted: #4a5060; /* 8.1:1, 7.4:1 */
+  --subtle: #5d6472; /* 6.0:1, 5.5:1 */
+
+  --accent: #4f46e5; /* 6.3:1; white on it 6.3:1 */
+  --accent-strong: #4338ca;
+  --accent-soft: #eef0ff;
+
+  --danger: #c4232b; /* 5.8:1 */
+
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --sidebar-width: 248px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --ease: 0.12s ease;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-  background: #f4f5f7;
-  color: #202124;
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--page);
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
+  color: inherit;
 }
 
-.app {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 32px;
+button {
+  cursor: pointer;
 }
 
-/* Equal side columns, each wide enough for the heading, put the dictation hint
-   at the centre of the page, in line with the dictation feedback below it. */
-.app-header {
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Shell ---------- */
+
+/* The page fills the window; the sidebar and the main area scroll separately. */
+.app-shell {
   display: grid;
-  grid-template-columns: minmax(13.5rem, 1fr) minmax(0, 30rem) minmax(13.5rem, 1fr);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  height: 100vh;
+}
+
+/* Positioned so that visually hidden inputs inside the list are clipped here,
+   not added to the page's own scroll height (which gave a second scrollbar). */
+.app-content {
+  position: relative;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.app-main {
+  width: 100%;
+  max-width: 1120px;
+  padding: 24px 48px;
+}
+
+/* ---------- Sidebar ---------- */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 0;
+  padding: 20px 12px 16px;
+  overflow-y: auto;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+}
+
+.sidebar-brand {
+  display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 10px;
+  padding: 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
-.app-header .add-button {
-  flex-shrink: 0;
-  justify-self: end;
+.sidebar-brand-mark {
+  color: var(--accent);
 }
 
-.app-header h1 {
+.assignee-filter ul {
   margin: 0;
-  font-size: 32px;
+  padding: 0;
+  list-style: none;
 }
 
-.app-header p {
+.sidebar-heading {
+  margin: 0 0 6px;
+  padding: 0 10px;
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  font-size: 14px;
+  text-align: left;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  transition: background var(--ease);
+}
+
+.filter-item:hover {
+  background: #ebecf1;
+}
+
+.filter-item[aria-pressed="true"] {
+  font-weight: 650;
+  color: var(--text);
+  background: #ffffff;
+  border-color: var(--border);
+  box-shadow: 0 1px 2px rgb(16 18 29 / 6%);
+}
+
+.filter-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-count {
+  font-size: 12.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--subtle);
+}
+
+.filter-icon {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  color: var(--muted);
+  background: #e7e8ee;
+  border-radius: 50%;
+}
+
+/* A photo, with the person's initial showing behind it until it loads. */
+.avatar {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--muted);
+  background: #e7e8ee;
+  border-radius: 50%;
+}
+
+.avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sidebar-card {
+  padding: 12px 10px 4px;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-card .sidebar-heading {
+  padding: 0;
+}
+
+/* ---------- Main area ---------- */
+
+.view-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.view-header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 720;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.view-count {
   margin: 4px 0 0;
-  color: #666;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.view-summary {
+  color: var(--subtle);
 }
 
 .add-button {
-  border: 0;
-  border-radius: 6px;
-  padding: 10px 18px;
-  background: #2563eb;
-  color: white;
-  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  font-size: 14px;
   font-weight: 600;
+  white-space: nowrap;
+  color: #ffffff;
+  background: var(--accent);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgb(67 56 202 / 25%);
+  transition: background var(--ease);
 }
 
 .add-button:hover {
-  background: #1d4ed8;
+  background: var(--accent-strong);
 }
 
 .task-list {
@@ -72,28 +269,12 @@ select {
   gap: 10px;
 }
 
-/*
- * The dictation feedback sits in the middle column, across both rows. Its
- * height is reserved, so nothing moves when the feedback changes. The side
- * columns are equal, to centre it, and each is wide enough for the level
- * meter buttons, so the middle column narrows before they can run into it.
- */
-.task-list-controls {
-  display: grid;
-  grid-template-columns: minmax(24.5rem, 1fr) minmax(15rem, 22rem) minmax(24.5rem, 1fr);
-  grid-template-areas:
-    "notice feedback meter-style"
-    "filter feedback meter-style";
-  align-items: center;
-  gap: 6px 16px;
-  margin-bottom: 6px;
-}
-
-.assignee-filter {
-  grid-area: filter;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+/* Shown in place of the tasks when a filter leaves none. */
+.empty-view {
+  margin: 0;
+  padding: 32px 14px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
 }
 
 /* A button that reads as a quiet text link, below the last task. */
@@ -103,272 +284,605 @@ select {
   border: 0;
   padding: 0;
   background: transparent;
-  color: #666;
+  color: var(--subtle);
   font-size: 13px;
   text-decoration: underline;
   cursor: pointer;
 }
 
 .reset-tasks-button:hover {
-  color: #2563eb;
+  color: var(--accent);
 }
 
-.reset-tasks-button:focus-visible {
-  outline: 2px solid #2563eb;
-  outline-offset: 2px;
+/* ---------- Narrower desktop widths ---------- */
+
+@media (max-width: 1180px) {
+  :root {
+    --sidebar-width: 220px;
+  }
+
+  .app-main {
+    padding: 24px 28px;
+  }
 }
 
-.assignee-filter select {
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  padding: 5px 7px;
-  background: white;
+/* ---------- Task rows (TM #84) ---------- */
+
+:root {
+  /* Due states: the text colour, and a tint behind the two urgent ones. */
+  --overdue: #c4232b; /* 5.8:1 on white, 5.3:1 on its tint */
+  --overdue-tint: #fff1f1;
+  --soon: #b14a06; /* 5.1:1 on its tint */
+  --soon-tint: #fff6ec;
+  --week: #8a5a00; /* 5.9:1 */
+  --later: #4a5060;
+  --none: #5d6472;
+  --done: #1d7a45; /* 5.4:1 */
+  --rec: #e11d48; /* 4.7:1 */
+
+  /* The widths of the summary columns, shared by the column labels and every row. */
+  --col-due: 196px;
+  --col-priority: 68px;
+  --col-assignee: 104px;
+}
+
+.task-columns,
+.task-row {
+  display: grid;
+  grid-template-columns:
+    16px 20px minmax(0, 1fr)
+    var(--col-due) var(--col-priority) var(--col-assignee);
+  column-gap: 10px;
+  padding: 0 8px 0 6px;
+}
+
+.task-columns {
+  align-items: end;
+  padding-bottom: 8px;
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--subtle);
+  border-bottom: 1px solid var(--border);
+}
+
+.task-column-task {
+  grid-column: 3;
+  padding-left: 9px;
+}
+
+.task-column-due {
+  grid-column: 4;
+}
+
+.task-column-priority {
+  grid-column: 5;
+}
+
+.task-column-assignee {
+  grid-column: 6;
+}
+
+/* The rows sit on one list, divided by lines. */
+.task-list {
+  gap: 0;
 }
 
 .task {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
-  transition:
-    opacity 0.15s,
-    box-shadow 0.15s,
-    transform 0.15s;
+  border-bottom: 1px solid var(--line);
+  transition: background var(--ease);
 }
 
 .task:hover {
-  box-shadow:
-    0 4px 10px rgba(0, 0, 0, 0.12);
+  background: var(--hover);
 }
 
-.task-drag-handle {
-  color: #888;
+.task-row {
+  align-items: start;
+  padding-top: 6px;
+  padding-bottom: 2px;
+}
+
+.task-grip {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 32px;
+  color: var(--edge);
   cursor: grab;
-  font-size: 20px;
   user-select: none;
 }
 
-.task-drag-handle:active {
+.task-grip:hover {
+  color: var(--muted);
+}
+
+.task-grip:active {
   cursor: grabbing;
 }
 
-.task-drag-surface {
-  cursor: grab;
-  user-select: none;
-}
-
-.task-drag-surface:active {
-  cursor: grabbing;
-}
-
-.task-left-drag-surface {
-  display: flex;
-  align-items: center;
-  align-self: stretch;
-  flex-shrink: 0;
-  gap: 14px;
-  margin: -16px -14px -16px -16px;
-  padding: 16px 14px 16px 16px;
-  border-radius: 8px 0 0 8px;
-}
-
-.user-photo {
-  width: 44px;
-  height: 44px;
+/* The round completion checkbox. */
+.task-check {
+  appearance: none;
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin: 6px 0 0;
+  background: #ffffff;
+  border: 1.5px solid var(--edge);
   border-radius: 50%;
-  object-fit: cover;
+  cursor: pointer;
+  transition:
+    border-color var(--ease),
+    background var(--ease);
 }
 
-.task-main {
-  flex: 1;
-  min-width: 200px;
+.task-check:hover {
+  border-color: var(--done);
+  background: #eef8f1;
+}
+
+.task-check:checked {
+  background: var(--done)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.2l2.6 2.6L12 5.4' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 14px no-repeat;
+  border-color: var(--done);
+}
+
+.task-title-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
 }
 
 .task-title {
-  width: 100%;
-  border: 0;
+  flex: 1;
+  display: block;
+  min-width: 0;
+  box-sizing: border-box;
+  /* Height is set from the text by useAutoGrow, so a long title wraps in full. */
+  height: 32px;
+  min-height: 32px;
+  overflow: hidden;
+  resize: none;
+  font-family: inherit;
+  overflow-wrap: anywhere;
+  padding: 4px 8px;
+  font-size: 15px;
+  font-weight: 550;
+  line-height: 22px;
+  letter-spacing: -0.005em;
+  color: var(--text);
   background: transparent;
-  font-size: 18px;
-  font-weight: 600;
-  padding: 4px 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition:
+    border-color var(--ease),
+    box-shadow var(--ease),
+    background var(--ease);
+}
+
+.task-title::placeholder {
+  color: var(--subtle);
+  opacity: 1;
+}
+
+.task-title:hover {
+  background: #ffffff;
+  border-color: var(--border);
 }
 
 .task-title:focus {
   outline: none;
-  border-bottom: 2px solid #2563eb;
+  background: #ffffff;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
+
+/* A completed title is struck through and dimmer, but the row is not dimmed. */
+.task-completed .task-title {
+  font-weight: 450;
+  color: var(--subtle);
+  text-decoration: line-through;
+  text-decoration-color: var(--edge);
+}
+
+/* The summary: due state, priority and assignee, in aligned columns. */
+.task-summary {
+  display: grid;
+  grid-column: 4 / 7;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-height: 32px;
+}
+
+.task-due {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 5px;
+  max-width: calc(var(--col-due) - 8px);
+  padding: 2px 0;
+  font-size: 13px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.task-due-icon {
+  flex-shrink: 0;
+}
+
+.task-due-date {
+  font-size: 12px;
+  font-weight: 450;
+  font-variant-numeric: tabular-nums;
+  color: var(--subtle);
+}
+
+.task-due-date::before {
+  content: "\00b7";
+  margin-right: 5px;
+}
+
+/* Only the two urgent states are tinted. */
+.task-due-overdue,
+.task-due-due-soon {
+  padding: 2px 8px 2px 6px;
+  border-radius: 999px;
+}
+
+.task-due-overdue {
+  color: var(--overdue);
+  background: var(--overdue-tint);
+}
+
+.task-due-due-soon {
+  color: var(--soon);
+  background: var(--soon-tint);
+}
+
+.task-due-overdue .task-due-date,
+.task-due-due-soon .task-due-date {
+  color: inherit;
+}
+
+.task-due-due-this-week {
+  color: var(--week);
+}
+
+.task-due-later {
+  color: var(--later);
+  font-weight: 450;
+}
+
+.task-due-none {
+  color: var(--none);
+  font-weight: 450;
+  font-style: italic;
+}
+
+.task-due-completed {
+  color: var(--done);
+}
+
+.task-priority {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.priority-bar-on {
+  fill: var(--accent);
+}
+
+.priority-bar-off {
+  fill: #d6d9e1;
+}
+
+.task-completed .priority-bar-on {
+  fill: var(--edge);
+}
+
+.task-priority-number {
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.task-assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.task-assignee-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The summary is one button: it opens the details panel beneath the row. */
+button.task-summary {
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+button.task-summary:hover {
+  background: var(--accent-soft);
+}
+
+button.task-summary[aria-expanded="true"] {
+  background: var(--accent-soft);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- The details panel ---------- */
 
 .task-details {
-  position: relative;
-  isolation: isolate;
   display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: 6px;
-  color: #666;
-  font-size: 13px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px 24px;
+  margin: 4px 8px 12px 52px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgb(16 18 29 / 6%);
 }
 
-.task-details-drag-surface {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-
-.task-details > label,
-.task-details > span {
-  position: relative;
-  z-index: 1;
-}
-
-.task-details label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.task-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.task-controls select,
-.task-details input[type="date"] {
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  padding: 5px 7px;
-  background: white;
-}
-
-.priority-control {
+.detail-field {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  min-width: 130px;
-  font-size: 12px;
+  gap: 6px;
 }
 
-.priority-control input {
-  width: 130px;
+.detail-label {
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--subtle);
 }
 
-.completed-control {
+.detail-due {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-  font-size: 13px;
+  gap: 6px;
+}
+
+.detail-date {
+  height: 32px;
+  padding: 0 8px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  background: #ffffff;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+}
+
+.quick-date {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13.5px;
+  color: var(--muted);
+  background: #ffffff;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  transition:
+    background var(--ease),
+    border-color var(--ease);
+}
+
+.quick-date:hover {
+  background: var(--hover);
+}
+
+/* The chosen date: a thicker accent edge, a tint and bold text, so not by colour alone. */
+.quick-date[aria-pressed="true"] {
+  font-weight: 650;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.detail-segmented {
+  display: inline-flex;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+}
+
+.detail-segment {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 30px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.detail-segment + .detail-segment {
+  border-left: 1px solid var(--border);
+}
+
+.detail-segment:first-child {
+  border-radius: 7px 0 0 7px;
+}
+
+.detail-segment:last-child {
+  border-radius: 0 7px 7px 0;
+}
+
+.detail-segment:hover {
+  background: var(--hover);
+}
+
+.detail-segment:has(input:checked) {
+  color: #ffffff;
+  background: var(--accent);
+}
+
+.detail-segment:has(input:focus-visible) {
+  z-index: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.detail-segment input,
+.detail-person input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.detail-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.detail-person {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px 0 4px;
+  font-size: 13.5px;
+  color: var(--muted);
+  background: #ffffff;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.detail-person:hover {
+  background: var(--hover);
+}
+
+/* Chosen: a thicker accent edge, a tint, bold text and a tick, so not by colour alone. */
+.detail-person:has(input:checked) {
+  font-weight: 650;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.detail-person:has(input:checked)::after {
+  content: "\2713" / "";
+}
+
+.detail-person:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .delete-button {
-  border: 0;
-  background: transparent;
-  color: #dc2626;
-  cursor: pointer;
+  height: 32px;
+  margin-left: auto;
+  padding: 0 12px;
+  color: var(--danger);
+  background: #ffffff;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
 }
 
 .delete-button:hover {
-  text-decoration: underline;
+  background: #fff1f1;
 }
 
-/*
- * Due-date colours.
- */
+/* ---------- Between 1024 and 1180 px ---------- */
 
-.task-normal {
-  background: #ffffff;
+@media (max-width: 1180px) {
+  /* The assignee shows as a photo alone (the name stays for screen readers),
+     and the short date leaves the row (it remains in the details panel). */
+  :root {
+    --col-due: 150px;
+    --col-assignee: 64px;
+  }
+
+  .task-assignee {
+    position: relative;
+  }
+
+  .task-assignee-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .task-due-date {
+    display: none;
+  }
 }
 
-.task-due-this-week {
-  background: #fffde7;
-}
-
-.task-due-soon {
-  background: #fff3cd;
-}
-
-.task-completed {
-  background: #dcfce7;
-  opacity: 0.75;
-}
-
-/*
- * Overdue tasks have a static pastel pink background.
- */
-
-.task-overdue {
-  background: #fecaca;
-}
-
-/*
- * When the device asks for reduced motion, overdue tasks are also
- * marked with a red border.
- */
-
+/* Under reduced motion, nothing transitions. */
 @media (prefers-reduced-motion: reduce) {
-  .task-overdue {
-    border-color: #dc2626;
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
   }
 }
 
-@media (max-width: 850px) {
-  .task-left-drag-surface {
-    margin-bottom: 0;
-    padding-bottom: 0;
-  }
-  .task {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .task-main {
-    min-width: calc(100% - 120px);
-  }
-
-  .task-controls {
-    width: 100%;
-    flex-wrap: wrap;
-    padding-left: 58px;
-  }
-}
-
-.task-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.task-title-row .task-title {
-  flex: 1;
-  min-width: 0;
-}
-
+/* The microphone is quiet until it is used, but always in view. */
 .dictation-button {
-  display: inline-flex;
+  display: inline-grid;
   flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
+  place-items: center;
+  width: 30px;
+  height: 30px;
   padding: 0;
-  border: 1px solid #ccc;
+  margin-top: 1px;
+  border: 1px solid transparent;
   border-radius: 50%;
-  background: white;
-  color: #555;
-  cursor: pointer;
+  background: transparent;
+  color: var(--subtle);
+  transition:
+    background var(--ease),
+    color var(--ease);
 }
 
 .dictation-button:hover {
-  border-color: #2563eb;
-  color: #2563eb;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .dictation-button:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -388,18 +902,16 @@ select {
 }
 
 .dictation-notice {
-  grid-area: notice;
   margin: 0;
-  color: #777;
-  font-size: 12px;
+  color: var(--subtle);
+  font-size: 12.5px;
 }
 
-.app-header .dictation-hint {
-  margin: 0;
-  color: #555;
+.dictation-hint {
+  margin: 0 0 10px;
+  color: var(--muted);
   font-size: 13px;
-  line-height: 1.4;
-  text-align: center;
+  line-height: 1.55;
 }
 
 .dictation-hint span {
@@ -412,41 +924,47 @@ select {
   vertical-align: -0.25em;
 }
 
-/* Room for three lines of status text, whether or not there is any. */
-.dictation-feedback {
-  grid-area: feedback;
+/* The status pill floats at the foot of the list while the list scrolls. */
+.dictation-pill-area {
+  position: sticky;
+  bottom: 16px;
+  z-index: 5;
   display: flex;
-  align-items: center;
   justify-content: center;
-  min-height: 3.75rem;
+  margin-top: 8px;
+  pointer-events: none;
 }
 
-.dictation-status-box {
+.dictation-pill {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   max-width: 100%;
-  padding: 3px 10px;
-  border: 1px solid #999;
-  border-radius: 3px;
-  background: white;
+  padding: 8px 16px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--page);
+  box-shadow: 0 6px 20px rgba(22, 24, 29, 0.16);
 }
 
-.dictation-status-box-empty {
+/* Nothing to show: the pill disappears, but its live area stays on the page. */
+.dictation-pill-empty {
+  padding: 0;
   border-color: transparent;
   background: transparent;
+  box-shadow: none;
 }
 
 .dictation-status {
   margin: 0;
-  color: #444;
+  color: var(--muted);
   font-size: 13px;
   line-height: 1.3;
   text-align: center;
 }
 
 .dictation-state {
-  color: #202124;
+  color: var(--text);
   white-space: nowrap;
 }
 
@@ -632,7 +1150,7 @@ select {
 /* The bars keep their places and swell together with the level. */
 .level-meter-waveform-pulse .level-meter-wave-bar {
   --bar: calc(var(--level) * var(--shape));
-  background: #2563eb;
+  background: var(--accent);
 }
 
 .level-meter-waveform-columns .level-meter-wave-bar {
@@ -641,8 +1159,6 @@ select {
 }
 
 .meter-style {
-  grid-area: meter-style;
-  justify-self: end;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -663,21 +1179,21 @@ select {
 }
 
 .meter-style button {
-  padding: 1px 7px;
-  border: 1px solid #ccc;
+  padding: 2px 8px;
+  border: 1px solid var(--edge);
   border-radius: 3px;
   background: white;
-  color: #555;
+  color: var(--muted);
   white-space: nowrap;
   cursor: pointer;
 }
 
 .meter-style button:hover {
-  border-color: #2563eb;
+  border-color: var(--accent);
 }
 
 .meter-style button:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -686,8 +1202,8 @@ select {
  * keeps room for the tick, so that choosing a style moves nothing.
  */
 .meter-style button[aria-pressed="true"] {
-  border-color: #2563eb;
-  background: #dbeafe;
+  border-color: var(--accent);
+  background: var(--accent-soft);
   color: #202124;
 }
 
@@ -699,103 +1215,6 @@ select {
 
 .meter-style button[aria-pressed="true"]::before {
   visibility: visible;
-}
-
-/*
- * Narrower windows keep the controls where they are for as long as they fit.
- * First the level meter buttons, which are what crowd the feedback, move up
- * to a row they share with the notice. The feedback stays in the middle, now
- * beside the filter, which needs less room at its side.
- */
-@media (max-width: 1137px) {
-  .task-list-controls {
-    grid-template-columns: minmax(13rem, 1fr) minmax(15rem, 22rem) minmax(13rem, 1fr);
-    grid-template-areas: none;
-  }
-
-  .dictation-notice {
-    grid-area: 1 / 1 / 2 / 3;
-  }
-
-  .meter-style {
-    grid-area: 1 / 2 / 2 / 4;
-  }
-
-  /* The filter stays next to the task list. */
-  .assignee-filter {
-    grid-area: 2 / 1;
-    align-self: end;
-  }
-
-  .dictation-feedback {
-    grid-area: 2 / 2;
-  }
-}
-
-/*
- * Then the hint moves below the heading, and the feedback, with no room left
- * in the middle, to a row of its own directly below the hint. The other
- * controls stay together next to the task list.
- */
-@media (max-width: 780px) {
-  .app-header {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    /* The space held for the feedback below already separates the two. */
-    margin-bottom: 8px;
-  }
-
-  .app-header .dictation-hint {
-    order: 1;
-    flex-basis: 100%;
-  }
-
-  .task-list-controls {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "feedback feedback"
-      "notice meter-style"
-      "filter meter-style";
-  }
-
-  .dictation-notice {
-    grid-area: notice;
-  }
-
-  .meter-style {
-    grid-area: meter-style;
-  }
-
-  .assignee-filter {
-    grid-area: filter;
-  }
-
-  .dictation-feedback {
-    grid-area: feedback;
-  }
-}
-
-/* Last, the level meter buttons move below the notice. */
-@media (max-width: 640px) {
-  .task-list-controls {
-    grid-template-columns: max-content minmax(0, 1fr);
-    grid-template-areas:
-      "feedback feedback"
-      "notice notice"
-      "meter-style meter-style"
-      "filter filter";
-  }
-
-  .meter-style {
-    justify-self: start;
-    align-items: flex-start;
-  }
-
-  /* The three styles do not fit on one line of a narrow phone. */
-  .meter-style > div {
-    flex-wrap: wrap;
-  }
 }
 
 /*
@@ -829,7 +1248,7 @@ select {
 
 .account-button:focus-visible,
 .account-panel button:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -914,4 +1333,91 @@ select {
 
 .account-panel .account-sign-out {
   margin-top: 12px;
+}
+
+/* ---------- Settings (TM #84, stage 4) ---------- */
+
+.settings-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.settings-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+}
+
+.settings-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--page);
+  color: var(--text);
+  box-shadow: 0 12px 40px rgba(22, 24, 29, 0.25);
+}
+
+.settings-dialog::backdrop {
+  background: rgba(22, 24, 29, 0.4);
+}
+
+.settings-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.settings-dialog h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.settings-dialog .meter-style {
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.settings-dialog .meter-style > div {
+  flex-wrap: wrap;
+}
+
+.settings-close {
+  padding: 4px 12px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  background: var(--page);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.settings-close:hover {
+  border-color: var(--accent);
+}
+
+.settings-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }

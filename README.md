@@ -2,12 +2,32 @@
 
 A browser-based task manager for creating and editing tasks, assigning users,
 setting priorities and due dates, marking tasks complete, and deleting tasks.
-Drag and drop tasks to reorder them. Due-date colors highlight upcoming and
-missed deadlines, and overdue tasks have a pastel pink background. If your
-device is set to reduce motion, overdue tasks are also marked with a red
-border. A task
-whose due date is cleared shows "No due date" in the normal colour. Deadlines
-follow the current date while the page stays open, with no need to reload.
+The page has a sidebar (app name, assignees with a task count each, the
+dictation hint, Settings and the retention notice) beside the task list, which
+has a heading, a count, and a summary line of overdue, due soon and completed
+tasks on show.
+
+Drag a task by its grip to reorder it; text in a title can still be selected.
+Each row shows the full title, which wraps, then the due state, priority and
+assignee in aligned columns. The due state has an icon and a short date, so
+that colour is never the only signal. Only overdue and due soon tasks have a
+tinted label, and completed tasks have a struck-through title. A task whose due
+date is cleared shows "No due date". Deadlines follow the current date while
+the page stays open, with no need to reload. A blank title shows a greyed
+"Untitled task" that is not saved. Enter in a title does nothing, and pasted
+line breaks become spaces.
+
+Click a row's summary (or press Enter or Space on it) to open its details panel
+beneath the row. It has the due date, quick dates (Today, Tomorrow and In a
+week), priority 1 to 5, the assignee as photo chips, and Delete. The quick date
+matching the task's due date shows as pressed; the date field still clears the
+date. One panel is open at a time. Escape, a second click on the summary, Reset,
+deleting the task, or a filter that hides the task closes it. After Delete, or
+when a filter hides the open task, focus goes to the next task's summary button,
+else the previous one's, else Add Task. Which panel is open is not saved.
+Between 1024 and 1180 px wide, the assignee shows as a photo alone and the
+short date is left out of the row (it stays in the panel). Narrow windows and
+phones are not supported.
 
 Tasks are saved in this browser using localStorage and restored on refresh.
 The sample tasks appear on your first visit, with due dates relative to that
@@ -16,10 +36,10 @@ tasks with a fresh sample set at once, without asking for confirmation. If
 browser storage is unavailable, tasks remain usable in memory, but changes will
 not persist.
 
-Use the Assignee dropdown above the task list to show one user's tasks or
-"All assignees". Both completed and incomplete matching tasks remain visible.
+Use the assignee list in the sidebar to show one user's tasks or "All
+assignees". Both completed and incomplete matching tasks remain visible.
 "All assignees" appears first, followed by users alphabetically by name.
-Each task's assignee dropdown uses the same alphabetical user order.
+The assignee chips in a task's panel use the same alphabetical user order.
 Your selection is restored on refresh; a missing or unavailable assignee defaults
 to "All assignees". If storage is unavailable, the selection remains usable in memory.
 New tasks are assigned to the selected assignee. Under "All assignees", they
@@ -36,10 +56,10 @@ stops automatically after a period without recognised speech (15 seconds by
 default), after a maximum time (60 seconds by default, counted from when the
 microphone starts recording), when focus leaves the
 task titles, or when the task being dictated is deleted. Recognised text may
-keep settling for up to four seconds after dictation stops. A line at the top
-of the page says how to start and stop dictating.
+keep settling for up to four seconds after dictation stops. A hint in the sidebar
+says how to start and stop dictating.
 
-A status box above the task list shows what dictation is doing:
+A status pill at the foot of the task list shows what dictation is doing:
 
 - "Connecting" from when you start until recognition is ready.
 - "Listening" while speech is accepted, with a level meter beside it.
@@ -50,8 +70,8 @@ A status box above the task list shows what dictation is doing:
 
 The level meter shows how loud the sound reaching the microphone is. It does
 not show whether speech was recognised, and a quiet meter is not an error.
-"Level meter", above the task list, chooses its style, and can be
-changed while dictating: "Horizontal bar" grows from the left, with a marker
+"Level meter", in the Settings dialog opened from the sidebar, chooses its
+style, and can be changed while dictating: "Horizontal bar" grows from the left, with a marker
 that holds the recent peak for about a second, "Analogue needle" sweeps a
 needle across an arc, and "Waveform" draws a row of thin vertical bars. "Look",
 on the line below, offers three looks for the style that is selected: Solid,
@@ -65,7 +85,7 @@ worked out in the browser from the audio already being captured, and is not
 stored or sent anywhere. With reduced motion set on the device, the meter moves
 in a few steps a second.
 
-A line above the task list says "This
+A notice in the sidebar says "This
 demo may retain dictated text for diagnostics.", because the deployed app keeps
 the final recognised text; see [Stored transcripts](#stored-transcripts).
 Dictation needs setting up first; see

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getNewTaskAssignee, sortAssigneesByName } from "./users"
+import { getInitials, getNewTaskAssignee, sortAssigneesByName } from "./users"
 import { getVisibleTasks } from "./assigneeFilter"
 import { createSampleTasks } from "./tasks"
 
@@ -54,4 +54,18 @@ describe("new-task assignment", () => {
 
 it("falls back for a removed selected user even when the roster is empty", () => {
     expect(getNewTaskAssignee("removed", [])).toBe("")
+})
+
+describe("assignee initials", () => {
+    it.each([
+        ["Alice", "A"],
+        ["bob", "B"],
+        ["  Charlie", "C"],
+    ])("shows the first letter of %s as %s", (name, initials) => {
+        expect(getInitials(name)).toBe(initials)
+    })
+
+    it.each([undefined, "", "   "])("shows a question mark for %j", (name) => {
+        expect(getInitials(name)).toBe("?")
+    })
 })
