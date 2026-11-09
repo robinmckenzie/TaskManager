@@ -90,6 +90,15 @@ describe.each<FieldKind>(["input", "textarea"])("dictation field helpers for a %
         expect(field.focus).not.toHaveBeenCalled()
         expect(field.setSelectionRange).not.toHaveBeenCalled()
     })
+
+    it("applies the saved selection to a focused field when forced, as after a dialog closes", () => {
+        const field = createField(kind, "Fix the bug", { start: 0, end: 0 })
+
+        focusFieldWithSavedSelection(field, { start: 11, end: 11 }, true, true)
+
+        expect(field.setSelectionRange).toHaveBeenCalledWith(11, 11)
+        expect(field.selectionStart).toBe(11)
+    })
 })
 
 describe("isTextArea", () => {

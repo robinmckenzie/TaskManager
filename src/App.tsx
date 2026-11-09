@@ -532,14 +532,24 @@ const App: FC = () => {
 
     const closeSettings = (): void => {
         setSettingsOpen(false)
+    }
+
+    // Focus goes back once the dialog has really closed. The dialog's own effect
+    // closes it first, and closing makes the browser return focus to the box on
+    // its own, with the cursor at the start. Restoring any earlier would lose.
+    const restoreFocus = dictation.restoreFocus
+    useEffect(() => {
+        if (settingsOpen) {
+            return
+        }
 
         const previous = focusBeforeSettings.current
         focusBeforeSettings.current = null
 
         if (previous?.isConnected) {
-            dictation.restoreFocus(previous)
+            restoreFocus(previous)
         }
-    }
+    }, [settingsOpen, restoreFocus])
 
     // Sends focus to where it goes when a task leaves the list on show: the next
     // task's summary button, else the previous one's, else Add Task.

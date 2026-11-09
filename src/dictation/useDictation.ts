@@ -149,11 +149,12 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
     }, [])
 
     /** Focuses a field, restoring its last cursor position or selection. */
-    const focusInput = useCallback((input: DictationField, targetId: string): void => {
+    const focusInput = useCallback((input: DictationField, targetId: string, force = false): void => {
         focusFieldWithSavedSelection(
             input,
             savedSelections.current.get(targetId),
             document.activeElement === input,
+            force,
         )
     }, [])
 
@@ -338,7 +339,9 @@ export const useDictation = ({ vocabulary, getText, setText }: UseDictationOptio
         const targetId = findFieldId(inputs.current, element)
 
         if (targetId) {
-            focusInput(element as DictationField, targetId)
+            // The browser may already have returned focus here by itself, with
+            // the cursor at the start, so the saved selection is applied anyway.
+            focusInput(element as DictationField, targetId, true)
         } else {
             element.focus()
         }

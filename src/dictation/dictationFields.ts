@@ -28,14 +28,17 @@ export const findFieldId = <T extends object>(
 /**
  * Focuses a field, restoring its last cursor position or selection, clamped to
  * the text it has now, or putting the cursor at the end when there is none. Does
- * nothing when the field already has focus.
+ * nothing when the field already has focus, unless `force` is set: focus that
+ * came back by itself, such as when a modal dialog closes, leaves the cursor at
+ * the start, so the saved selection must be applied anyway.
  */
 export const focusFieldWithSavedSelection = (
     field: FocusableField,
     saved: TextRange | undefined,
     isFocused: boolean,
+    force = false,
 ): void => {
-    if (isFocused) {
+    if (isFocused && !force) {
         return
     }
 
