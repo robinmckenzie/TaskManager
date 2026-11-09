@@ -19,7 +19,7 @@ export default mergeConfig(baseConfig, {
     // usual development server. strictPort makes it fail instead of moving to
     // another port, which the browser would not be allowed to open.
     host: '127.0.0.1',
-    port: 5183,
+    port: 5200,
     strictPort: true,
   },
 })

@@ -8,7 +8,7 @@ vi.mock("node:child_process", () => ({ spawn }))
 /** Stands in for the process ending, so nothing after `process.exit` runs, as in the real launcher. */
 class ProcessExit extends Error {}
 
-const PLAIN_ARGUMENTS = ["-y", "@playwright/mcp@0.0.83", "--isolated", "--allowed-origins", "http://127.0.0.1:5183"]
+const PLAIN_ARGUMENTS = ["-y", "@playwright/mcp@0.0.83", "--isolated", "--allowed-origins", "http://127.0.0.1:5200"]
 
 const originalArgv = process.argv
 const originalEnv = process.env
@@ -69,7 +69,7 @@ describe("startPlaywrightMcp", () => {
 
         expect(spawn).toHaveBeenCalledTimes(1)
         expect(spawn).toHaveBeenCalledWith(
-            "npx -y @playwright/mcp@0.0.83 --isolated --allowed-origins http://127.0.0.1:5183",
+            "npx -y @playwright/mcp@0.0.83 --isolated --allowed-origins http://127.0.0.1:5200",
             { shell: true, stdio: "inherit" },
         )
         expect(process.exit).not.toHaveBeenCalled()

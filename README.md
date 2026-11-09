@@ -660,7 +660,7 @@ follows.
   window, with these options:
   - `--isolated` keeps the browser profile in memory, so it starts empty, is
     discarded when the browser closes, and never touches your own profile.
-  - `--allowed-origins http://127.0.0.1:5183` limits the browser's requests to
+  - `--allowed-origins http://127.0.0.1:5200` limits the browser's requests to
     the browser-check server. Playwright MCP documents this as a guardrail and
     not a security boundary, and it does not apply to redirects.
   - `--block-service-workers` stops a page from installing a service worker.
@@ -673,7 +673,7 @@ follows.
   Playwright MCP describes as equivalent to running arbitrary code on this
   computer.
 - `npm run dev:browser-check` starts a separate server for the checks, using
-  `vite.browser-check.config.ts`, at `http://127.0.0.1:5183`:
+  `vite.browser-check.config.ts`, at `http://127.0.0.1:5200`:
   - It loads no `.env` files, so it never reads the Speechmatics key or the
     sign-in settings in `.env.local`. Dictation and sign-in show as
     unavailable.
@@ -681,7 +681,7 @@ follows.
     Vercel variable set, and names the variable without showing its value.
     Sign-in variables are those beginning `BETTER_AUTH_`, `GOOGLE_`,
     `OAUTH_PROXY_` or `AUTH_`.
-  - It fails if port 5183 is taken, instead of moving to another port.
+  - It fails if port 5200 is taken, instead of moving to another port.
   - It has its own address, so its saved tasks are separate from those of
     `npm run dev`, which can stay running.
   - It keeps its Vite dependency cache in `node_modules/.vite-browser-check`,
@@ -707,7 +707,7 @@ version is fixed here instead of following the newest release.
 ### Check that it is working
 
 Ask Claude to run a browser check of the app. It should start the browser-check
-server, open `http://127.0.0.1:5183` in a new Chrome window that has none of
+server, open `http://127.0.0.1:5200` in a new Chrome window that has none of
 your bookmarks or sign-ins, and describe a screenshot of the task list.
 
 While that address is restricted, two things the page normally fetches from
@@ -719,15 +719,15 @@ expected during a browser check.
 
 1. Check that the shell has no Speechmatics, sign-in, database, Vercel or
    Playwright variable set, by listing names only, and that nothing is listening on port
-   5183.
+   5200.
 2. Start `npm run dev:browser-check` as a process that can be stopped on its
-   own. Confirm that it listens on `127.0.0.1:5183` and that both
+   own. Confirm that it listens on `127.0.0.1:5200` and that both
    `GET /api/dictation/status` and `GET /api/account/status` return
    `{"configured":false}`.
-3. Open `http://127.0.0.1:5183` in the browser that Playwright MCP provides,
+3. Open `http://127.0.0.1:5200` in the browser that Playwright MCP provides,
    and use "Reset to sample tasks" before the first check.
 4. When the checks are done, close the browser with the Playwright MCP close
-   tool, then stop only the browser-check server. Confirm that port 5183 is
+   tool, then stop only the browser-check server. Confirm that port 5200 is
    free and that Git shows no changes.
 
 Things to know while checking:
