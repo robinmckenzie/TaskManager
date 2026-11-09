@@ -94,8 +94,8 @@ describe("assertNoPlaywrightVariables", () => {
 
 describe("buildNpxCommandLine", () => {
     it("joins plain arguments after npx", () => {
-        expect(buildNpxCommandLine(["-y", "@playwright/mcp@0.0.83", "--allowed-origins", "http://127.0.0.1:5183"])).toBe(
-            "npx -y @playwright/mcp@0.0.83 --allowed-origins http://127.0.0.1:5183",
+        expect(buildNpxCommandLine(["-y", "@playwright/mcp@0.0.83", "--allowed-origins", "http://127.0.0.1:5200"])).toBe(
+            "npx -y @playwright/mcp@0.0.83 --allowed-origins http://127.0.0.1:5200",
         )
     })
 
@@ -128,6 +128,6 @@ describe(".mcp.json", () => {
 
         expect(commandLine).toContain(" @playwright/mcp@0.0.83 ")
         expect(commandLine).toContain(" --isolated ")
-        expect(commandLine).toContain(" --allowed-origins http://127.0.0.1:5183 ")
+        expect(commandLine).toContain(" --allowed-origins http://127.0.0.1:5200 ")
     })
 })

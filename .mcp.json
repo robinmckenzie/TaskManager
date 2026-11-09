@@ -11,7 +11,7 @@
         "chrome",
         "--isolated",
         "--allowed-origins",
-        "http://127.0.0.1:5183",
+        "http://127.0.0.1:5200",
         "--block-service-workers",
         "--output-dir",
         ".playwright-mcp"

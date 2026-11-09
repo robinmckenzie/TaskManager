@@ -94,13 +94,13 @@ See README for supported Node.js versions.
 Claude Code can drive a real browser through the Playwright MCP server registered in `.mcp.json`. README describes the setup.
 
 - Use it when a change affects what the app renders or how it responds to input. It is not needed for changes that cannot affect the UI.
-- Run checks only against the dedicated server started with `npm run dev:browser-check`, at `http://127.0.0.1:5183`. Do not use the usual development server, `npm run preview`, `vercel dev`, or the deployed site for them. Do not stop or restart a server Robin already has running.
+- Run checks only against the dedicated server started with `npm run dev:browser-check`, at `http://127.0.0.1:5200`. Do not use the usual development server, `npm run preview`, `vercel dev`, or the deployed site for them. Do not stop or restart a server Robin already has running.
 - Before starting the dedicated server, confirm that the shell has no Speechmatics, sign-in, database or Vercel variables set, by listing variable names only. Never print a value. The server loads no `.env` files and refuses to start if such a variable is present; do not work around a refusal.
 - After it starts, confirm that `GET /api/dictation/status` and `GET /api/account/status` both report `configured: false` before opening the browser.
 - Never give browser checks production credentials, and never let them reach the production database or the Speechmatics service. Live dictation and live sign-in stay manual checks. Never add a way to sign in for browser checks.
 - Use only the isolated browser that the MCP server opens. Never connect to Robin's own browser or browser profile.
 - The MCP server is started through `server/startPlaywrightMcp.mjs`, which refuses to start it if a Playwright variable is set, because such a variable can override the isolation options in `.mcp.json`. Do not work around a refusal, and do not start the server any other way.
-- Open only `http://127.0.0.1:5183`. The address allow-list in `.mcp.json` is a guardrail, not a security boundary, so do not rely on it to stop a visit elsewhere.
+- Open only `http://127.0.0.1:5200`. The address allow-list in `.mcp.json` is a guardrail, not a security boundary, so do not rely on it to stop a visit elsewhere.
 - Begin each check from a known state by using "Reset to sample tasks".
 - Follow the practical notes under "Run a browser check" in README, including where to drop when checking drag-and-drop, which blocked requests are expected, and reloading before the browser is closed when checking persistence.
 - Screenshots and other files belong in `.playwright-mcp/`, which Git ignores. A file name given explicitly is resolved against the project root, so start it with `.playwright-mcp/`. Do not commit these files.
