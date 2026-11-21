@@ -22,7 +22,7 @@
 - Name branches `<number>-<Title>`, such as `12-Add-search-filters`, or without the number for housekeeping work that has no ticket, such as `Add-ChatGPT-guidance`.
 - Reference the ticket in commits, as `TM #12`. A pull request says `Closes #12`, so that merging it closes the ticket, and approval of the merge covers that. An abandoned ticket is closed as "not planned".
 - Agreed work, and housekeeping work that was explicitly requested, may be committed, pushed to its own branch and opened as a pull request without asking. Merging and deploying each require explicit approval.
-- Before asking for approval to merge, bring the pull request description up to date with the handover summary.
+- Before asking for approval to merge, bring the pull request description up to date with the implementation summary.
 - After Robin merges a pull request, tidy up without asking: fetch with `--prune`, switch to `main`, pull and delete the local branch. Tell Robin if the branch is still on GitHub. If the local branch is not fully merged, leave it and tell Robin.
 - Update README when setup, commands, or documented user behaviour change.
 
@@ -34,7 +34,7 @@
 - When asked to stub or draft a ticket, write only that ticket. Do not modify files or other tickets unless explicitly authorised.
 - A draft ticket needs to be coherent enough to be agreed, not to settle every implementation detail. Distinguish product decisions needed before agreement, provisional or tunable defaults, questions for investigation, and product questions that investigation exposes, which are brought back for a decision.
 - After drafting or substantially revising a DRAFT ticket, review the ticket and relevant code only when the change is complex, ambiguous or high-risk. Record any review in a signed ticket comment.
-- When handing over a drafted or revised ticket for review, separately summarise:
+- When presenting a drafted or revised ticket to Robin for review, separately summarise:
     - what it leaves out of scope, marking each item as stated or by omission;
     - any assumptions made while drafting;
     - any conflicts or tensions with `AGENTS.md`, existing behaviour, or previous tickets.
@@ -87,7 +87,7 @@ See README for supported Node.js versions.
 - Add or update regression tests for changed logic where useful.
 - For UI changes, verify affected behavior in a browser. Check drag-and-drop and refresh persistence when those features are affected.
 - Implementing a ticket includes one mandatory independent review after committing, covering the commit and ticket text. Record the review in the pull request description.
-- When handing over, summarise the resulting behaviour and any remaining limitations, and state what was verified, what was not, and why. Do not report something as verified if it could not be checked reliably.
+- The implementation summary describes the resulting behaviour and any remaining limitations, and states what was verified, what was not, and why. Do not report something as verified if it could not be checked reliably.
 
 ## Browser verification
 
